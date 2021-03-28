@@ -11,9 +11,15 @@ class Decks:
         #step 2: store deck metadata
         self.decks = df[deck_cols].to_numpy()
 
-    def search(self,query):
+    def search_meta(self,query):
         """
-        return a subset of decks 
+        return a subset of decks according to meta data
+        """
+        pass
+
+    def contains(self, cards):
+        """
+        given a dictionary of cards, return decks containing those cards
         """
 
 
