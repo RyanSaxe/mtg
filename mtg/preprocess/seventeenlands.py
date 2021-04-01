@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import requests
+from mtg.obj.cards import CardSet
 
 def clean_bo1_games(df, cards, rename_cols=dict(), drop_cols=set()):
     df = df.dropna()
