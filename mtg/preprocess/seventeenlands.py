@@ -23,7 +23,7 @@ def clean_bo1_games(df, cards, rename_cols=dict(), drop_cols=set()):
     df.columns = [x.lower() for x in df.columns]
     return df
 
-def get_card_rating_data(full_set, endpoint=None):
+def get_card_rating_data(full_set, endpoint=None, join=False):
     if endpoint is None:
         endpoint = "https://www.17lands.com/card_ratings/data?expansion=KHM&format=PremierDraft&start_date=2021-01-01&end_date=2021-02-19"
     card_json = requests.get(endpoint).json()
@@ -37,9 +37,14 @@ def get_card_rating_data(full_set, endpoint=None):
             return name
 
     card_df.loc[:,'name'] = card_df['name'].str.lower().apply(change_flip_name)
+    scry = full_set.to_dataframe()
+    if join:
+        card_df = card_df.join(scry, how="left", rsuffix="__extra")
+        extras = [col for col in card_df.columns if col.endsith("__extra")]
+        card_df = card_df.drop(extras)
     return card_df
 
-def add_archetypes(df, cardset):
+def add_archetypes(df, cardset, min_2c_basics=5, min_1c_basic=11):
     color_pairs = [
         'WU',
         'WB',
@@ -67,16 +72,14 @@ def add_archetypes(df, cardset):
                 result.append("deck_forest")
         return result
 
-    minimum = 5
     for cp in color_pairs:
         col1, col2 = map_cp_to_lands(cp)
-        where_cp = df[(df[col1] >= minimum) & (df[col2] >= minimum)].index
+        where_cp = df[(df[col1] >= min_2c_basics) & (df[col2] >= min_2c_basics)].index
         df.loc[where_cp,'color_pair'] = cp
     mono_c = list('WUBRG')
-    minimum = 11
     for c in mono_c:
         col = map_cp_to_lands(c)[0]
-        where_cp = df[(df[col] >= minimum) & (df['color_pair'].isna())].index
+        where_cp = df[(df[col] >= min_1c_basic) & (df['color_pair'].isna())].index
         df.loc[where_cp,'color_pair'] = c
     df.loc[:,'color_pair'] = df['color_pair'].fillna('5c')
     return df

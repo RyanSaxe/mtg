@@ -21,11 +21,11 @@ class CardSet:
         
     """
     def __init__(self, query_args, json_files = []):
-        search_q = 'https://api.scryfall.com/cards/search?q='
-        search_q += '&'.join([
-            urllib.parse.quote(query) for query in query_args
-        ])
-        response = requests.get(search_q)
+        self.search_q = 'https://api.scryfall.com/cards/search?q='
+        self.search_q += urllib.parse.quote(' & '.join([
+            query for query in query_args
+        ]))
+        response = requests.get(self.search_q)
         self._json = response.json()
         self.cards = set()
         self._build_card_list_query()
@@ -36,11 +36,12 @@ class CardSet:
         store cards from the query in self.cards
         """
         json = self._json
-        while json['has_more']:
-            self.cards = self.cards.union({Card(card) for card in json['data']})
-            next_page = requests.get(json['next_page'])
+        while json.get('has_more',False):
+            self.cards = self.cards.union({Card(card) for card in json.get('data',[])})
+            if json.get('next_page',None) is not None:
+                next_page = requests.get(json['next_page'])
             json = next_page.json()
-        self.cards = self.cards.union({Card(card) for card in json['data']})
+        self.cards = self.cards.union({Card(card) for card in json.get('data',[])})
 
     def _build_card_list_json(self, json_files):
         """
@@ -48,7 +49,7 @@ class CardSet:
         """
         for json_f in json_files:
             json = json.load(json_f)
-            self.cards = self.cards.union({Card(card) for card in json['data']})
+            self.cards = self.cards.union({Card(card) for card in json.get('data',[])})
 
     def to_dataframe(self):
         card_data = [card.__dict__ for card in self.cards]
