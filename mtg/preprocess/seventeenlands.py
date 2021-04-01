@@ -43,8 +43,8 @@ def get_card_rating_data(expansion, endpoint=None, join=False, start=None, end=N
             return name
 
     card_df.loc[:,'name'] = card_df['name'].str.lower().apply(change_flip_name)
-    scry = full_set.to_dataframe()
     if join:
+        scry = full_set.to_dataframe()
         card_df = card_df.join(scry, how="left", rsuffix="__extra")
         extras = [col for col in card_df.columns if col.endswith("__extra")]
         card_df = card_df.drop(extras, axis=1)
