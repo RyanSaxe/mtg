@@ -50,7 +50,7 @@ def get_card_rating_data(expansion, endpoint=None, join=False, start=None, end=N
         card_df = card_df.drop(extras, axis=1)
     return card_df
 
-def add_archetypes(df, cardset, min_2c_basics=5, min_1c_basic=11):
+def add_archetypes(df, min_2c_basics=5, min_1c_basic=11):
     color_pairs = [
         'WU',
         'WB',
