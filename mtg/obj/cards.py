@@ -3,7 +3,7 @@ import urllib
 import json as js
 import pandas as pd
 
-class Cards:
+class CardSet:
     """
     Run a scryfall search for list of cards according to a query:
     
@@ -27,10 +27,9 @@ class Cards:
         ])
         response = requests.get(search_q)
         self._json = response.json()
-        self.cards = []
+        self.cards = set()
         self._build_card_list_query()
         self._build_card_list_json(json_files)
-        self._clean_duplicates()
         
     def _build_card_list_query(self):
         """
@@ -38,10 +37,10 @@ class Cards:
         """
         json = self._json
         while json['has_more']:
-            self.cards += [Card(card) for card in json['data']]
+            self.cards = self.cards.union({Card(card) for card in json['data']})
             next_page = requests.get(json['next_page'])
             json = next_page.json()
-        self.cards += [Card(card) for card in json['data']]
+        self.cards = self.cards.union({Card(card) for card in json['data']})
 
     def _build_card_list_json(self, json_files):
         """
@@ -49,22 +48,24 @@ class Cards:
         """
         for json_f in json_files:
             json = json.load(json_f)
-            self.cards += [Card(card) for card in json['data']]
-    
-    def _clean_duplicates(self):
-        """
-        remove duplicates from self.cards
-        """
-        temp_cards = []
-        for card in self.cards:
-            if card not in temp_cards:
-                temp_cards.append(card)
-        self.cards = temp_cards
+            self.cards = self.cards.union({Card(card) for card in json['data']})
 
     def to_dataframe(self):
         card_data = [card.__dict__ for card in self.cards]
         return pd.DataFrame(card_data)
-        
+
+    def union(self, cardset2):
+        return self.cards | cardset2.cards
+
+    def intersection(self, cardset2):
+        return self.cards & cardset2.cards
+
+    def difference(self, cardset2):
+        return self.cards - cardset2.cards
+
+    def simdiff(self, cardset2):
+        return self.cards ^ cardset2.cards 
+
 class Card:
     def __init__(self, *args, **kwargs):
         for dictionary in args:
@@ -74,5 +75,18 @@ class Card:
             setattr(self, key, kwargs[key])
         if hasattr(self,"name"):
             self.name = self.name.lower()
+
+        self.colnames = {
+            'deck': 'deck_' + self.name,
+            'hand': 'opening_hand_' + self.name,
+            'drawn': 'drawn_' + self.name
+        }
+
+    def __hash__(self):
+        return hash(self.name)
+
     def __eq__(self, card2):
         return self.name == card2.name
+
+    def __str__(self):
+        return self.name
