@@ -1,17 +1,20 @@
 import tensorflow as tf
 from mtg.ml import nn
+import numpy as np
+import pandas as pd
 
 class DeckBuilder(tf.Module):
-    def __init__(self, n_cards, latent_dim, name=None):
+    def __init__(self, n_cards, land_idxs, name=None):
         super().__init__(name=name)
         self.n_cards = n_cards
+        self.land_idxs = land_idxs
         #probability of random sampling a card similar to that of a SB slot
         self.encoder = nn.MLP(
             in_dim=n_cards,
-            start_dim=128,
-            out_dim=16,
+            start_dim=256,
+            out_dim=32,
             n_h_layers=2,
-            dropout=0.2,
+            dropout=0.0,
             name="encoder",
             noise=0.0,
             start_act=tf.nn.relu,
@@ -20,31 +23,31 @@ class DeckBuilder(tf.Module):
             style="bottleneck"
         )
         self.decoder = nn.MLP(
-            in_dim=16,
-            start_dim=32,
+            in_dim=32,
+            start_dim=64,
             out_dim=n_cards,
             n_h_layers=2,
-            dropout=0.2,
+            dropout=0.0,
             name="decoder",
             noise=0.0,
             start_act=tf.nn.relu,
             middle_act=tf.nn.relu,
-            out_act=tf.nn.relu,
+            out_act=tf.nn.sigmoid,
             style="reverse_bottleneck"
         )
         self.interactions = nn.Dense(n_cards, n_cards, activation=tf.nn.relu)
 
     def __call__(self, decks, training=None):
         # noisy_decks is a temporary process until we get SB data
-        decks = self.fake_sideboard(decks)
+        self.noisy_decks = self.fake_sideboard(decks)
         # first layer is of same dim as number of cards so 100% of
         #       card by card interactions are plausibly modeled by it
-        interactions = self.interactions(decks)
+        interactions = self.interactions(self.noisy_decks)
         # project the deck to a lower dimensional represnetation
-        latent_rep = self.encoder(interactions)
+        self.latent_rep = self.encoder(interactions)
         # project the latent representation to a potential output
-        reconstruction = self.decoder(latent_rep)
-        return reconstruction
+        reconstruction = self.decoder(self.latent_rep)
+        return reconstruction * self.noisy_decks
 
     def round_to_deck(self, reconstruction):
         # this is a little trick to return integer values by rounding
@@ -57,6 +60,34 @@ class DeckBuilder(tf.Module):
         return reconstruction + tf.stop_gradient(
             tf.math.round(reconstruction) - reconstruction
         )
+
+    def compare(self, deck, card_df, sort_by=['cmc','type_line']):
+        deck = np.expand_dims(deck, 0)
+        model_output = self.__call__(deck)
+        built = tf.squeeze(self.round_to_deck(model_output))
+        fake_sb = tf.squeeze(self.noisy_decks - deck)
+        deck = tf.squeeze(deck)
+        df = pd.DataFrame(columns=["name","real deck","fake sideboard","predicted deck"])
+        card_df = card_df.sort_values(by=sort_by)
+        for card_idx, card_name in card_df[['idx','name']].to_numpy():
+            row_dict = {col:None for col in df.columns}
+            row_dict['name'] = card_name
+            sb_count = fake_sb[card_idx]
+            n_found = 0
+            if sb_count > 0:
+                row_dict['fake sideboard'] = sb_count.numpy()
+                n_found += 1
+            deck_count = deck[card_idx]
+            if deck_count > 0:
+                row_dict['real deck'] = deck_count.numpy()
+                n_found += 1
+            pred_count = built[card_idx]
+            if pred_count > 0:
+                row_dict['predicted deck'] = pred_count.numpy()
+                n_found += 1
+            if n_found > 0:
+                df = df.append(row_dict, ignore_index=True)  
+        return df   
 
     def compile(
         self,
@@ -73,13 +104,15 @@ class DeckBuilder(tf.Module):
 
     def priors(self, true, pred):
         """
-        reminder to build in regularization to enforce deckbuilding priors like
+        regularization penalties according to deckbuilding priors:
 
-        1. matchin land counts
-        2. enough creatures
-        3. relatively good curve
+            so far we have "40 card deck" and "match land count of what human built".
         """
-        return 0
+        card_count = tf.math.square(40 - tf.reduce_sum(pred, axis=1))
+        true_lands = tf.cast(tf.reduce_sum(tf.gather(true, self.land_idxs, axis=1), axis=1),dtype=tf.float32)
+        pred_lands = tf.reduce_sum(tf.gather(pred, self.land_idxs, axis=1), axis=1)
+        land_count = tf.math.square(true_lands - pred_lands)
+        return card_count + land_count
 
     def fake_sideboard(self, decks):
         """
