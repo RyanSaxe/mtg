@@ -130,3 +130,6 @@ dmypy.json
 
 # Don't upload data
 data/
+
+# Don't upload vscode specs
+.vscode
