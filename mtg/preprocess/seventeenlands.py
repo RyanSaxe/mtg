@@ -8,7 +8,10 @@ def clean_bo1_games(df, cards, rename_cols=dict(), drop_cols=set()):
     df.loc[:,'on_play'] = df['on_play'].astype(float)
     df.loc[:,'won'] = df['won'].astype(float)
     card_names = [x.split("_",1)[1].lower() for x in df.columns if x.startswith("deck_")]
-    flip_cards = set([x.name.lower() for x in cards.cards]).difference(set(card_names))
+    if isinstance(cards, pd.DataFrame):
+        flip_cards = set([name.lower() for name in cards['name'].tolist()]).difference(set(card_names))
+    else:
+        flip_cards = set([x.name.lower() for x in cards.cards]).difference(set(card_names))
     drop_cols += df.columns[(df == 0).all()].tolist()
     # align flip cards and scryfall
     delimiter = " // "

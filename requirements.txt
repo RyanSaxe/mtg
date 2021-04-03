@@ -1,6 +1,5 @@
 numpy
 pandas
-tensorflow
 scikit-learn
 ipykernel
 jupyter

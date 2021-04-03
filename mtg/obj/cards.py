@@ -22,9 +22,12 @@ class CardSet:
     """
     def __init__(self, query_args, json_files = []):
         self.search_q = 'https://api.scryfall.com/cards/search?q='
-        self.search_q += urllib.parse.quote(' & '.join([
-            query for query in query_args
-        ]))
+        if isinstance(query_args, str):
+            self.search_q += urllib.parse.quote(query_args)
+        else:
+            self.search_q += urllib.parse.quote(' & '.join([
+                query for query in query_args
+            ]))
         response = requests.get(self.search_q)
         self._json = response.json()
         self.cards = set()
@@ -90,4 +93,7 @@ class Card:
         return self.name == card2.name
 
     def __str__(self):
+        return self.name
+
+    def __repr__(self):
         return self.name
