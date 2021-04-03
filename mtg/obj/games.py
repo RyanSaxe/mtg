@@ -21,16 +21,22 @@ class Games:
             df = pd.read_csv(file_or_df)
         self.df = self._preprocess(df)
 
-        deck_cols = [x for x in df.columns if x.startswith("deck_")]
-        card_names = [x.split("_",1)[-1] for x in deck_cols]
-        self.id_to_name = {i:card_name for i,card_name in enumerate(card_names)}
+        deck_cols = [x for x in self.df.columns if x.startswith("deck_")]
+        self.card_names = [x.split("_",1)[-1] for x in deck_cols]
+        self.id_to_name = {i:card_name for i,card_name in enumerate(self.card_names)}
         self.name_to_id = {name:idx for idx,name in self.id_to_name.items()}
+
+    def get_decks(self):
+        df = seventeenlands.isolate_decks(self.df.copy())
+        deck_cols = ["deck_" + x for x in self.card_names]
+        return df[deck_cols].to_numpy()
 
     def _preprocess(self, df):
         df = seventeenlands.clean_bo1_games(
             df,
             self.cards,
-            drop_cols=['expansion','event_type','game_number']
+            drop_cols=['expansion','event_type','game_number'],
+            rename_cols={'draft_time':'date'}
         )
         df = seventeenlands.add_archetypes(df)
         return df

@@ -1,28 +1,27 @@
 import tensorflow as tf
-from mtg.ml.layers import Dense, Dropout
+from mtg.ml.layers import Dense
 
 class MLP(tf.Module):
     def __init__(
         self,
+        in_dim,
         start_dim,
         out_dim,
         n_h_layers,
-        dropout=None,
-        name=None,
-        noisy=False,
-        start_act=tf.nn.linear,
+        dropout=0.0,
+        noise=0.0,
+        start_act=tf.nn.relu,
         middle_act=tf.nn.relu,
         out_act=tf.nn.relu,
-        style="bottleneck"
+        style="bottleneck",
+        name=None,
     ):
         assert style in ['bottleneck','flat','reverse_bottleneck']
         super().__init__(name=name)
-        self.layers = [Dense(start_dim,activation=start_act)]
+        self.noise = noise
+        self.dropout = dropout
+        self.layers = [Dense(in_dim, start_dim, activation=start_act)]
         last_dim = start_dim
-        if dropout is not None:
-            self.drop = Dropout(dropout)
-            if noisy:
-                self.layers = [self.drop] + self.layers
         for _ in range(n_h_layers):
             if style == "bottleneck":
                 dim = last_dim // 2
@@ -31,14 +30,17 @@ class MLP(tf.Module):
             else:
                 dim = last_dim
             self.layers.append(
-                Dense(dim, activation=middle_act)
+                Dense(last_dim, dim, activation=middle_act)
             )
-            self.layers.append(self.drop)
             last_dim = dim
-        self.layers.append(Dense(out_dim, activation=out_act))
+        self.layers.append(Dense(last_dim, out_dim, activation=out_act))
 
     @tf.function
     def __call__(self, x, training=None):
+        if self.noise > 0.0:
+            x = tf.nn.dropout(x, self.noise)
         for layer in self.layers:
             x = layer(x)
+            if self.dropout > 0.0:
+                x = tf.nn.dropout(x, self.dropout)
         return x

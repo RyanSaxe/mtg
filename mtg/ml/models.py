@@ -7,30 +7,32 @@ class DeckBuilder(tf.Module):
         self.n_cards = n_cards
         #probability of random sampling a card similar to that of a SB slot
         self.encoder = nn.MLP(
+            in_dim=n_cards,
             start_dim=128,
             out_dim=16,
             n_h_layers=2,
             dropout=0.2,
             name="encoder",
-            noisy=False,
+            noise=0.0,
             start_act=tf.nn.relu,
             middle_act=tf.nn.relu,
             out_act=tf.nn.relu,
             style="bottleneck"
         )
         self.decoder = nn.MLP(
+            in_dim=16,
             start_dim=32,
             out_dim=n_cards,
             n_h_layers=2,
             dropout=0.2,
             name="decoder",
-            noisy=False,
+            noise=0.0,
             start_act=tf.nn.relu,
             middle_act=tf.nn.relu,
             out_act=tf.nn.relu,
             style="reverse_bottleneck"
         )
-        self.interactions = nn.Dense(n_cards, activation=tf.nn.relu)
+        self.interactions = nn.Dense(n_cards, n_cards, activation=tf.nn.relu)
 
     def __call__(self, decks, training=None):
         # noisy_decks is a temporary process until we get SB data
@@ -50,7 +52,20 @@ class DeckBuilder(tf.Module):
             tf.math.round(reconstruction) - reconstruction
         )
 
-    def priors(self):
+    def compile(
+        self,
+        **kwargs
+    ):
+        for k,v in kwargs.items():
+            setattr(self, k, v)
+
+    def loss(self, true, pred):
+        return (
+            self.reg_coef * self.loss_function(true, pred) + 
+            self.constraint_coef * self.priors(true, pred)
+        )
+
+    def priors(self, true, pred):
         """
         reminder to build in regularization to enforce deckbuilding priors like
 
@@ -58,7 +73,7 @@ class DeckBuilder(tf.Module):
         2. enough creatures
         3. relatively good curve
         """
-        pass
+        return 0
 
     def fake_sideboard(self, decks):
         """
@@ -66,15 +81,15 @@ class DeckBuilder(tf.Module):
         """
         p = 19/self.n_cards
         first_sample = tf.cast(
-            tf.random.random(decks.shape) < (p/3),
+            tf.random.uniform(decks.shape) < (p/3),
             dtype=tf.float32
         )
         second_sample = tf.cast(
-            tf.random.random(decks.shape) < (p/3),
+            tf.random.uniform(decks.shape) < (p/3),
             dtype=tf.float32
         )
         third_sample = tf.cast(
-            tf.random.random(decks.shape) < (p/3),
+            tf.random.uniform(decks.shape) < (p/3),
             dtype=tf.float32
         )
         sideboard = first_sample + second_sample + third_sample
