@@ -48,10 +48,10 @@ def get_card_rating_data(expansion, endpoint=None, join=False, start=None, end=N
     card_df.loc[:,'name'] = card_df['name'].str.lower().apply(change_flip_name)
     if join:
         scry = full_set.to_dataframe()
-        card_df = card_df.join(scry, how="left", rsuffix="__extra")
+        card_df = card_df.set_index('name').join(scry.set_index('name'), how="left", rsuffix="__extra", on="name")
         extras = [col for col in card_df.columns if col.endswith("__extra")]
         card_df = card_df.drop(extras, axis=1)
-    return card_df
+    return card_df.reset_index()
 
 def add_archetypes(df, min_2c_basics=5, min_1c_basic=11):
     color_pairs = [

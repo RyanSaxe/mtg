@@ -11,9 +11,10 @@ class Games:
     ):
         self.expansion = expansion
         self.set_q = f'set={self.expansion}'
-        self.cards = seventeenlands.get_card_rating_data(
-            self.expansion, join=True
-        )
+        # self.cards = seventeenlands.get_card_rating_data(
+        #     self.expansion, join=True
+        # )
+        self.cards = CardSet([self.set_q]).to_dataframe()
         if isinstance(file_or_df, pd.DataFrame):
             df = file_or_df
         else:
@@ -23,8 +24,10 @@ class Games:
 
         deck_cols = [x for x in self.df.columns if x.startswith("deck_")]
         self.card_names = [x.split("_",1)[-1] for x in deck_cols]
+        self.cards = self.cards[self.cards['name'].isin(self.card_names)]
         self.id_to_name = {i:card_name for i,card_name in enumerate(self.card_names)}
         self.name_to_id = {name:idx for idx,name in self.id_to_name.items()}
+        self.cards['idx'] = self.cards['name'].apply(lambda x: self.name_to_id[x])
 
     def get_decks(self):
         df = seventeenlands.isolate_decks(self.df.copy())

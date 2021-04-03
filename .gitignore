@@ -133,3 +133,6 @@ data/
 
 # Don't upload vscode specs
 .vscode
+
+# Mac files
+.DS_Store

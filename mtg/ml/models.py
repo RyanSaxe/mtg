@@ -44,13 +44,21 @@ class DeckBuilder(tf.Module):
         latent_rep = self.encoder(interactions)
         # project the latent representation to a potential output
         reconstruction = self.decoder(latent_rep)
+        return reconstruction
+        
+
+    def round_to_deck(self, reconstruction):
         # this is a little trick to return integer values by rounding
         #    however, treating the rounding operation as a constant 
         #    during differentiation. This lets the loss function target
         #    actual decks (with cards as integers) while still enabling backprop
+        # the important part is this allows us to add priors to the loss function
+        #    such as "has 15-18 lands" . . . maybe we can do this without rounding
+        #    but I want to explore with rounding at some point so writing this function
         return reconstruction + tf.stop_gradient(
             tf.math.round(reconstruction) - reconstruction
         )
+
 
     def compile(
         self,
