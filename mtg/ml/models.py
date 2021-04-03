@@ -45,7 +45,6 @@ class DeckBuilder(tf.Module):
         # project the latent representation to a potential output
         reconstruction = self.decoder(latent_rep)
         return reconstruction
-        
 
     def round_to_deck(self, reconstruction):
         # this is a little trick to return integer values by rounding
@@ -58,7 +57,6 @@ class DeckBuilder(tf.Module):
         return reconstruction + tf.stop_gradient(
             tf.math.round(reconstruction) - reconstruction
         )
-
 
     def compile(
         self,
