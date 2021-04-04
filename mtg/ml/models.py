@@ -2,15 +2,21 @@ import tensorflow as tf
 from mtg.ml import nn
 import numpy as np
 import pandas as pd
+import pdb
+#todo for stream:
+# separate out basics to build your own
+# add more priors
+# add more data via feature engineering and augmentation
+# add sideboard probability relationship to dataset so that rares can change correct build
 
 class DeckBuilder(tf.Module):
     def __init__(self, n_cards, land_idxs, name=None):
         super().__init__(name=name)
-        self.n_cards = n_cards
+        self.n_cards = n_cards - 5
         self.land_idxs = land_idxs
         #probability of random sampling a card similar to that of a SB slot
         self.encoder = nn.MLP(
-            in_dim=n_cards,
+            in_dim=self.n_cards,
             start_dim=256,
             out_dim=32,
             n_h_layers=2,
@@ -25,7 +31,7 @@ class DeckBuilder(tf.Module):
         self.decoder = nn.MLP(
             in_dim=32,
             start_dim=64,
-            out_dim=n_cards,
+            out_dim=self.n_cards,
             n_h_layers=2,
             dropout=0.0,
             name="decoder",
@@ -35,11 +41,14 @@ class DeckBuilder(tf.Module):
             out_act=tf.nn.sigmoid,
             style="reverse_bottleneck"
         )
-        self.interactions = nn.Dense(n_cards, n_cards, activation=tf.nn.relu)
+        self.interactions = nn.Dense(self.n_cards, self.n_cards, activation=tf.nn.relu)
+        self.add_basics_to_deck = nn.Dense(self.n_cards,5, activation=lambda x: tf.nn.sigmoid(x) * 18.0)
 
     def __call__(self, decks, training=None):
         # noisy_decks is a temporary process until we get SB data
-        self.noisy_decks = self.fake_sideboard(decks)
+        basics = decks[:,:5]
+        pools = decks[:,5:] 
+        self.noisy_decks = self.fake_sideboard(pools)
         # first layer is of same dim as number of cards so 100% of
         #       card by card interactions are plausibly modeled by it
         interactions = self.interactions(self.noisy_decks)
@@ -47,7 +56,8 @@ class DeckBuilder(tf.Module):
         self.latent_rep = self.encoder(interactions)
         # project the latent representation to a potential output
         reconstruction = self.decoder(self.latent_rep)
-        return reconstruction * self.noisy_decks
+        basics = self.add_basics_to_deck(reconstruction)
+        return tf.concat([basics, reconstruction * self.noisy_decks], axis=1)
 
     def round_to_deck(self, reconstruction):
         # this is a little trick to return integer values by rounding
@@ -65,7 +75,7 @@ class DeckBuilder(tf.Module):
         deck = np.expand_dims(deck, 0)
         model_output = self.__call__(deck)
         built = tf.squeeze(self.round_to_deck(model_output))
-        fake_sb = tf.squeeze(self.noisy_decks - deck)
+        fake_sb = tf.concat([tf.zeros(5),tf.squeeze(self.noisy_decks - deck[:,5:])],axis=0)
         deck = tf.squeeze(deck)
         df = pd.DataFrame(columns=["name","real deck","fake sideboard","predicted deck"])
         card_df = card_df.sort_values(by=sort_by)
@@ -118,7 +128,7 @@ class DeckBuilder(tf.Module):
         """
         inject noise into the decks by adding a fake sideboard randomly sampled
         """
-        p = 19/self.n_cards
+        p = (45-23)/self.n_cards
         first_sample = tf.cast(
             tf.random.uniform(decks.shape) < (p/3),
             dtype=tf.float32

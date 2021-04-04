@@ -23,7 +23,11 @@ class Games:
         self.df = self._preprocess(df)
 
         deck_cols = [x for x in self.df.columns if x.startswith("deck_")]
+        basics = ["plains","island","swamp","mountain","forest"]
         self.card_names = [x.split("_",1)[-1] for x in deck_cols]
+        for basic in basics:
+            self.card_names.remove(basic)
+        self.card_names = basics + self.card_names
         self.cards = self.cards[self.cards['name'].isin(self.card_names)]
         self.id_to_name = {i:card_name for i,card_name in enumerate(self.card_names)}
         self.name_to_id = {name:idx for idx,name in self.id_to_name.items()}
@@ -33,6 +37,17 @@ class Games:
         df = seventeenlands.isolate_decks(self.df.copy())
         deck_cols = ["deck_" + x for x in self.card_names]
         return df[deck_cols].to_numpy()
+
+    def get_decks_for_ml(self, train_p=0.8):
+        df = seventeenlands.isolate_decks(self.df.copy())
+        deck_cols = ["deck_" + x for x in self.card_names]
+        decks = df[deck_cols].to_numpy()
+        idxs = np.arange(len(df))
+        train_idxs = np.random.choice(idxs,int(len(idxs) * train_p),replace=False)
+        test_idxs = np.asarray(list(set(idxs.flatten()) - set(train_idxs.flatten())))
+        train_data = decks[train_idxs,:]
+        test_data = decks[test_idxs,:]
+        return train_data, test_data
 
     def _preprocess(self, df):
         df = seventeenlands.clean_bo1_games(
