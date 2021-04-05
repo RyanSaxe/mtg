@@ -2,6 +2,9 @@ from mtg.utils.display import print_deck
 import numpy as np
 import tensorflow as tf
 
+def load_model(location):
+    return tf.saved_model.load(location)
+
 def text_to_arr(deck,cards):
     id_lookup = cards.set_index('name')
     deck_arr = np.zeros(cards['idx'].max() + 1,dtype=np.float32)
@@ -55,5 +58,8 @@ def build_from_output(pred, pool, cards, show=True):
     if show:
         print_deck(built_deck.astype(int), cards, sort_by=['cmc','type_line'])
         print('\nSIDEBOARD\n')
+        # zero out basics so that they are excluded from sideboard
+        pool[:5] = 0
+        built_deck[:5] = 0
         print_deck((pool - built_deck).astype(int), cards)
     return built_deck

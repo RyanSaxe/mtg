@@ -24,6 +24,7 @@ class Dense(tf.Module):
             tf.zeros([out_dim], name='b')
         )
 
+    @tf.function
     def __call__(self, x, training=None):
         y = tf.matmul(x, self.w) + self.b
         return self.activation(y)

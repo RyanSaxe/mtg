@@ -44,6 +44,7 @@ class DeckBuilder(tf.Module):
         self.interactions = nn.Dense(self.n_cards, self.n_cards, activation=tf.nn.relu)
         self.add_basics_to_deck = nn.Dense(32,5, activation=lambda x: tf.nn.sigmoid(x) * 18.0)
 
+    @tf.function
     def __call__(self, decks, training=None):
         # noisy_decks is a temporary process until we get SB data
         basics = decks[:,:5]
@@ -78,6 +79,9 @@ class DeckBuilder(tf.Module):
         basic_loss = self.basic_loss(true_basics,pred_basics)
         built_loss = self.built_loss(true_built,pred_built)
         return self.basic_lambda * basic_loss + self.built_lambda * built_loss
+
+    def save(self, location):
+        tf.saved_model.save(self,location)
 
 
 
