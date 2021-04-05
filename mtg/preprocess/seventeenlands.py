@@ -3,8 +3,9 @@ import numpy as np
 import requests
 from mtg.obj.cards import CardSet
 
-def clean_bo1_games(df, cards, rename_cols=dict(), drop_cols=set()):
+def clean_bo1_games(df, cards, rename_cols=dict(), drop_cols=[]):
     df = df.dropna()
+    df.columns = [c.lower() for c in df.columns]
     df.loc[:,'on_play'] = df['on_play'].astype(float)
     df.loc[:,'won'] = df['won'].astype(float)
     card_names = [x.split("_",1)[1].lower() for x in df.columns if x.startswith("deck_")]
@@ -12,7 +13,10 @@ def clean_bo1_games(df, cards, rename_cols=dict(), drop_cols=set()):
         flip_cards = set([name.lower() for name in cards['name'].tolist()]).difference(set(card_names))
     else:
         flip_cards = set([x.name.lower() for x in cards.cards]).difference(set(card_names))
-    drop_cols += df.columns[(df == 0).all()].tolist()
+    #below drops empty columns, however they may be useful, so commenting that out. Instead will
+    # drop columns that are for cards that don't satisfy the "is:booster" scryfall restriction that
+    # is imposed on the `cards` object
+    #drop_cols += df.columns[(df == 0).all()].tolist()
     # align flip cards and scryfall
     delimiter = " // "
     for fp in flip_cards:
@@ -23,7 +27,15 @@ def clean_bo1_games(df, cards, rename_cols=dict(), drop_cols=set()):
                 rename_cols[column] = init_name + front + delimiter + back
             elif column.lower().endswith(back):
                 drop_cols.append(column)
-    df = df.drop(drop_cols, axis=1).rename(columns=rename_cols)
+    df = df.rename(columns=rename_cols)
+    # remove columns for cards that are not in the `cards` object
+    prefixes = ['deck','opening_hand','drawn','sideboard']
+    drop_cols += [c for c in df.columns if any([
+            c.startswith(prefix) for prefix in prefixes
+        ])  and (c.split('_')[-1] not in [name for name in cards['name'].tolist()])
+    ]
+    drop_cols = list(set(drop_cols))
+    df = df.drop(drop_cols, axis=1)
     df.columns = [x.lower() for x in df.columns]
     return df
 
@@ -93,6 +105,7 @@ def add_archetypes(df, min_2c_basics=5, min_1c_basic=11):
     df.loc[:,'color_pair'] = df['color_pair'].fillna('5c')
     return df
 
+#depreciated
 def isolate_decks(df):
     df.loc[:,'lost'] = 1 - df['won']
     losses = df.groupby("date")["lost"].sum()
