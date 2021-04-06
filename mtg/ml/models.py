@@ -42,7 +42,7 @@ class DeckBuilder(tf.Module):
             style="reverse_bottleneck"
         )
         self.interactions = nn.Dense(self.n_cards, self.n_cards, activation=tf.nn.relu)
-        self.add_basics_to_deck = nn.Dense(self.n_cards,5, activation=lambda x: tf.nn.sigmoid(x) * 18.0)
+        self.add_basics_to_deck = nn.Dense(32,5, activation=lambda x: tf.nn.sigmoid(x) * 18.0)
 
     @tf.function
     def __call__(self, decks, training=None):
