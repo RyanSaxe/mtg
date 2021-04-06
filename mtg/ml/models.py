@@ -12,7 +12,7 @@ import pdb
 
 class DeckBuilder(tf.Module):
     def __init__(self, n_cards, name=None):
-        super().__init__(name=name)
+        super().__init__(name=name,dropout=0.0)
         self.n_cards = n_cards - 5
         #probability of random sampling a card similar to that of a SB slot
         self.encoder = nn.MLP(
@@ -20,7 +20,7 @@ class DeckBuilder(tf.Module):
             start_dim=256,
             out_dim=32,
             n_h_layers=2,
-            dropout=0.0,
+            dropout=dropout,
             name="encoder",
             noise=0.0,
             start_act=tf.nn.relu,
@@ -33,7 +33,7 @@ class DeckBuilder(tf.Module):
             start_dim=64,
             out_dim=self.n_cards,
             n_h_layers=2,
-            dropout=0.0,
+            dropout=dropout,
             name="decoder",
             noise=0.0,
             start_act=tf.nn.relu,
