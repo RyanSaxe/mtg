@@ -78,8 +78,8 @@ class DeckBuilder(tf.Module):
     def loss(self, true, pred, sample_weight=None):
         true_basics,true_built = tf.split(true,[5,280],1)
         pred_basics,pred_built = tf.split(pred,[5,280],1)
-        basic_loss = self.basic_loss(true_basics, pred_basics, sample_weight=sample_weight)
-        built_loss = self.built_loss(true_built, pred_built, sample_weight=sample_weight)
+        basic_loss = self.basic_loss(true_basics, pred_basics)#, sample_weight=sample_weight)
+        built_loss = self.built_loss(true_built, pred_built)#, sample_weight=sample_weight)
         return self.basic_lambda * basic_loss + self.built_lambda * built_loss
 
     def save(self, location):
