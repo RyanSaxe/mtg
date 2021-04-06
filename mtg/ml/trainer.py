@@ -49,7 +49,7 @@ class Trainer:
                 batch_features = self.features[batch_idx,:]
                 batch_target = self.target[batch_idx,:]
                 if self.weights is not None:
-                    batch_weights = self.weights[batch_idx,:]
+                    batch_weights = self.weights[batch_idx]
                     batch_weights = batch_weights/batch_weights.sum()
                 else:
                     batch_weights = None
