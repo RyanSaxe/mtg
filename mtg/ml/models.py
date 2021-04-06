@@ -11,8 +11,8 @@ import pdb
 # add sideboard probability relationship to dataset so that rares can change correct build
 
 class DeckBuilder(tf.Module):
-    def __init__(self, n_cards, name=None):
-        super().__init__(name=name,dropout=0.0)
+    def __init__(self, n_cards, dropout=0.0, name=None):
+        super().__init__(name=name)
         self.n_cards = n_cards - 5
         #probability of random sampling a card similar to that of a SB slot
         self.encoder = nn.MLP(
