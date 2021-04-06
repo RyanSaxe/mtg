@@ -78,7 +78,7 @@ class Games:
             out=np.zeros_like(decks[:,5:]),
             where=pools[:,5:]!=0,
         )
-        weights = self.importance_weighting(df).to_numpy(dtype=np.float32).flatten()
+        weights = self.importance_weighting(df).to_numpy(dtype=np.float32)
         idxs = np.arange(len(df))
         train_idxs = np.random.choice(idxs,int(len(idxs) * train_p),replace=False)
         test_idxs = np.asarray(list(set(idxs.flatten()) - set(train_idxs.flatten())))
