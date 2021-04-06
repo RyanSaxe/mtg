@@ -43,9 +43,29 @@ class Games:
         #   yields a comparable matrix to self.df[self.sideboard_cols].to_numpy() 
         self.df = self.df[column_order] 
 
-    def get_decks_for_ml(self, train_p=0.8):
+    def importance_weighting(self,df=None,minim=0.1,maxim=1.0):
+        if df is None:
+            df = self.df
+        scaled_by_n_games = np.clip(
+            df['user_win_rate_bucket'] - (1.0/df['user_n_games_bucket']),
+            a_min=minim,
+            a_max=maxim,
+        )
+        return scaled_by_n_games * np.clip(df['won'],a_min=1.0/7.0,a_max=1.0)
+
+    def get_decks_for_ml(self, train_p=0.9):
         #get each unique decks last build
-        df = self.df.groupby('draft_id').last()
+        d = {
+            column: 'last' for column in df.columns if column not in ["opp_colors","date"]
+        }
+        d.update({
+                "won":"mean",
+                "on_play":"mean",
+                "num_mulligans":"mean",
+                "opp_num_mulligans": "mean",
+                "num_turns": "mean",
+        })
+        df = self.df.groupby('draft_id').agg(d)
         decks = df[self.deck_cols].to_numpy(dtype=np.float32)
         sideboards = df[self.sideboard_cols].to_numpy(dtype=np.float32)
         # note that pool has basics but shouldn't. Im choosing not
@@ -58,10 +78,11 @@ class Games:
             out=np.zeros_like(decks[:,5:]),
             where=pools[:,5:]!=0,
         )
+        weights = self.importance_weighting(df)
         idxs = np.arange(len(df))
         train_idxs = np.random.choice(idxs,int(len(idxs) * train_p),replace=False)
         test_idxs = np.asarray(list(set(idxs.flatten()) - set(train_idxs.flatten())))
-        train_data = (pools[train_idxs,:],decks[train_idxs,:])
+        train_data = (pools[train_idxs,:],decks[train_idxs,:], weights[train_idxs,:])
         test_data = (pools[test_idxs,:],decks[test_idxs,:])
         return train_data, test_data
 

@@ -9,6 +9,7 @@ class Trainer:
         features,
         target,
         model,
+        weights = None,
         clip = None,
     ):
         self.features = features
@@ -17,11 +18,12 @@ class Trainer:
         self.epoch_n = 0
         self.clip = clip
         self.batch_ids = np.arange(len(self.target))
+        self.weights = weights
     
-    def _step(self, batch_features, batch_target):
+    def _step(self, batch_features, batch_target, batch_weights):
         with tf.GradientTape() as tape:
             output = self.model(batch_features)
-            loss = self.model.loss(batch_target, output)
+            loss = self.model.loss(batch_target, output, sample_weight=batch_weights)
             #put regularization here if necessary
         grads = tape.gradient(loss, self.model.trainable_variables)
         if self.clip:
@@ -46,7 +48,12 @@ class Trainer:
                 batch_idx = self.batch_ids[i * batch_size:(i+1) * batch_size]
                 batch_features = self.features[batch_idx,:]
                 batch_target = self.target[batch_idx,:]
-                loss = self._step(batch_features, batch_target)
+                if self.weights is not None:
+                    batch_weights = self.weights[batch_idx,:]
+                    batch_weights = batch_weights/batch_weights.sum()
+                else:
+                    batch_weights = None
+                loss = self._step(batch_features, batch_target, batch_weights)
                 losses.append(np.average(loss))
                 if verbose:
                     progress.set_postfix(loss=np.average(losses))
