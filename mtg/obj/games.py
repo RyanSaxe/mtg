@@ -56,7 +56,7 @@ class Games:
     def get_decks_for_ml(self, train_p=0.9):
         #get each unique decks last build
         d = {
-            column: 'last' for column in df.columns if column not in ["opp_colors","date"]
+            column: 'last' for column in self.df.columns if column not in ["opp_colors","date"]
         }
         d.update({
                 "won":"mean",
