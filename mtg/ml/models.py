@@ -6,6 +6,7 @@ import pandas as pd
 import pdb
 import pathlib
 import os
+import pickle
 #todo for stream:
 # separate out basics to build your own
 # add more priors
