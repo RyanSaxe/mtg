@@ -47,7 +47,7 @@ class Games:
         if df is None:
             df = self.df
         rank_to_score = {
-            'bronze':0.01
+            'bronze':0.01,
             'silver':0.1,
             'gold':0.25,
             'platinum':0.5,
