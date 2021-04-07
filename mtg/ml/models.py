@@ -4,6 +4,8 @@ from mtg.ml.layers import sawtooth
 import numpy as np
 import pandas as pd
 import pdb
+import pathlib
+import os
 #todo for stream:
 # separate out basics to build your own
 # add more priors
@@ -80,8 +82,13 @@ class DeckBuilder(tf.Module):
         built_loss = self.built_loss(true_built, pred_built, sample_weight=sample_weight)
         return self.basic_lambda * basic_loss + self.built_lambda * built_loss
 
-    def save(self, location):
-        tf.saved_model.save(self,location)
+    def save(self, cards, location):
+        pathlib.Path(location).mkdir(parents=True, exist_ok=True)
+        model_loc = os.path.join(location,"model")
+        data_loc = os.path.join(location,"cards.pkl")
+        tf.saved_model.save(self,model_loc)
+        with open(data_loc,'wb') as f:
+            pickle.dump(cards,f) 
 
 
 

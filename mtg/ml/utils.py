@@ -1,10 +1,16 @@
 from mtg.utils.display import print_deck
 import numpy as np
 import tensorflow as tf
-
+import pickle
+import pathlib
+import os
 def load_model(location):
-    return tf.saved_model.load(location)
-
+    model_loc = os.path.join(location,"model")
+    data_loc = os.path.join(location,"cards.pkl")
+    model = tf.saved_model.load(model_loc)
+    with open(data_loc,'rb') as f:
+        cards = pickle.load(f)
+    return (model,cards)
 def text_to_arr(deck,cards):
     id_lookup = cards.set_index('name')
     deck_arr = np.zeros(cards['idx'].max() + 1,dtype=np.float32)
@@ -31,7 +37,7 @@ def build_from_output(pred, pool, cards, show=True):
     deck = pred.numpy()
     built_deck = np.zeros_like(deck)
     excess = np.zeros_like(deck)
-    order_to_add = np.argsort(deck)[::-1]
+    order_to_add = np.argsort(deck * pool)[::-1]
     deck_count = 0
     for card_idx in order_to_add:
         if deck_count >= 40:

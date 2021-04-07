@@ -1,6 +1,7 @@
 import re
 
 from pkg_resources import parse_requirements
+import pathlib
 from setuptools import find_packages, setup
 
 README_FILE = 'README.md'
@@ -31,5 +32,4 @@ setup(
 
 import os
 import pathlib
-if os.path.isdir('data'):
-    pathlib.Path('data/').mkdir(parents=True, exist_ok=True)
+pathlib.Path('data/').mkdir(parents=True, exist_ok=True)

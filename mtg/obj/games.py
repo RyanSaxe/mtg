@@ -46,12 +46,28 @@ class Games:
     def importance_weighting(self,df=None,minim=0.1,maxim=1.0):
         if df is None:
             df = self.df
-        scaled_by_n_games = np.clip(
-            df['user_win_rate_bucket'] - (1.0/df['user_n_games_bucket']),
+        rank_to_score = {
+            'bronze':0.01
+            'silver':0.1,
+            'gold':0.25,
+            'platinum':0.5,
+            'diamond':0.75,
+            'mythic':1.0
+        }
+        #decrease exponentiation by larger amounts for higher
+        # ranks such that rank and win-rate matter together
+        rank_addition = df['rank'].apply(
+            lambda x: rank_to_score.get(
+                x.split("-")[0].strip().lower(),
+                0.5
+            )
+        )
+        scaled_win_rate = np.clip(
+            df['user_win_rate_bucket'] ** (2 - rank_addition),
             a_min=minim,
             a_max=maxim,
         )
-        return scaled_by_n_games * np.clip(df['won'],a_min=1.0/7.0,a_max=1.0)
+        return scaled_win_rate * np.clip(df['won'],a_min=0.5,a_max=1.0)
 
     def get_decks_for_ml(self, train_p=0.9):
         #get each unique decks last build
