@@ -95,7 +95,7 @@ class DeckBuilder(tf.Module):
         # )
         return (
             self.basic_lambda * self.basic_loss + 
-            self.built_lambda * self.built_loss +
+            self.built_lambda * self.built_loss
             #self.cmc_lambda * self.lean_incentive
         )
 
