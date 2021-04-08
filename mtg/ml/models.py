@@ -67,27 +67,36 @@ class DeckBuilder(tf.Module):
 
     def compile(
         self,
+        cards,
         basic_lambda=1.0,
         built_lambda=1.0,
-        cmc_lambda=0.1,
-        optimizer=None
+        cmc_lambda=0.01,
+        optimizer=None,
     ):
         self.optimizer = tf.optimizers.Adam(lr=0.001) if optimizer is None else optimizer
         self.basic_lambda = basic_lambda
         self.built_lambda = built_lambda
         self.built_loss = tf.keras.losses.BinaryCrossentropy()
         self.basic_loss = tf.keras.losses.MSE
+        self.cmc_lambda = cmc_lambda
+        self.set_card_params(cards)
+
+    def set_card_params(self, cards):
+        self.cmc_map = cards.sort_values(by='idx')['cmc'].to_numpy(dtype=np.float32)
 
     def loss(self, true, pred, sample_weight=None):
         true_basics,true_built = tf.split(true,[5,280],1)
         pred_basics,pred_built = tf.split(pred,[5,280],1)
         basic_loss = self.basic_loss(true_basics, pred_basics)
         built_loss = self.built_loss(true_built, pred_built, sample_weight=sample_weight)
-        # lean_incentive = tf.reduce_mean(
-        #     tf.multiply(pred,tf.expand_dims(self.cmc_idx,0)),
-        #     axis=1
-        # )
-        return self.basic_lambda * basic_loss + self.built_lambda * built_loss
+        lean_incentive = tf.reduce_mean(tf.reduce_sum(
+            tf.multiply(pred,tf.expand_dims(self.cmc_map,0)),
+        ), axis=1))
+        return (
+            self.basic_lambda * basic_loss + 
+            self.built_lambda * built_loss +
+            self.cmc_lambda * lean_incentive
+        )
 
     def save(self, cards, location):
         pathlib.Path(location).mkdir(parents=True, exist_ok=True)
