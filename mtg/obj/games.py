@@ -68,9 +68,9 @@ class Games:
             a_max=maxim,
         )
         
-        last = games.df['date'].max()
+        last = df['date'].max()
         # increase importance factor for recent data points according to number of weeks from most recent data point
-        n_weeks = games.df['date'].apply(lambda x: (last - x).days // 7)
+        n_weeks = df['date'].apply(lambda x: (last - x).days // 7)
         return scaled_win_rate + np.clip(df['won'],a_min=0.5,a_max=1.0) + 0.9 ** n_weeks 
 
     def get_decks_for_ml(self, train_p=0.9):

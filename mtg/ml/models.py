@@ -83,7 +83,10 @@ class DeckBuilder(tf.Module):
         pred_basics,pred_built = tf.split(pred,[5,280],1)
         basic_loss = self.basic_loss(true_basics, pred_basics)
         built_loss = self.built_loss(true_built, pred_built, sample_weight=sample_weight)
-        #lean_incentive = tf.gather(pred,self.cmc_idx)
+        # lean_incentive = tf.reduce_mean(
+        #     tf.multiply(pred,tf.expand_dims(self.cmc_idx,0)),
+        #     axis=1
+        # )
         return self.basic_lambda * basic_loss + self.built_lambda * built_loss
 
     def save(self, cards, location):
