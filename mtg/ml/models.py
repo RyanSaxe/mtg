@@ -45,7 +45,7 @@ class DeckBuilder(tf.Module):
             style="reverse_bottleneck"
         )
         self.interactions = nn.Dense(self.n_cards, self.n_cards, activation=tf.nn.relu)
-        self.add_basics_to_deck = nn.Dense(32,5, activation=lambda x: tf.nn.sigmoid(x) * 18.0)
+        self.add_basics_to_deck = nn.Dense(self.n_cards,5, activation=lambda x: tf.nn.sigmoid(x) * 18.0)
 
     @tf.function
     def __call__(self, decks, training=None):
@@ -57,9 +57,10 @@ class DeckBuilder(tf.Module):
         self.latent_rep = self.encoder(interactions)
         # project the latent representation to a potential output
         reconstruction = self.decoder(self.latent_rep)
-        basics = self.add_basics_to_deck(self.latent_rep)
+        full_deck = reconstruction * pools
+        basics = self.add_basics_to_deck(full_deck)
         if training is None:
-            built_deck = tf.concat([basics, reconstruction * pools], axis=1)
+            built_deck = tf.concat([basics, full_deck], axis=1)
         else:
             built_deck = tf.concat([basics, reconstruction], axis=1)
         return built_deck
@@ -68,6 +69,7 @@ class DeckBuilder(tf.Module):
         self,
         basic_lambda=1.0,
         built_lambda=1.0,
+        cmc_lambda=0.1,
         optimizer=None
     ):
         self.optimizer = tf.optimizers.Adam(lr=0.001) if optimizer is None else optimizer
@@ -81,6 +83,7 @@ class DeckBuilder(tf.Module):
         pred_basics,pred_built = tf.split(pred,[5,280],1)
         basic_loss = self.basic_loss(true_basics, pred_basics)
         built_loss = self.built_loss(true_built, pred_built, sample_weight=sample_weight)
+        #lean_incentive = tf.gather(pred,self.cmc_idx)
         return self.basic_lambda * basic_loss + self.built_lambda * built_loss
 
     def save(self, cards, location):

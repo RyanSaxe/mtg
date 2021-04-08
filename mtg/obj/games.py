@@ -67,7 +67,11 @@ class Games:
             a_min=minim,
             a_max=maxim,
         )
-        return scaled_win_rate * np.clip(df['won'],a_min=0.5,a_max=1.0)
+        
+        last = games.df['date'].max()
+        # increase importance factor for recent data points according to number of weeks from most recent data point
+        n_weeks = games.df['date'].apply(lambda x: (last - x).days // 7)
+        return scaled_win_rate + np.clip(df['won'],a_min=0.5,a_max=1.0) + 0.9 ** n_weeks 
 
     def get_decks_for_ml(self, train_p=0.9):
         #get each unique decks last build
@@ -109,6 +113,7 @@ class Games:
             drop_cols=['expansion','event_type','game_number'],
             rename_cols={'draft_time':'date'}
         )
+        df['date'] = pd.to_datetime(df['date'])
         df = seventeenlands.add_archetypes(df)
         return df
 
