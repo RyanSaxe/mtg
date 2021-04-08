@@ -91,7 +91,8 @@ class DeckBuilder(tf.Module):
         built_loss = self.built_loss(true_built, pred_built, sample_weight=sample_weight)
         lean_incentive = tf.reduce_mean(tf.reduce_sum(
             tf.multiply(pred,tf.expand_dims(self.cmc_map,0)),
-        ), axis=1))
+            axis=1
+        ))
         return (
             self.basic_lambda * basic_loss + 
             self.built_lambda * built_loss +
