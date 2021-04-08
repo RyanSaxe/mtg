@@ -10,7 +10,7 @@ class Trainer:
         target,
         model,
         weights = None,
-        clip = None,
+        clip = 5.0,
     ):
         self.features = features
         self.target = target
