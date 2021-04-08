@@ -37,13 +37,20 @@ def build_from_output(pred, pool, cards, show=True, verbose=False):
     deck = pred.numpy()
     built_deck = np.zeros_like(deck)
     excess = np.zeros_like(deck)
+    # ensure we go through basics first otherwise we get very low lands
+    # for good pools
     order_to_add = np.argsort(deck * pool)[::-1]
+    non_basic_idx = np.where(order_to_add >= 5)
+    order_to_add = order_to_add[non_basic_idx]
+    order_to_add = np.concatenate(
+        [np.arange(5),order_to_add]
+    )
     deck_count = 0
     for card_idx in order_to_add:
         if deck_count >= 40:
             break
         allowed_to_add = 40 - deck_count
-        val = pred[card_idx]
+        val = pred[card_idx].numpy()
         n_to_add = np.round(val)
         remainder = np.clip(val - n_to_add, a_min=0, a_max=1)
         pool_count = pool[card_idx]
@@ -55,11 +62,11 @@ def build_from_output(pred, pool, cards, show=True, verbose=False):
         else:
           single_card_val = remainder
         # zero if rounded up, excess if rounded down
-        if verbose:
+        if verbose and val != 0:
             print(
-                cards[cards['idx'] == card_idx],
+                cards[cards['idx'] == card_idx].iloc[0]['name'],
                 val,
-                single_card_val
+                single_card_val,
             )
         excess[card_idx] = single_card_val
         built_deck[card_idx] = n_to_add
@@ -74,13 +81,16 @@ def build_from_output(pred, pool, cards, show=True, verbose=False):
                 print('not enough cards')
                 break
             else:
-                n_left = pool[card_idx] - built_deck[card_idx]
+                if card_idx in [0,1,2,3,4]:
+                  n_left = 1
+                else:
+                  n_left = pool[card_idx] - built_deck[card_idx]
                 allowed_to_add = 40 - built_deck.sum()
                 n_to_add = np.clip(n_left,0,allowed_to_add)
                 built_deck[card_idx] += n_to_add
                 if verbose:
                     print(
-                        cards[cards['idx'] == card_idx],
+                        cards[cards['idx'] == card_idx].iloc[0]['name'],
                         n_to_add,
                         excess[card_idx],
                     )
