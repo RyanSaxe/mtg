@@ -33,7 +33,7 @@ def predict_from_text(model, pool, cards):
     pred = tf.squeeze(model(np.expand_dims(pool,0)))
     return build_from_output(pred, pool, cards, show=True)
 
-def build_from_output(pred, pool, cards, show=True):
+def build_from_output(pred, pool, cards, show=True, verbose=False):
     deck = pred.numpy()
     built_deck = np.zeros_like(deck)
     excess = np.zeros_like(deck)
@@ -45,11 +45,25 @@ def build_from_output(pred, pool, cards, show=True):
         allowed_to_add = 40 - deck_count
         val = pred[card_idx]
         n_to_add = np.round(val)
-        # zero if rounded up, excess if rounded down
-        excess[card_idx] = np.clip(val - n_to_add, a_min=0, a_max=1)
+        remainder = np.clip(val - n_to_add, a_min=0, a_max=1)
+        pool_count = pool[card_idx]
         n_to_add = np.clip(n_to_add, 0, allowed_to_add)
+        # if pool_count > 0:
+        #   print(cards[cards['idx'] == card_idx]['name'], val, pool_count)
+        if pool_count - n_to_add > 0:
+          single_card_val = val/pool_count
+        else:
+          single_card_val = remainder
+        # zero if rounded up, excess if rounded down
+        if verbose:
+            print(
+                cards[cards['idx'] == card_idx],
+                val,
+                single_card_val
+            )
+        excess[card_idx] = single_card_val
         built_deck[card_idx] = n_to_add
-        deck_count += n_to_add      
+        deck_count = built_deck.sum()      
     if deck_count > 40:
         print('too many cards: THIS SHOULDNT BE POSSIBLE')
     elif deck_count < 40:
@@ -60,7 +74,16 @@ def build_from_output(pred, pool, cards, show=True):
                 print('not enough cards')
                 break
             else:
-                built_deck[card_idx] += 1
+                n_left = pool[card_idx] - built_deck[card_idx]
+                allowed_to_add = 40 - built_deck.sum()
+                n_to_add = np.clip(n_left,0,allowed_to_add)
+                built_deck[card_idx] += n_to_add
+                if verbose:
+                    print(
+                        cards[cards['idx'] == card_idx],
+                        n_to_add,
+                        excess[card_idx],
+                    )
     if show:
         print_deck(built_deck.astype(int), cards, sort_by=['cmc','type_line'])
         print('\nSIDEBOARD\n')
