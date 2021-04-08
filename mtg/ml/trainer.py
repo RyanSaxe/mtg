@@ -31,7 +31,7 @@ class Trainer:
         self.model.optimizer.apply_gradients(zip(grads, self.model.trainable_variables))
         return loss
 
-    def train(self, n_epochs, batch_size=32, verbose=True):
+    def train(self, n_epochs, batch_size=32, verbose=True, **print_kwargs):
         n_batches = len(self.batch_ids) // batch_size
         end_at = self.epoch_n + n_epochs
         for _ in range(n_epochs):
@@ -43,6 +43,8 @@ class Trainer:
                     desc = f'Epoch {self.epoch_n}/{end_at}',
                     unit = 'Batch'
                 )
+            if len(print_kwargs) > 0:
+                extras = {k:[] for k in print_kwargs.keys()}
             losses = []
             for i in range(n_batches):
                 batch_idx = self.batch_ids[i * batch_size:(i+1) * batch_size]
