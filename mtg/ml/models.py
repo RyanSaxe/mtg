@@ -198,7 +198,7 @@ class DeckBuilder(tf.Module):
         #self.sparsity_reg = tf.reduce_sum(tf.math.abs(true_built))
         return (
             self.basic_lambda * self.basic_loss + 
-            self.built_lambda * self.built_loss +
+            self.built_lambda * self.built_loss# +
             #self.cmc_lambda * self.lean_incentive + 
             #self.adv_mana_lambda * self.mana_reg# +
             #self.sparsity_lambda * self.sparsity_reg
