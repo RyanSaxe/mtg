@@ -59,10 +59,7 @@ class DeckBuilder(tf.Module):
         # project the latent representation to a potential output
         reconstruction = self.decoder(self.latent_rep)
         basics = self.add_basics_to_deck(self.latent_rep)
-        if training is None:
-            built_deck = tf.concat([basics, reconstruction * pools], axis=1)
-        else:
-            built_deck = tf.concat([basics, reconstruction], axis=1)
+        built_deck = tf.concat([basics, reconstruction * pools], axis=1)
         return built_deck
 
     def compile(
@@ -81,15 +78,15 @@ class DeckBuilder(tf.Module):
 
         self.basic_lambda = basic_lambda
         self.built_lambda = built_lambda
-        self.built_loss_f = tf.keras.losses.BinaryCrossentropy(reduction=tf.keras.losses.Reduction.NONE)
-        self.basic_loss_f = tf.keras.losses.MSE
+
+        self.built_loss_f = tf.keras.losses.MeanSquaredError(reduction=tf.keras.losses.Reduction.NONE)
+        self.basic_loss_f = tf.keras.losses.MeanSquaredError(reduction=tf.keras.losses.Reduction.NONE)
 
         self.cmc_lambda = cmc_lambda
         self.adv_mana_lambda = adv_mana_lambda
         self.sparsity_lambda = sparsity_lambda
 
         self.set_card_params(cards)
-
 
     def compute_total_pips(self, decks):
         return np.multiply(self.pips_mtx,np.expand_dims(decks,-1)).sum(axis=1).astype(np.float32)
@@ -190,7 +187,7 @@ class DeckBuilder(tf.Module):
     def loss(self, true, pred, sample_weight=None):
         true_basics,true_built = tf.split(true,[5,280],1)
         pred_basics,pred_built = tf.split(pred,[5,280],1)
-        self.basic_loss = self.basic_loss_f(true_basics, pred_basics)
+        self.basic_loss = self.basic_loss_f(true_basics, pred_basics, sample_weight=sample_weight)
         self.built_loss = self.built_loss_f(true_built, pred_built, sample_weight=sample_weight)
         self.lean_incentive = tf.reduce_sum(
             tf.multiply(pred,tf.expand_dims(self.cmc_map,0)),
