@@ -4,6 +4,9 @@ import tensorflow as tf
 import pickle
 import pathlib
 import os
+
+
+
 def load_model(location):
     model_loc = os.path.join(location,"model")
     data_loc = os.path.join(location,"cards.pkl")
@@ -60,7 +63,7 @@ def build_from_output(pred, pool, cards, show=True, verbose=False):
         if pool_count - n_to_add > 0:
           single_card_val = val/pool_count
         else:
-          single_card_val = remainder
+          single_card_val = 0
         # zero if rounded up, excess if rounded down
         if verbose and val != 0:
             print(

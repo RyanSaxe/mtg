@@ -38,3 +38,10 @@ def sawtooth(x):
         num = tf.math.sin(x * np.pi * 2 * i)/i
         oscillation += sign * num
     return x + ((1.0/np.pi) * oscillation)
+
+@tf.function
+def harmonic_mean(x,y):
+    return 2.0 / (
+        tf.math.divide_no_nan(x, y) + 
+        tf.math.divide_no_nan(y, x)
+    )
