@@ -92,10 +92,10 @@ class DeckBuilder(tf.Module):
 
 
     def compute_total_pips(self, decks):
-        return np.multiply(self.pips_mtx,np.expand_dims(decks,-1)).sum(axis=1)
+        return np.multiply(self.pips_mtx,np.expand_dims(decks,-1)).sum(axis=1).astype(np.float32)
 
     def compute_total_produces(self, decks):
-        return np.multiply(self.produces_mtx,np.expand_dims(decks,-1)).sum(axis=1)
+        return np.multiply(self.produces_mtx,np.expand_dims(decks,-1)).sum(axis=1).astype(np.float32)
 
     def set_card_params(self, cards):
         self.cmc_map = cards.sort_values(by='idx')['cmc'].to_numpy(dtype=np.float32)
