@@ -73,7 +73,7 @@ class DeckBuilder(tf.Module):
         epsilon=1e-5,
         optimizer=None,
     ):
-        self.optimizer = tf.optimizers.Adam(lr=0.001) if optimizer is None else optimizer
+        self.optimizer = tf.optimizers.Adam() if optimizer is None else optimizer
         self.epsilon = epsilon
 
         self.basic_lambda = basic_lambda
@@ -189,18 +189,18 @@ class DeckBuilder(tf.Module):
         pred_basics,pred_built = tf.split(pred,[5,280],1)
         self.basic_loss = self.basic_loss_f(true_basics, pred_basics, sample_weight=sample_weight)
         self.built_loss = self.built_loss_f(true_built, pred_built, sample_weight=sample_weight)
-        self.lean_incentive = tf.reduce_sum(
-            tf.multiply(pred,tf.expand_dims(self.cmc_map,0)),
-            axis=1
-        )
-        self.mana_reg = self.pip_vs_produce_penalty(true, pred)
+        # self.lean_incentive = tf.reduce_sum(
+        #     tf.multiply(pred,tf.expand_dims(self.cmc_map,0)),
+        #     axis=1
+        # )
+        #self.mana_reg = self.pip_vs_produce_penalty(true, pred)
         #sparsity lambda does not work because here true_built is in [0,1] not [0,n_cards_in_pool]
         #self.sparsity_reg = tf.reduce_sum(tf.math.abs(true_built))
         return (
             self.basic_lambda * self.basic_loss + 
             self.built_lambda * self.built_loss +
-            self.cmc_lambda * self.lean_incentive + 
-            self.adv_mana_lambda * self.mana_reg# +
+            #self.cmc_lambda * self.lean_incentive + 
+            #self.adv_mana_lambda * self.mana_reg# +
             #self.sparsity_lambda * self.sparsity_reg
         )
 
