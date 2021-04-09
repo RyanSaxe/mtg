@@ -72,9 +72,12 @@ class DeckBuilder(tf.Module):
         built_lambda=1.0,
         cmc_lambda=0.01,
         adv_mana_lambda=0.01,
+        sparsity_lambda=0.01,
+        epsilon=1e-5,
         optimizer=None,
     ):
         self.optimizer = tf.optimizers.Adam(lr=0.001) if optimizer is None else optimizer
+        self.epsilon = epsilon
 
         self.basic_lambda = basic_lambda
         self.built_lambda = built_lambda
@@ -83,6 +86,7 @@ class DeckBuilder(tf.Module):
 
         self.cmc_lambda = cmc_lambda
         self.adv_mana_lambda = adv_mana_lambda
+        self.sparsity_lambda = sparsity_lambda
 
         self.set_card_params(cards)
 
@@ -173,8 +177,10 @@ class DeckBuilder(tf.Module):
         pred_produce = self.compute_total_produces(pred)
         true_produce = self.compute_total_produces(true)
 
-        harmonic_pred = harmonic_mean(pred_pips, pred_produce)
-        harmonic_true = harmonic_mean(true_pips, true_produce)
+        pred_ratio = tf.math.divide(pred_pips + self.epsilon, pred_produce + self.epsilon)
+        true_ratio = tf.math.divide(true_pips + self.epsilon, pred_produce + self.epsilon)
+
+        return tf.reduce_sum(tf.math.square(pred_ratio - true_ratio))
         #hypothesis, we want high produces for high pips
         #            and low produces for low pips
         #additional notes
@@ -191,11 +197,14 @@ class DeckBuilder(tf.Module):
             axis=1
         )
         self.mana_reg = self.pip_vs_produce_penalty(true, pred)
+        #sparsity lambda does not work because here true_built is in [0,1] not [0,n_cards_in_pool]
+        #self.sparsity_reg = tf.reduce_sum(tf.math.abs(true_built))
         return (
             self.basic_lambda * self.basic_loss + 
             self.built_lambda * self.built_loss +
             self.cmc_lambda * self.lean_incentive + 
-            self.adv_mana_lambda * self.mana_reg
+            self.adv_mana_lambda * self.mana_reg# +
+            #self.sparsity_lambda * self.sparsity_reg
         )
 
     def save(self, cards, location):
