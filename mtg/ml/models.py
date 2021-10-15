@@ -185,8 +185,8 @@ class DeckBuilder(tf.Module):
         #  we want to learn monotonically increasing relationship to hypothesis
 
     def loss(self, true, pred, sample_weight=None):
-        true_basics,true_built = tf.split(true,[5,280],1)
-        pred_basics,pred_built = tf.split(pred,[5,280],1)
+        true_basics,true_built = tf.split(true,[5,self.n_cards],1)
+        pred_basics,pred_built = tf.split(pred,[5,self.n_cards],1)
         self.basic_loss = self.basic_loss_f(true_basics, pred_basics, sample_weight=sample_weight)
         self.built_loss = self.built_loss_f(true_built, pred_built, sample_weight=sample_weight)
         # self.lean_incentive = tf.reduce_sum(
