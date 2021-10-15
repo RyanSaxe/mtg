@@ -64,7 +64,7 @@ class DeckBuilder(tf.Module):
 
     def compile(
         self,
-        cards,
+        cards=None,
         basic_lambda=1.0,
         built_lambda=1.0,
         cmc_lambda=0.01,
@@ -85,8 +85,8 @@ class DeckBuilder(tf.Module):
         self.cmc_lambda = cmc_lambda
         self.adv_mana_lambda = adv_mana_lambda
         self.sparsity_lambda = sparsity_lambda
-
-        self.set_card_params(cards)
+        if cards is not None:
+            self.set_card_params(cards)
 
     def compute_total_pips(self, decks):
         return np.multiply(self.pips_mtx,np.expand_dims(decks,-1)).sum(axis=1).astype(np.float32)
