@@ -45,7 +45,7 @@ class DeckBuilder(tf.Module):
             out_act=tf.nn.sigmoid,
             style="reverse_bottleneck"
         )
-        self.interactions = nn.Dense(self.n_cards, self.n_cards, activation=tf.nn.relu)
+        self.interactions = nn.Dense(self.n_cards, self.n_cards, activation=None)
         self.add_basics_to_deck = nn.Dense(32,5, activation=lambda x: tf.nn.sigmoid(x) * 18.0)
 
     @tf.function
@@ -101,19 +101,14 @@ class DeckBuilder(tf.Module):
             self.curve_incentive = 0.0
         if self.interaction_lambda > 0:
             #push card level interactions in pool to zero
-            self.interaction_reg = tf.norm(self.pool_interactions,ord=1)
+            self.interaction_reg = tf.norm(self.interactions.w + self.interactions.b,ord=1)
         else:
             self.interaction_reg = 0.0
-        #self.mana_reg = self.pip_vs_produce_penalty(true, pred)
-        #sparsity lambda does not work because here true_built is in [0,1] not [0,n_cards_in_pool]
-        #self.sparsity_reg = tf.reduce_sum(tf.math.abs(true_built))
         return (
             self.basic_lambda * self.basic_loss + 
             self.built_lambda * self.built_loss +
             self.cmc_lambda * self.curve_incentive +
             self.interaction_lambda * self.interaction_reg
-            #self.adv_mana_lambda * self.mana_reg# +
-            #self.sparsity_lambda * self.sparsity_reg
         )
 
     def save(self, cards, location):
