@@ -94,8 +94,9 @@ class DeckBuilder(tf.Module):
         self.built_loss = self.built_loss_f(true_built, pred_built, sample_weight=sample_weight)
         if self.cmc_lambda > 0:
             #pred_built instead of pred to avoid learning to add more basics
+            #add a thing here to avoid all lands in general later
             self.curve_incentive = tf.reduce_mean(
-                tf.multiply(pred_built,tf.expand_dims(self.cmc_map,0)),
+                tf.multiply(pred_built,tf.expand_dims(self.cmc_map[:,5:],0)),
                 axis=1
             )
         else:
