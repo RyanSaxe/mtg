@@ -91,21 +91,21 @@ class Games:
         # note that pool has basics but shouldn't. Im choosing not
         # to zero them out here and instead do it on modeling side
         pools = decks + sideboards
-        #convert decks to be 0-1 for specifically non basics
-        decks[:,5:] = np.divide(
-            decks[:,5:],
-            pools[:,5:],
-            out=np.zeros_like(decks[:,5:]),
-            where=pools[:,5:]!=0,
-        )
+        # #convert decks to be 0-1 for specifically non basics
+        #  currently not used because we multiply output in 0-1 by the pool to address this
+        # decks[:,5:] = np.divide(
+        #     decks[:,5:],
+        #     pools[:,5:],
+        #     out=np.zeros_like(decks[:,5:]),
+        #     where=pools[:,5:]!=0,
+        # )
         weights = self.importance_weighting(df).to_numpy(dtype=np.float32)
         idxs = np.arange(len(df))
         train_idxs = np.random.choice(idxs,int(len(idxs) * train_p),replace=False)
         test_idxs = np.asarray(list(set(idxs.flatten()) - set(train_idxs.flatten())))
         train_data = (pools[train_idxs,:],decks[train_idxs,:], weights[train_idxs])
         test_data = (pools[test_idxs,:],decks[test_idxs,:])
-        return train_data, test_data
-
+        return train_data, test_data, {'train':train_idxs, 'test':test_idxs, 'map':dict(zip(idxs,df.index.tolist()))}
     def _preprocess(self, df):
         df = seventeenlands.clean_bo1_games(
             df,
