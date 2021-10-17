@@ -27,7 +27,9 @@ class Dense(tf.Module):
     @tf.function
     def __call__(self, x, training=None):
         y = tf.matmul(x, self.w) + self.b
-        return self.activation(y)
+        if self.activation is not None:
+            y = self.activation(y)
+        return y
 
 @tf.function
 def sawtooth(x):
