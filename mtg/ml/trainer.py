@@ -31,7 +31,7 @@ class Trainer:
         self.model.optimizer.apply_gradients(zip(grads, self.model.trainable_variables))
         return loss
 
-    def train(self, n_epochs, batch_size=32, verbose=True, **print_kwargs):
+    def train(self, n_epochs, batch_size=32, verbose=True, print_keys=[]):
         n_batches = len(self.batch_ids) // batch_size
         end_at = self.epoch_n + n_epochs
         for _ in range(n_epochs):
@@ -43,8 +43,7 @@ class Trainer:
                     desc = f'Epoch {self.epoch_n}/{end_at}',
                     unit = 'Batch'
                 )
-            if len(print_kwargs) > 0:
-                extras = {k:[] for k in print_kwargs.keys()}
+            extras = {k:[] for k in print_keys}
             losses = []
             for i in range(n_batches):
                 batch_idx = self.batch_ids[i * batch_size:(i+1) * batch_size]
@@ -57,8 +56,11 @@ class Trainer:
                     batch_weights = None
                 loss = self._step(batch_features, batch_target, batch_weights)
                 losses.append(np.average(loss))
+                for attr_name in extras.keys():
+                    attr = getattr(self.model, attr_name, None)
+                    extras[attr_name].append(attr)
                 if verbose:
-                    progress.set_postfix(loss=np.average(losses))
+                    progress.set_postfix(loss=np.average(losses), **{k:np.average(v) for k,v in extras.iteritems()})
                     progress.update(1)
             if verbose:
                 progress.close()

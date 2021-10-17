@@ -53,9 +53,9 @@ class DeckBuilder(tf.Module):
         # noisy_decks is a temporary process until we get SB data
         basics = decks[:,:5]
         pools = decks[:,5:] 
-        interactions = self.interactions(pools)
+        self.pool_interactions = self.interactions(pools)
         # project the deck to a lower dimensional represnetation
-        self.latent_rep = self.encoder(interactions)
+        self.latent_rep = self.encoder(self.pool_interactions)
         # project the latent representation to a potential output
         reconstruction = self.decoder(self.latent_rep)
         basics = self.add_basics_to_deck(self.latent_rep)
@@ -68,13 +68,10 @@ class DeckBuilder(tf.Module):
         basic_lambda=1.0,
         built_lambda=1.0,
         cmc_lambda=0.01,
-        adv_mana_lambda=0.01,
-        sparsity_lambda=0.01,
-        epsilon=1e-5,
+        interaction_lambda=0.01,
         optimizer=None,
     ):
         self.optimizer = tf.optimizers.Adam() if optimizer is None else optimizer
-        self.epsilon = epsilon
 
         self.basic_lambda = basic_lambda
         self.built_lambda = built_lambda
@@ -83,123 +80,38 @@ class DeckBuilder(tf.Module):
         self.basic_loss_f = tf.keras.losses.MeanSquaredError(reduction=tf.keras.losses.Reduction.NONE)
 
         self.cmc_lambda = cmc_lambda
-        self.adv_mana_lambda = adv_mana_lambda
-        self.sparsity_lambda = sparsity_lambda
+        self.interaction_lambda = interaction_lambda
         if cards is not None:
             self.set_card_params(cards)
 
-    def compute_total_pips(self, decks):
-        return np.multiply(self.pips_mtx,np.expand_dims(decks,-1)).sum(axis=1).astype(np.float32)
-
-    def compute_total_produces(self, decks):
-        return np.multiply(self.produces_mtx,np.expand_dims(decks,-1)).sum(axis=1).astype(np.float32)
-
     def set_card_params(self, cards):
         self.cmc_map = cards.sort_values(by='idx')['cmc'].to_numpy(dtype=np.float32)
-        self.produces_mtx = self.get_color_producers(cards)
-        self.pips_mtx = self.get_color_pips(cards)
-
-    def get_color_pips(self, cards):
-        flip_to_mc_map = {
-            'esika, god of the tree // the prismatic bridge':'{1}{G}{G}',
-            'birgi, god of storytelling // harnfel, horn of bounty':'{2}{R}',
-            'cosima, god of the voyage // the omenkeel':'{2}{U}',
-            'barkchannel pathway // tidechannel pathway':None,
-            "reidane, god of the worthy // valkmira, protector's shield":'{2}{W}',
-            'darkbore pathway // slitherbore pathway':None,
-            'hengegate pathway // mistgate pathway':None,
-            'alrund, god of the cosmos // hakka, whispering raven':'{3}{U}{U}',
-            'jorn, god of winter // kaldring, the rimestaff':'{G}{U}{B}',
-            'blightstep pathway // searstep pathway':None,
-            'valki, god of lies // tibalt, cosmic impostor':'{5}{B}{R}',
-            "toralf, god of fury // toralf's hammer": '{2}{R}{R}',
-            'kolvori, god of kinship // the ringhart crest':'{2}{G}{G}',
-            'egon, god of death // throne of death':'{2}{B}',
-            'halvar, god of battle // sword of the realms':'{2}{W}{W}',
-            "tergrid, god of fright // tergrid's lantern":'{3}{B}{B}'
-        }
-        def mc_to_pips(mc):
-            if mc is None:
-                return np.zeros(5)
-            return np.asarray(
-                [mc.count(color) for color in list('WUBRG')]
-            )
-        return np.vstack(
-            cards.sort_values(by='idx').apply(
-                lambda x: flip_to_mc_map.get(x['name'],x['mana_cost']), axis=1
-            ).apply(mc_to_pips).to_numpy()
-        )
-    def get_color_producers(self, cards):
-        produces = CardSet(['set=khm','produces:any','is:booster'])
-        color_to_land = {
-            'W':0,
-            'U':1,
-            'B':2,
-            'R':3,
-            'G':4
-        }
-        bad_produces = [
-            'goldspan dragon',
-            'tundra fumarole',
-            'the bloodsky massacre',
-            'niko defies destiny',
-            'open the omenpaths',
-            'tyvar kell',
-            'kolvori, god of kinship // the ringhart crest',
-            'faceless haven',
-            'valki, god of lies // tibalt, cosmic impostor',
-            'karfell harbinger',
-            'old-growth troll',
-            'birgi, god of storytelling // harnfel, horn of bounty',
-            'tyrite sanctum',
-            'colossal plow',
-            'smashing success',
-            'arni slays the troll',
-        ]
-        good_produces = [x.name for x in produces.cards if x.name not in bad_produces]
-        def make_mana_arr(mana_prod):
-            arr = np.zeros(5)
-            idxs = [color_to_land[c] for c in mana_prod]
-            arr[idxs] = 1
-            return arr
-        return np.vstack(
-            [make_mana_arr(x[1]) if x[0] in good_produces else np.zeros(5) for 
-            x in cards.sort_values('idx')[['name','produced_mana']].to_numpy()]
-        )
-        
-    def pip_vs_produce_penalty(self, true, pred):
-        pred_pips = self.compute_total_pips(pred)
-        true_pips = self.compute_total_pips(true)
-
-        pred_produce = self.compute_total_produces(pred)
-        true_produce = self.compute_total_produces(true)
-
-        pred_ratio = tf.math.divide(pred_pips + self.epsilon, pred_produce + self.epsilon)
-        true_ratio = tf.math.divide(true_pips + self.epsilon, pred_produce + self.epsilon)
-
-        return tf.reduce_sum(tf.math.square(pred_ratio - true_ratio))
-        #hypothesis, we want high produces for high pips
-        #            and low produces for low pips
-        #additional notes
-        #  we want to be base 2 colors generally
-        #  we want to learn monotonically increasing relationship to hypothesis
 
     def loss(self, true, pred, sample_weight=None):
         true_basics,true_built = tf.split(true,[5,self.n_cards],1)
         pred_basics,pred_built = tf.split(pred,[5,self.n_cards],1)
         self.basic_loss = self.basic_loss_f(true_basics, pred_basics, sample_weight=sample_weight)
         self.built_loss = self.built_loss_f(true_built, pred_built, sample_weight=sample_weight)
-        # self.lean_incentive = tf.reduce_sum(
-        #     tf.multiply(pred,tf.expand_dims(self.cmc_map,0)),
-        #     axis=1
-        # )
+        if self.cmc_lambda > 0:
+            self.curve_incentive = tf.reduce_sum(
+                tf.multiply(pred,tf.expand_dims(self.cmc_map,0)),
+                axis=1
+            )
+        else:
+            self.curve_incentive = 0.0
+        if self.interaction_lambda > 0:
+            #push card level interactions in pool to zero
+            self.interaction_reg = tf.norm(self.pool_interactions,ord=1)
+        else:
+            self.interaction_reg = 0.0
         #self.mana_reg = self.pip_vs_produce_penalty(true, pred)
         #sparsity lambda does not work because here true_built is in [0,1] not [0,n_cards_in_pool]
         #self.sparsity_reg = tf.reduce_sum(tf.math.abs(true_built))
         return (
             self.basic_lambda * self.basic_loss + 
-            self.built_lambda * self.built_loss# +
-            #self.cmc_lambda * self.lean_incentive + 
+            self.built_lambda * self.built_loss +
+            self.cmc_lambda * self.curve_incentive +
+            self.interaction_lambda * self.interaction_reg
             #self.adv_mana_lambda * self.mana_reg# +
             #self.sparsity_lambda * self.sparsity_reg
         )
