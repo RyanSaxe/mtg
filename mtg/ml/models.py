@@ -101,7 +101,7 @@ class DeckBuilder(tf.Module):
             self.curve_incentive = 0.0
         if self.interaction_lambda > 0:
             #push card level interactions in pool to zero
-            self.interaction_reg = tf.norm(self.interactions.w + self.interactions.b,ord=1)
+            self.interaction_reg = tf.norm(self.interactions.w,ord=1)
         else:
             self.interaction_reg = 0.0
         return (
