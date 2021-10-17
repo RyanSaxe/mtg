@@ -101,10 +101,17 @@ class Games:
         # )
         weights = self.importance_weighting(df).to_numpy(dtype=np.float32)
         idxs = np.arange(len(df))
-        train_idxs = np.random.choice(idxs,int(len(idxs) * train_p),replace=False)
-        test_idxs = np.asarray(list(set(idxs.flatten()) - set(train_idxs.flatten())))
-        train_data = (pools[train_idxs,:],decks[train_idxs,:], weights[train_idxs])
-        test_data = (pools[test_idxs,:],decks[test_idxs,:])
+        if train_p < 1.0:
+            train_idxs = np.random.choice(idxs,int(len(idxs) * train_p),replace=False)
+            test_idxs = np.asarray(list(set(idxs.flatten()) - set(train_idxs.flatten())))
+            train_data = (pools[train_idxs,:],decks[train_idxs,:], weights[train_idxs])
+            test_data = (pools[test_idxs,:],decks[test_idxs,:])
+        else:
+            train_idxs = idxs
+            test_idxs = []
+            train_data = (pools,decks, weights)
+            test_data = None
+            test_idxs = []
         return train_data, test_data, {'train':train_idxs, 'test':test_idxs, 'map':dict(zip(idxs,df.index.tolist()))}
     def _preprocess(self, df):
         df = seventeenlands.clean_bo1_games(
