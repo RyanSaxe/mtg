@@ -60,7 +60,7 @@ class Trainer:
                     attr = getattr(self.model, attr_name, None)
                     extras[attr_name].append(attr)
                 if verbose:
-                    progress.set_postfix(loss=np.average(losses), **{k:np.average(v) for k,v in extras.iteritems()})
+                    progress.set_postfix(loss=np.average(losses), **{k:np.average(v) for k,v in extras.items()})
                     progress.update(1)
             if verbose:
                 progress.close()
