@@ -58,7 +58,7 @@ class DeckBuilder(tf.Module):
         self.latent_rep = self.encoder(pools)
         # project the latent representation to a potential output
         reconstruction = self.decoder(self.latent_rep)
-        basics = self.add_basics_to_deck(reconstruction)
+        basics = self.add_basics_to_deck(self.latent_rep)
         built_deck = tf.concat([basics, reconstruction * pools], axis=1)
         return built_deck
 
