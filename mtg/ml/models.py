@@ -45,20 +45,20 @@ class DeckBuilder(tf.Module):
             out_act=tf.nn.sigmoid,
             style="reverse_bottleneck"
         )
-        self.interactions = nn.Dense(self.n_cards, self.n_cards, activation=None)
-        self.add_basics_to_deck = nn.Dense(32,5, activation=lambda x: tf.nn.sigmoid(x) * 18.0)
+        #self.interactions = nn.Dense(self.n_cards, self.n_cards, activation=None)
+        self.add_basics_to_deck = nn.Dense(self.n_cards,5, activation=lambda x: tf.nn.sigmoid(x) * 18.0)
 
     @tf.function
     def __call__(self, decks, training=None):
         # noisy_decks is a temporary process until we get SB data
         basics = decks[:,:5]
         pools = decks[:,5:] 
-        self.pool_interactions = self.interactions(pools)
+        #self.pool_interactions = self.interactions(pools)
         # project the deck to a lower dimensional represnetation
-        self.latent_rep = self.encoder(self.pool_interactions)
+        self.latent_rep = self.encoder(pools)
         # project the latent representation to a potential output
         reconstruction = self.decoder(self.latent_rep)
-        basics = self.add_basics_to_deck(self.latent_rep)
+        basics = self.add_basics_to_deck(reconstruction)
         built_deck = tf.concat([basics, reconstruction * pools], axis=1)
         return built_deck
 
@@ -68,7 +68,7 @@ class DeckBuilder(tf.Module):
         basic_lambda=1.0,
         built_lambda=1.0,
         cmc_lambda=0.01,
-        interaction_lambda=0.01,
+        # interaction_lambda=0.01,
         optimizer=None,
     ):
         self.optimizer = tf.optimizers.Adam() if optimizer is None else optimizer
@@ -80,7 +80,7 @@ class DeckBuilder(tf.Module):
         self.basic_loss_f = tf.keras.losses.MeanSquaredError(reduction=tf.keras.losses.Reduction.NONE)
 
         self.cmc_lambda = cmc_lambda
-        self.interaction_lambda = interaction_lambda
+        # self.interaction_lambda = interaction_lambda
         if cards is not None:
             self.set_card_params(cards)
 
@@ -101,16 +101,16 @@ class DeckBuilder(tf.Module):
             )
         else:
             self.curve_incentive = 0.0
-        if self.interaction_lambda > 0:
-            #push card level interactions in pool to zero
-            self.interaction_reg = tf.norm(self.interactions.w,ord=1)
-        else:
-            self.interaction_reg = 0.0
+        # if self.interaction_lambda > 0:
+        #     #push card level interactions in pool to zero
+        #     self.interaction_reg = tf.norm(self.interactions.w,ord=1)
+        # else:
+        #     self.interaction_reg = 0.0
         return (
             self.basic_lambda * self.basic_loss + 
             self.built_lambda * self.built_loss +
-            self.cmc_lambda * self.curve_incentive +
-            self.interaction_lambda * self.interaction_reg
+            self.cmc_lambda * self.curve_incentive
+            # self.interaction_lambda * self.interaction_reg
         )
 
     def save(self, cards, location):
