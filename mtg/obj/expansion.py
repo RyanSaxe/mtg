@@ -74,8 +74,8 @@ class Expansion:
         raise NotImplementedError
 
 class MID(Expansion):
-    def __init__(self, expansion, bo1=None, bo3=None, quick=None, draft=None, replay=None):
-        super().__init__(expansion, bo1=bo1, bo3=bo3, quick=quick, draft=draft, replay=replay)
+    def __init__(self, bo1=None, bo3=None, quick=None, draft=None, replay=None):
+        super().__init__(expansion='mid', bo1=bo1, bo3=bo3, quick=quick, draft=draft, replay=replay)
 
     def clean_card_df(self):
         #set it so ramp spells that search for basics are seen as rainbow producers
