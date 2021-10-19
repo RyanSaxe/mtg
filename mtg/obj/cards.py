@@ -2,6 +2,7 @@ import requests
 import urllib
 import json as js
 import pandas as pd
+import mtg.utils.scryfall_utils as scry_utils
 
 class CardSet:
     """
@@ -56,7 +57,25 @@ class CardSet:
 
     def to_dataframe(self):
         card_data = [card.__dict__ for card in self.cards]
-        return pd.DataFrame(card_data)
+        df = pd.DataFrame(card_data)
+        df = self.scryfall_modifications(df)
+        #modify so that basics have the first 5 idxs
+        basics = ["plains","island","swamp","mountain","forest"]
+        card_names = [x for x in df['name'].unique()]
+        for basic in basics:
+            card_names.remove(basic)
+        card_names = basics + card_names
+        id_to_name = {i:card_name for i,card_name in enumerate(card_names)}
+        name_to_id = {name:idx for idx,name in id_to_name.items()}
+        df['idx'] = df['name'].apply(lambda x: name_to_id[x])
+        return df
+
+    def scryfall_modifications(self, df):
+        df = df.apply(scry_utils.merge_card_faces, axis=1)
+        df['produces_for_splash'] = df.apply(
+            scry_utils.produce_for_splash, axis=1
+        )
+        return df
 
     def union(self, cardset2):
         return self.cards | cardset2.cards
@@ -83,7 +102,8 @@ class Card:
         self.colnames = {
             'deck': 'deck_' + self.name,
             'hand': 'opening_hand_' + self.name,
-            'drawn': 'drawn_' + self.name
+            'drawn': 'drawn_' + self.name,
+            'sideboard': 'sideboard_' + self.name
         }
 
     def __hash__(self):

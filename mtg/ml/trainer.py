@@ -10,6 +10,9 @@ class Trainer:
         target,
         model,
         weights = None,
+        val_features = None,
+        val_target = None,
+        val_weights = None,
         clip = 5.0,
     ):
         self.features = features
@@ -19,6 +22,9 @@ class Trainer:
         self.clip = clip
         self.batch_ids = np.arange(len(self.target))
         self.weights = weights
+        self.val_features = val_features
+        self.val_target = val_target
+        self.val_weights = val_weights
     
     def _step(self, batch_features, batch_target, batch_weights):
         with tf.GradientTape() as tape:
