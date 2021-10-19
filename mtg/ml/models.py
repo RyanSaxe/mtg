@@ -55,10 +55,10 @@ class DeckBuilder(tf.Module):
         pools = decks[:,5:] 
         #self.pool_interactions = self.interactions(pools)
         # project the deck to a lower dimensional represnetation
-        self.latent_rep = self.encoder(pools)
+        self.latent_rep = self.encoder(pools, training=training)
         # project the latent representation to a potential output
-        reconstruction = self.decoder(self.latent_rep)
-        basics = self.add_basics_to_deck(self.latent_rep)
+        reconstruction = self.decoder(self.latent_rep, training=training)
+        basics = self.add_basics_to_deck(self.latent_rep,  training=training)
         built_deck = tf.concat([basics, reconstruction * pools], axis=1)
         return built_deck
 
