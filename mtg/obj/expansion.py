@@ -35,14 +35,14 @@ class Expansion:
         df['date'] = pd.to_datetime(df['date'])
         card_col_prefixes = ['deck','opening_hand','drawn','sideboard']
         #initialize columns to start with the non-card columns
-        column_order = [c for c in self.df.columns if not any([c.startswith(prefix) for prefix in card_col_prefixes])]
+        column_order = [c for c in df.columns if not any([c.startswith(prefix) for prefix in card_col_prefixes])]
         for prefix in card_col_prefixes:
             prefix_columns = [prefix + "_" + name for name in self.card_names]
             setattr(self, prefix + "_cols", prefix_columns)
             column_order += prefix_columns
         #reorder dataframe to abide by new column ordering
-        #   this is just so self.df[self.deck_cols].to_numpy() 
-        #   yields a comparable matrix to self.df[self.sideboard_cols].to_numpy() 
+        #   this is just so df[self.deck_cols].to_numpy() 
+        #   yields a comparable matrix to df[self.sideboard_cols].to_numpy() 
         df = df[column_order]
         return df
 

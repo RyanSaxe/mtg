@@ -37,7 +37,7 @@ class DeckBuilder(tf.Module):
             start_dim=64,
             out_dim=self.n_cards,
             n_h_layers=2,
-            dropout=dropout,
+            dropout=0.0,
             name="decoder",
             noise=0.0,
             start_act=tf.nn.relu,
