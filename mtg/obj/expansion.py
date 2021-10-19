@@ -36,8 +36,9 @@ class Expansion:
         card_col_prefixes = ['deck','opening_hand','drawn','sideboard']
         #initialize columns to start with the non-card columns
         column_order = [c for c in df.columns if not any([c.startswith(prefix) for prefix in card_col_prefixes])]
+        card_names = self.cards.sort_values(by="idx",ascending=True)['name'].tolist()
         for prefix in card_col_prefixes:
-            prefix_columns = [prefix + "_" + name for name in self.card_names]
+            prefix_columns = [prefix + "_" + name for name in card_names]
             setattr(self, prefix + "_cols", prefix_columns)
             column_order += prefix_columns
         #reorder dataframe to abide by new column ordering
