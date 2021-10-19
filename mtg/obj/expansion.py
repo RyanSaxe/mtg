@@ -26,7 +26,7 @@ class Expansion:
         if file_or_df is None:
             return None
         df = self.generic_process(file_or_df)
-        clean_bo1_games(
+        df = clean_bo1_games(
             df,
             self.cards,
             drop_cols=['expansion','event_type','game_number'],
