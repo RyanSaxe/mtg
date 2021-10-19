@@ -65,7 +65,7 @@ def get_decks_for_ml(df, train_p=0.9):
         train_idxs = np.random.choice(idxs,int(len(idxs) * train_p),replace=False)
         test_idxs = np.asarray(list(set(idxs.flatten()) - set(train_idxs.flatten())))
         train_data = (pools[train_idxs,:],decks[train_idxs,:], weights[train_idxs])
-        test_data = (pools[test_idxs,:],decks[test_idxs,:])
+        test_data = (pools[test_idxs,:],decks[test_idxs,:], weights[test_idxs,:])
     else:
         train_idxs = idxs
         test_idxs = []
