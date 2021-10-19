@@ -2,7 +2,7 @@
 
 from mtg.obj.cards import CardSet
 import pandas as pd
-from preprocess.seventeenlands import clean_bo1_games
+from mtg.preprocess.seventeenlands import clean_bo1_games
 
 class Expansion:
     def __init__(self, expansion, bo1=None, bo3=None, quick=None, draft=None, replay=None):
