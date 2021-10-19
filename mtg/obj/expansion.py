@@ -80,9 +80,9 @@ class MID(Expansion):
     def clean_card_df(self):
         #set it so ramp spells that search for basics are seen as rainbow producers
         # logic to subset by basic implemented where needed
-        search_check = lambda x: x['oracle_text'].str.lower().str.contains('search your library')
-        basic_check = lambda x: x['oracle_text'].str.lower().str.contains('basic land')
+        search_check = lambda x: 'search your library' in x['oracle_text']
+        basic_check = lambda x: 'basic land' in x['oracle_text']
         self.cards['basic_land_search'] = self.cards.apply(
-            lambda x: search_check(x) & basic_check(x),
+            lambda x: search_check(x) and basic_check(x),
             axis=1
         )
