@@ -164,7 +164,7 @@ class MemoryEmbedding(tf.Module):
         process_emb = self.pointwise_fnn(residual_emb_w_memory, training=training)
         if training and self.dropout > 0:
             process_emb = tf.nn.dropout(process_emb, rate=self.dropout)
-        return self.final_layer_norm(x + process_emb, training=training)
+        return self.final_layer_norm(residual_emb_w_memory + process_emb, training=training)
 
 class DeckBuilder(tf.Module):
     def __init__(self, n_cards, dropout=0.0, embeddings=None, name=None):
