@@ -44,7 +44,6 @@ class DraftBot(tf.Module):
             MemoryEmbedding(
                 n_cards,
                 emb_dim,
-                t,
                 num_heads,
                 dropout=memory_dropout,
                 name=f"attention_{i}"
@@ -69,7 +68,6 @@ class DraftBot(tf.Module):
         draft_info, positions = features
         # draft_info is of shape (batch_size, t, n_cards * 2)
         packs = draft_info[:, :, :self.n_cards]
-        pools = draft_info[:, :, self.n_cards:]
         positional_masks = tf.gather(self.positional_mask, positions)
         positional_embeddings = self.positional_embedding(positions, training=training)
         draft_info_embeddings = self.pool_pack_embedding(draft_info, training=training)
@@ -113,10 +111,12 @@ class MemoryEmbedding(tf.Module):
     """
     self attention block for encorporating memory into the draft bot
     """
-    def __init__(self, n_cards, emb_dim, t, num_heads, dropout=0.0, name=None):
+    def __init__(self, n_cards, emb_dim, num_heads, dropout=0.0, name=None):
         super().__init__(name=name)
         self.dropout = dropout
-        self.attention = MultiHeadAttention(emb_dim, t, num_heads)
+        #kdim and dmodel are the same because the embedding dimension of the non-attended
+        # embeddings are the same as the attention embeddings.
+        self.attention = MultiHeadAttention(emb_dim, emb_dim, num_heads)
         self.expand_attention = Dense(emb_dim, n_cards, activation=None)
         self.compress_expansion = Dense(n_cards, emb_dim, activation=None)
         self.attention_layer_norm = LayerNormalization(emb_dim)
