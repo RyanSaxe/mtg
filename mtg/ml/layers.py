@@ -90,7 +90,7 @@ class MultiHeadAttention(tf.Module):
     https://www.tensorflow.org/text/tutorials/transformer
     """
     def __init__(self, d_model, k_dim, num_heads, v_dim=None, name=None):
-        super(MultiHeadAttention, self).__init__(name=name)
+        super().__init__(name=name)
         self.num_heads = num_heads
         self.d_model = d_model
 
@@ -176,7 +176,7 @@ class MultiHeadAttention(tf.Module):
 
 class Embedding(tf.Module):
     def __init__(self, num_items, emb_dim, initializer=tf.initializers.GlorotNormal(), name=None):
-        super().__init__(self, name=name)
+        super().__init__(name=name)
         self.embedding = tf.Variable(initializer(shape=(num_items, emb_dim)), dtype=tf.float32)
 
     def __call__(self, x, training=None):
