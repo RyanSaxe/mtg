@@ -3,62 +3,6 @@ import numpy as np
 import pandas as pd
 from mtg.ml.utils import importance_weighting
 
-def create_train_and_val_gens(
-    data,
-    cards,
-    id_col=None,
-    train_p=1.0, 
-    weights=True, 
-    train_batch_size=32, 
-    shuffle=True, 
-    to_fit=True, 
-    exclude_basics=True,
-    generator=MTGDataGenerator,
-
-):
-    if weights:
-        data['ml_weights'] = importance_weighting(data)
-    if train_p < 1.0:
-        if id_col is None:
-            idxs = np.arange(data.shape[0])
-            train_idxs = np.random.choice(idxs,int(len(idxs) * train_p),replace=False)
-            test_idxs = np.asarray(list(set(idxs.flatten()) - set(train_idxs.flatten())))
-            train_data = data[train_idxs,:]
-            test_data = data[test_idxs,:]
-        else:
-            idxs = data[id_col].unique()
-            train_idxs = np.random.choice(idxs,int(len(idxs) * train_p),replace=False)
-            train_data = data[data[id_col].isin(train_idxs)]
-            test_data = data[~data[id_col].isin(train_idxs)]
-    else:
-        train_data = data
-        test_data = None
-    train_gen = generator(
-        train_data,
-        cards.copy(),
-        batch_size = train_batch_size,
-        shuffle = shuffle,
-        to_fit = to_fit,
-        exclude_basics = exclude_basics
-    )
-    if test_data is not None:
-        n_train_batches = len(train_gen)
-        val_batch_size = test_data.shape[0] // n_train_batches
-        val_gen = generator(
-            test_data,
-            cards.copy(),
-            batch_size = val_batch_size,
-            shuffle = shuffle,
-            to_fit = to_fit,
-            exclude_basics = exclude_basics
-        )
-    else:
-        val_gen = None
-    return train_gen, val_gen
-
-from tensorflow.keras.utils import Sequence
-import numpy as np
-import pandas as pd
 class MTGDataGenerator(Sequence):
     def __init__(
         self,
@@ -259,3 +203,55 @@ class DeckGenerator(MTGDataGenerator):
 
         return anchors, positive_samples, negative_samples
 
+def create_train_and_val_gens(
+    data,
+    cards,
+    id_col=None,
+    train_p=1.0, 
+    weights=True, 
+    train_batch_size=32, 
+    shuffle=True, 
+    to_fit=True, 
+    exclude_basics=True,
+    generator=MTGDataGenerator,
+
+):
+    if weights:
+        data['ml_weights'] = importance_weighting(data)
+    if train_p < 1.0:
+        if id_col is None:
+            idxs = np.arange(data.shape[0])
+            train_idxs = np.random.choice(idxs,int(len(idxs) * train_p),replace=False)
+            test_idxs = np.asarray(list(set(idxs.flatten()) - set(train_idxs.flatten())))
+            train_data = data[train_idxs,:]
+            test_data = data[test_idxs,:]
+        else:
+            idxs = data[id_col].unique()
+            train_idxs = np.random.choice(idxs,int(len(idxs) * train_p),replace=False)
+            train_data = data[data[id_col].isin(train_idxs)]
+            test_data = data[~data[id_col].isin(train_idxs)]
+    else:
+        train_data = data
+        test_data = None
+    train_gen = generator(
+        train_data,
+        cards.copy(),
+        batch_size = train_batch_size,
+        shuffle = shuffle,
+        to_fit = to_fit,
+        exclude_basics = exclude_basics
+    )
+    if test_data is not None:
+        n_train_batches = len(train_gen)
+        val_batch_size = test_data.shape[0] // n_train_batches
+        val_gen = generator(
+            test_data,
+            cards.copy(),
+            batch_size = val_batch_size,
+            shuffle = shuffle,
+            to_fit = to_fit,
+            exclude_basics = exclude_basics
+        )
+    else:
+        val_gen = None
+    return train_gen, val_gen
