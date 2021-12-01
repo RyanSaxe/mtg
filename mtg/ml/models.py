@@ -50,6 +50,7 @@ class DraftBot(tf.Module):
             )
             for i in range(num_memory_layers)
         ]
+        #sigmoid instead of softmax means from_logits=True. This is done for numerical stability.
         self.decoder = nn.MLP(
             in_dim=emb_dim,
             start_dim=emb_dim * 2,
@@ -59,7 +60,7 @@ class DraftBot(tf.Module):
             name="decoder",
             start_act=tf.nn.relu,
             middle_act=tf.nn.relu,
-            out_act=tf.nn.softmax,
+            out_act=tf.nn.sigmoid,
             style="reverse_bottleneck",
         )
 
@@ -94,7 +95,7 @@ class DraftBot(tf.Module):
         optimizer=None,
     ):
         self.optimizer = tf.optimizers.Adam() if optimizer is None else optimizer
-        self.loss_f = tf.keras.losses.SparseCategoricalCrossentropy(reduction=tf.keras.losses.Reduction.NONE)
+        self.loss_f = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
         self.metrics = {
             'top1':[],
             'top2':[],
@@ -106,9 +107,9 @@ class DraftBot(tf.Module):
         return self.loss_f(true, pred, sample_weight=sample_weight)
 
     def compute_metrics(self, true, pred, sample_weight=None):
-        self.metrics['top1'].append(tf.keras.metrics.sparse_top_k_categorical_accuracy(true, pred, 1))
-        self.metrics['top2'].append(tf.keras.metrics.sparse_top_k_categorical_accuracy(true, pred, 2))
-        self.metrics['top3'].append(tf.keras.metrics.sparse_top_k_categorical_accuracy(true, pred, 3))
+        self.metrics['top1'].append(tf.reduce_mean(tf.keras.metrics.sparse_top_k_categorical_accuracy(true, pred, 1)))
+        self.metrics['top2'].append(tf.reduce_mean(tf.keras.metrics.sparse_top_k_categorical_accuracy(true, pred, 2)))
+        self.metrics['top3'].append(tf.reduce_mean(tf.keras.metrics.sparse_top_k_categorical_accuracy(true, pred, 3)))
 
     def save(self, cards, location):
         pathlib.Path(location).mkdir(parents=True, exist_ok=True)
