@@ -149,12 +149,7 @@ class DraftGenerator(MTGDataGenerator):
             weights = self.weights[indices]/self.weights[indices].sum()
         else:
             weights = None
-        return (
-            draft_info.astype(np.float32),
-            np.squeeze(positions.astype(np.int32)),
-            np.squeeze(picks.astype(np.int32)),
-            weights,
-        )
+        return (draft_info.astype(np.float32),np.squeeze(positions.astype(np.int32))),np.squeeze(picks.astype(np.int32)),weights
 
 class DeckGenerator(MTGDataGenerator):
     def __init__(
