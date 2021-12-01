@@ -46,6 +46,7 @@ class Trainer:
             assert self.val_features is None
             assert self.val_target is None
             assert self.val_weights is None
+        self.grads = []
     
     def _step(self, batch_features, batch_target, batch_weights):
         with tf.GradientTape() as tape:
@@ -55,6 +56,7 @@ class Trainer:
         grads = tape.gradient(loss, self.model.trainable_variables)
         if self.clip:
             grads, _ = tf.clip_by_global_norm(grads, self.clip)
+        self.grads.append(grads)
         self.model.optimizer.apply_gradients(zip(grads, self.model.trainable_variables))
         return loss
     def train(self, n_epochs, batch_size=32, verbose=True, print_keys=[]):
