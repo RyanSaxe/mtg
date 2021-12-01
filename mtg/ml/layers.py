@@ -19,11 +19,11 @@ class Dense(tf.Module):
         self.w = tf.Variable(
             initializer([in_dim, out_dim]),
             dtype = tf.float32,
-            name = 'w',
+            name = self.name + '_w',
         )
         if self.use_bias:
             self.b = tf.Variable(
-                tf.zeros([out_dim], name='b')
+                tf.zeros([out_dim], name=self.name + '_b')
             )
 
     def __call__(self, x, training=None):
@@ -57,11 +57,11 @@ class LayerNormalization(tf.Module):
         #current implementation can only normalize off last axis
         self.axis = -1
         if scale:
-            self.gamma = tf.Variable(tf.ones(last_dim), dtype=tf.float32, trainable=True)
+            self.gamma = tf.Variable(tf.ones(last_dim), dtype=tf.float32, trainable=True, name=self.name + "_gamme")
         else:
             self.gamma = None
         if center:
-            self.beta = tf.Variable(tf.zeros(last_dim), dtype=tf.float32, trainable=True)
+            self.beta = tf.Variable(tf.zeros(last_dim), dtype=tf.float32, trainable=True, name=self.name + "_beta")
         else:
             self.beta = None
 
@@ -106,11 +106,11 @@ class MultiHeadAttention(tf.Module):
         self.depth = d_model // self.num_heads
         v_dim = k_dim if v_dim is None else v_dim
 
-        self.wq = Dense(k_dim, d_model, activation=None)
-        self.wk = Dense(k_dim, d_model, activation=None)
-        self.wv = Dense(v_dim, d_model, activation=None)
+        self.wq = Dense(k_dim, d_model, activation=None, name=self.name + "_wq")
+        self.wk = Dense(k_dim, d_model, activation=None, name=self.name + "_wk")
+        self.wv = Dense(v_dim, d_model, activation=None, name=self.name + "_wv")
 
-        self.dense = Dense(k_dim, d_model, activation=None)
+        self.dense = Dense(k_dim, d_model, activation=None, name=self.name + "_attout")
 
     def split_heads(self, x, batch_size):
         """Split the last dimension into (num_heads, depth).
@@ -119,7 +119,7 @@ class MultiHeadAttention(tf.Module):
         x = tf.reshape(x, (batch_size, -1, self.num_heads, self.depth))
         return tf.transpose(x, perm=[0, 2, 1, 3])
 
-    #@tf.function
+    @tf.function
     def __call__(self, v, k, q, mask, training=None):
         batch_size = tf.shape(q)[0]
 
@@ -185,7 +185,7 @@ class MultiHeadAttention(tf.Module):
 class Embedding(tf.Module):
     def __init__(self, num_items, emb_dim, initializer=tf.initializers.GlorotNormal(), name=None):
         super().__init__(name=name)
-        self.embedding = tf.Variable(initializer(shape=(num_items, emb_dim)), dtype=tf.float32)
+        self.embedding = tf.Variable(initializer(shape=(num_items, emb_dim)), dtype=tf.float32, name=self.name + "_embedding")
 
     def __call__(self, x, training=None):
         return tf.gather(self.embedding, x)

@@ -27,7 +27,7 @@ class DraftBot(tf.Module):
         self.n_cards = n_cards
         self.emb_dim = tf.cast(emb_dim, tf.float32)
         self.dropout = emb_dropout
-        self.positional_embedding = Embedding(t, emb_dim, name="pos_emb")
+        self.positional_embedding = Embedding(t, emb_dim, name="positional_embedding")
         self.positional_mask = 1 - tf.linalg.band_part(tf.ones((t, t)), -1, 0)
         self.pool_pack_embedding = nn.MLP(
             in_dim=n_cards * 2,
@@ -38,7 +38,8 @@ class DraftBot(tf.Module):
             start_act=tf.nn.relu,
             middle_act=tf.nn.relu,
             out_act=None,
-            style="bottleneck"
+            style="bottleneck",
+            name="non_memory_encoder"
         )
         self.memory_layers = [
             MemoryEmbedding(
@@ -46,7 +47,7 @@ class DraftBot(tf.Module):
                 emb_dim,
                 num_heads,
                 dropout=memory_dropout,
-                name=f"attention_{i}"
+                name=f"memory_encoder_{i}"
             )
             for i in range(num_memory_layers)
         ]
@@ -60,10 +61,11 @@ class DraftBot(tf.Module):
             start_act=tf.nn.relu,
             middle_act=tf.nn.relu,
             out_act=tf.nn.softmax,
-            style="reverse_bottleneck"
+            style="reverse_bottleneck",
+            name="decoder",
         )
 
-    #@tf.function
+    @tf.function
     def __call__(self, features, training=None):
         draft_info, positions = features
         # draft_info is of shape (batch_size, t, n_cards * 2)
@@ -95,9 +97,20 @@ class DraftBot(tf.Module):
     ):
         self.optimizer = tf.optimizers.Adam() if optimizer is None else optimizer
         self.loss_f = tf.keras.losses.SparseCategoricalCrossentropy(reduction=tf.keras.losses.Reduction.NONE)
+        self.metrics = {
+            'top1':[],
+            'top2':[],
+            'top3':[],
+        }
 
     def loss(self, true, pred, sample_weight=None):
+        self.compute_metrics(true, pred, sample_weight=sample_weight)
         return self.loss_f(true, pred, sample_weight=sample_weight)
+
+    def compute_metrics(self, true, pred, sample_weight=None):
+        self.metrics['top1'].append(tf.keras.metrics.sparse_top_k_categorical_accuracy(true, pred, 1))
+        self.metrics['top2'].append(tf.keras.metrics.sparse_top_k_categorical_accuracy(true, pred, 2))
+        self.metrics['top3'].append(tf.keras.metrics.sparse_top_k_categorical_accuracy(true, pred, 3))
 
     def save(self, cards, location):
         pathlib.Path(location).mkdir(parents=True, exist_ok=True)
@@ -116,11 +129,11 @@ class MemoryEmbedding(tf.Module):
         self.dropout = dropout
         #kdim and dmodel are the same because the embedding dimension of the non-attended
         # embeddings are the same as the attention embeddings.
-        self.attention = MultiHeadAttention(emb_dim, emb_dim, num_heads)
-        self.expand_attention = Dense(emb_dim, n_cards, activation=None)
-        self.compress_expansion = Dense(n_cards, emb_dim, activation=None)
-        self.attention_layer_norm = LayerNormalization(emb_dim)
-        self.final_layer_norm = LayerNormalization(emb_dim)
+        self.attention = MultiHeadAttention(emb_dim, emb_dim, num_heads, name=self.name + "_attention")
+        self.expand_attention = Dense(emb_dim, n_cards, activation=None, name=self.name + "_pointwise_in")
+        self.compress_expansion = Dense(n_cards, emb_dim, activation=None, name=self.name + "_pointwise_out")
+        self.attention_layer_norm = LayerNormalization(emb_dim, name=self.name + "_attention_norm")
+        self.final_layer_norm = LayerNormalization(emb_dim, name=self.name + "_out_norm")
     
     def pointwise_fnn(self, x):
         x = self.expand_attention(x)
@@ -210,7 +223,7 @@ class DeckBuilder(tf.Module):
         shape = pool_embs.shape
         return tf.reshape(pool_embs, [shape[0], shape[1] * shape[2]])
 
-    #@tf.function
+    @tf.function
     def __call__(self, decks, training=None):
         basics = decks[:,:5]
         pools = decks[:,5:] 
