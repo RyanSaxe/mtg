@@ -75,6 +75,7 @@ class Trainer:
             extras = {k:[] for k in print_keys}
             losses = []
             val_losses = []
+            metrics = {k:[] for k in self.model.metrics.keys()}
             for i in range(n_batches):
                 val_loss = None
                 if self.generator is None:
@@ -93,14 +94,22 @@ class Trainer:
                 for attr_name in extras.keys():
                     attr = getattr(self.model, attr_name, None)
                     extras[attr_name].append(attr)
+                
+                for metric_name in metrics.keys():
+                    attr = self.model.metrics[metric_name][-1]
+                    metrics[metric_name].append(attr)
                 if self.val_generator is not None:
                     val_features, val_target, val_weights = self.val_generator[i]
                     val_output = self.model(val_features, training=False)
                     val_loss = self.model.loss(val_target, val_output, sample_weight=val_weights)
                     val_losses.append(np.sum(val_loss))
                 if verbose:
+                    extra_to_show = {
+                        **{k:np.average(v) for k,v in extras.items()},
+                        **{k:np.average(v) for k,v in metrics.items()}
+                    }                        }
                     if len(val_losses) > 0:
-                        progress.set_postfix(loss=np.average(losses), val_loss=np.average(val_losses), **{k:np.average(v) for k,v in extras.items()})
+                        progress.set_postfix(loss=np.average(losses), val_loss=np.average(val_losses), **extra_to_show)
                     else:
                         progress.set_postfix(loss=np.average(losses), **{k:np.average(v) for k,v in extras.items()})
                     progress.update(1)
@@ -109,7 +118,7 @@ class Trainer:
                 if self.val_features is not None:
                     val_out = self.model(self.val_features, training=None)
                     val_loss = self.model.loss(self.val_target, val_out, sample_weight=self.val_weights)
-                    progress.set_postfix(loss=np.average(losses), val_loss=np.average(val_loss), **{k:np.average(v) for k,v in extras.items()})
+                    progress.set_postfix(loss=np.average(losses), val_loss=np.average(val_loss), **extra_to_show)
                 progress.close()
             if self.generator is not None:
                 self.generator.on_epoch_end()
