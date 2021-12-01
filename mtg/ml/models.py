@@ -61,7 +61,6 @@ class DraftBot(tf.Module):
             middle_act=tf.nn.relu,
             out_act=tf.nn.softmax,
             style="reverse_bottleneck",
-            name="decoder",
         )
 
     @tf.function
