@@ -20,10 +20,14 @@ class Dense(tf.Module):
             initializer([in_dim, out_dim]),
             dtype = tf.float32,
             name = self.name + '_w',
+            trainable=True,
         )
         if self.use_bias:
             self.b = tf.Variable(
-                tf.zeros([out_dim], name=self.name + '_b')
+                tf.zeros([out_dim]),
+                dtype=tf.float32,
+                trainable=True,
+                name=self.name + '_b',
             )
 
     def __call__(self, x, training=None):
