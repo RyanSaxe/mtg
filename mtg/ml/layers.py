@@ -9,31 +9,35 @@ class Dense(tf.Module):
         name = None,
         initializer = tf.initializers.GlorotNormal(),
         activation = tf.nn.relu,
+        use_bias = True,
     ):
         super().__init__(name=name)
 
         self.activation = activation
+        self.use_bias = use_bias
 
         self.w = tf.Variable(
             initializer([in_dim, out_dim]),
             dtype = tf.float32,
             name = 'w',
         )
-
-        self.b = tf.Variable(
-            tf.zeros([out_dim], name='b')
-        )
+        if self.use_bias:
+            self.b = tf.Variable(
+                tf.zeros([out_dim], name='b')
+            )
 
     def __call__(self, x, training=None):
         rank = x.shape.rank
         if rank == 2 or rank is None:
-            y = tf.matmul(x, self.w) + self.b
+            y = tf.matmul(x, self.w)
         else:
             y = tf.tensordot(x, self.w, [[rank - 1], [0]])
             if not tf.executing_eagerly():
                 shape = x.shape.as_list()
-                output_shape = shape[:-1] + [self.kernel.shape[-1]]
-                x.set_shape(output_shape)
+                output_shape = shape[:-1] + [self.w.shape[-1]]
+                y.set_shape(output_shape)
+        if self.use_bias:
+            y = tf.nn.bias_add(y, self.b)
         if self.activation is not None:
             y = self.activation(y)
         return y
