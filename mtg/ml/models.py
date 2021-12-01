@@ -10,6 +10,21 @@ import os
 import pickle
 from mtg.obj.cards import CardSet
 
+class CustomSchedule(tf.keras.optimizers.schedules.LearningRateSchedule):
+  def __init__(self, d_model, warmup_steps=4000):
+    super(CustomSchedule, self).__init__()
+
+    self.d_model = d_model
+    self.d_model = tf.cast(self.d_model, tf.float32)
+
+    self.warmup_steps = warmup_steps
+
+  def __call__(self, step):
+    arg1 = tf.math.rsqrt(step)
+    arg2 = step * (self.warmup_steps ** -1.5)
+
+    return tf.math.rsqrt(self.d_model) * tf.math.minimum(arg1, arg2)
+
 class DraftBot(tf.Module):
     def __init__(
         self,
@@ -35,8 +50,8 @@ class DraftBot(tf.Module):
             out_dim=emb_dim,
             n_h_layers=1,
             name="non_memory_encoder",
-            start_act=tf.nn.relu,
-            middle_act=tf.nn.relu,
+            start_act=None,
+            middle_act=None,
             out_act=None,
             style="bottleneck",
         )
@@ -58,9 +73,9 @@ class DraftBot(tf.Module):
             n_h_layers=1,
             dropout=out_dropout,
             name="decoder",
-            start_act=tf.nn.relu,
-            middle_act=tf.nn.relu,
-            out_act=tf.nn.sigmoid,
+            start_act=None,
+            middle_act=None,
+            out_act=None,
             style="reverse_bottleneck",
         )
 
@@ -94,8 +109,10 @@ class DraftBot(tf.Module):
         self,
         optimizer=None,
     ):
-        self.optimizer = tf.optimizers.Adam() if optimizer is None else optimizer
-        self.loss_f = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
+        learning_rate = CustomSchedule(self.emb_dim)
+
+        self.optimizer = tf.keras.optimizers.Adam(learning_rate, beta_1=0.9, beta_2=0.98,epsilon=1e-9)
+        self.loss_f = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True, reduction='none')
         self.metrics = {
             'top1':[],
             'top2':[],
