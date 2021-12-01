@@ -136,7 +136,8 @@ class DraftGenerator(MTGDataGenerator):
             self.weights = data['ml_weights']
         else:
             self.weights = None
-        self.pick = data['pick']
+        name_to_idx_mapping = {k.split("//")[0].strip().lower():v for k,v in self.cards.set_index('name')['idx'].to_dict().items()}
+        self.pick = data['pick'].apply(lambda x: name_to_idx_mapping[x])
         self.position = data['pack_number'] * (data['pick_number'].max() + 1) + data['pick_number']
 
     def generate_data(self, indices):

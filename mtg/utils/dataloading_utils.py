@@ -107,8 +107,7 @@ def load_draft_data(filename, cards):
     t = n_picks.max()
     bad_draft_ids = n_picks[n_picks < t].index.tolist()
     df = df[~df['draft_id'].isin(bad_draft_ids)]
-    name_to_idx_mapping = {k.split("//")[0].strip().lower():v for k,v in cards.set_index('name')['idx'].to_dict().items()}
-    df['pick'] = df['pick'].str.lower().apply(lambda x: name_to_idx_mapping[x])
+    df['pick'] = df['pick'].str.lower()
     df['date'] = pd.to_datetime(df['date'])
     df['won'] = (df['event_match_wins']/(df['event_match_wins'] + df['event_match_losses'])).fillna(0.0)
     card_col_prefixes = ['pack_card','pool']
