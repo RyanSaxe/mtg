@@ -91,8 +91,8 @@ class DraftBot(tf.Module):
         embs = draft_info_embeddings * tf.math.sqrt(self.emb_dim) + positional_embeddings
         if training and self.dropout > 0.0:
             embs = tf.nn.dropout(embs, rate=self.dropout)
-        for memory_layer in self.memory_layers:
-            embs = memory_layer(embs, positional_masks, training=training) # (batch_size, t, emb_dim)
+        # for memory_layer in self.memory_layers:
+        #     embs = memory_layer(embs, positional_masks, training=training) # (batch_size, t, emb_dim)
         card_rankings = self.decoder(embs, training=training) # (batch_size, t, n_cards)
         # zero out the rankings for cards not in the pack
         # note1: this only works because no foils on arena means packs can never have 2x of a card
