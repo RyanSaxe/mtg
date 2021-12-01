@@ -24,13 +24,16 @@ class Dense(tf.Module):
             tf.zeros([out_dim], name='b')
         )
 
-    @tf.function
     def __call__(self, x, training=None):
         rank = x.shape.rank
         if rank == 2 or rank is None:
             y = tf.matmul(x, self.w) + self.b
         else:
             y = tf.tensordot(x, self.w, [[rank - 1], [0]])
+            if not tf.executing_eagerly():
+                shape = x.shape.as_list()
+                output_shape = shape[:-1] + [self.kernel.shape[-1]]
+                x.set_shape(output_shape)
         if self.activation is not None:
             y = self.activation(y)
         return y
