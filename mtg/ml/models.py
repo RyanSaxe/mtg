@@ -65,11 +65,11 @@ class DraftBot(tf.Module):
         )
 
     @tf.function
-    def __call__(self, draft_info, training=None):
+    def __call__(self, features, training=None):
+        draft_info, positions = features
         # draft_info is of shape (batch_size, t, n_cards * 2)
         packs = draft_info[:, :, :self.n_cards]
         pools = draft_info[:, :, self.n_cards:]
-        positions = tf.reduce_sum(pools, axis=-1)
         positional_masks = tf.gather(self.positional_mask, positions)
         positional_embeddings = self.positional_embedding(positions, training=training)
         draft_info_embeddings = self.pool_pack_embedding(draft_info, training=training)

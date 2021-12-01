@@ -136,18 +136,20 @@ class DraftGenerator(MTGDataGenerator):
         else:
             self.weights = None
         self.pick = data['pick']
+        self.position = data['position']
 
     def generate_data(self, indices):
         draft_ids = self.draft_ids[indices]
         packs = self.pack_card.loc[draft_ids].values.reshape(len(indices), self.t, len(self.pack_card.columns))
         pools = self.pool.loc[draft_ids].values.reshape(len(indices), self.t, len(self.pack_card.columns))
         picks = self.pick.loc[draft_ids].values.reshape(len(indices), self.t, 1)
+        positions = self.position.loc[draft_ids].values.reshape(len(indices), self.t, 1)
         draft_info = np.concatenate([packs, pools], axis=-1)
         if self.weights is not None:
             weights = self.weights[indices]/self.weights[indices].sum()
         else:
             weights = None
-        return draft_info, picks, weights
+        return (draft_info.astype(np.float32), positions.astype(np.int32)), picks.astype(np.int32), weights
 
 class DeckGenerator(MTGDataGenerator):
     def __init__(
