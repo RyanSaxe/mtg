@@ -18,7 +18,7 @@ def importance_weighting(df,minim=0.1,maxim=1.0):
     # ranks such that rank and win-rate matter together
     rank_addition = df['rank'].apply(
         lambda x: rank_to_score.get(
-            x.split("-")[0].strip().lower(),
+            x,
             0.5
         )
     )

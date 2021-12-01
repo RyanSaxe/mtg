@@ -3,76 +3,44 @@
 from mtg.obj.cards import CardSet
 import pandas as pd
 from mtg.preprocess.seventeenlands import clean_bo1_games
+from mtg.utils.dataloading_utils import load_data
 
 class Expansion:
     def __init__(self, expansion, bo1=None, bo3=None, quick=None, draft=None, replay=None):
         self.expansion = expansion
         self.cards = CardSet([f'set={self.expansion}','is:booster']).to_dataframe()
         self.clean_card_df()
-        self.bo1 = self.process_bo1(bo1)
-        self.bo3 = self.process_bo3(bo3)
-        self.quick = self.process_quick(quick)
-        self.draft = self.process_draft(draft)
-        self.replay = self.process_replay(replay)
+        self.bo1 = self.process_data(bo1, name="bo1")
+        self.bo3 = self.process_data(bo3, name="bo3")
+        self.quick = self.process_data(quick, name="quick")
+        self.draft = self.process_data(draft, name="draft")
+        self.replay = self.process_data(replay, name="replay")
 
-    def generic_process(self,file_or_df):
+    def process_data(self, file_or_df, name=None):
         if isinstance(file_or_df,str):
-            df = pd.read_csv(file_or_df)
+            if name is None:
+                df = pd.read_csv(file_or_df)
+            else:
+                df = load_data(file_or_df, name=name)
         else:
             df = file_or_df
         return df
     
-    def process_bo1(self, file_or_df):
-        if file_or_df is None:
-            return None
-        df = self.generic_process(file_or_df)
-        df = clean_bo1_games(
-            df,
-            self.cards,
-            drop_cols=['expansion','event_type','game_number'],
-            rename_cols={'draft_time':'date'}
-        )
-        df['date'] = pd.to_datetime(df['date'])
-        card_col_prefixes = ['deck','opening_hand','drawn','sideboard']
-        #initialize columns to start with the non-card columns
-        column_order = [c for c in df.columns if not any([c.startswith(prefix) for prefix in card_col_prefixes])]
-        card_names = self.cards.sort_values(by="idx",ascending=True)['name'].tolist()
-        for prefix in card_col_prefixes:
-            prefix_columns = [prefix + "_" + name for name in card_names]
-            setattr(self, prefix + "_cols", prefix_columns)
-            column_order += prefix_columns
-        #reorder dataframe to abide by new column ordering
-        #   this is just so df[self.deck_cols].to_numpy() 
-        #   yields a comparable matrix to df[self.sideboard_cols].to_numpy() 
-        df = df[column_order]
-        return df
-
-    def process_bo3(self, file_or_df):
-        if file_or_df is None:
-            return None
-        df = self.generic_process(file_or_df)
-        return df
-
-    def process_quick(self, file_or_df):
-        if file_or_df is None:
-            return None
-        df = self.generic_process(file_or_df)
-        return df
-
-    def process_draft(self, file_or_df):
-        if file_or_df is None:
-            return None
-        df = self.generic_process(file_or_df)
-        return df
-
-    def process_replay(self, file_or_df):
-        if file_or_df is None:
-            return None
-        df = self.generic_process(file_or_df)
-        return df
-    
     def clean_card_df(self):
         raise NotImplementedError
+
+    def get_bo1_decks(self):
+        d = {
+            column: 'last' for column in self.bo1.columns if column not in ["opp_colors"]
+        }
+        d.update({
+                "won":"sum",
+                "on_play":"mean",
+                "num_mulligans":"mean",
+                "opp_num_mulligans": "mean",
+                "num_turns": "mean",
+        })
+        return self.bo1.groupby('draft_id').agg(d)
 
 class MID(Expansion):
     def __init__(self, bo1=None, bo3=None, quick=None, draft=None, replay=None):

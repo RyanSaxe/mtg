@@ -75,6 +75,7 @@ class CardSet:
         df['produces_for_splash'] = df.apply(
             scry_utils.produce_for_splash, axis=1
         )
+        df['name'] = df['name'].apply(lambda x: x.split("//")[0].strip().lower())
         return df
 
     def union(self, cardset2):

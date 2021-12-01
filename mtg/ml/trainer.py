@@ -6,15 +6,19 @@ import numpy as np
 class Trainer:
     def __init__(
         self,
-        features,
-        target,
         model,
+        generator=None,
+        val_generator=None,
+        features=None,
+        target=None,
         weights = None,
         val_features = None,
         val_target = None,
         val_weights = None,
-        clip = 5.0,
+        clip = None,
     ):
+        self.generator=generator
+        self.val_generator=val_generator
         self.features = features
         self.target = target
         self.model = model
@@ -25,6 +29,20 @@ class Trainer:
         self.val_features = val_features
         self.val_target = val_target
         self.val_weights = val_weights
+
+        if self.generator is not None:
+            assert self.features is None
+            assert self.target is None
+            assert self.weights is None
+        else:
+            assert self.features is not None
+            assert self.target is not None
+
+        if self.val_generator is not None:
+            assert self.generator is not None
+            assert self.val_features is None
+            assert self.val_target is None
+            assert self.val_weights is None
     
     def _step(self, batch_features, batch_target, batch_weights):
         with tf.GradientTape() as tape:
@@ -36,9 +54,8 @@ class Trainer:
             grads, _ = tf.clip_by_global_norm(grads, self.clip)
         self.model.optimizer.apply_gradients(zip(grads, self.model.trainable_variables))
         return loss
-
     def train(self, n_epochs, batch_size=32, verbose=True, print_keys=[]):
-        n_batches = len(self.batch_ids) // batch_size
+        n_batches = len(self.batch_ids) // batch_size if self.generator is None else len(self.generator)
         end_at = self.epoch_n + n_epochs
         for _ in range(n_epochs):
             self.epoch_n += 1
@@ -53,21 +70,33 @@ class Trainer:
             losses = []
             val_losses = []
             for i in range(n_batches):
-                batch_idx = self.batch_ids[i * batch_size:(i+1) * batch_size]
-                batch_features = self.features[batch_idx,:]
-                batch_target = self.target[batch_idx,:]
-                if self.weights is not None:
-                    batch_weights = self.weights[batch_idx]
-                    batch_weights = batch_weights/batch_weights.sum()
+                val_loss = None
+                if self.generator is None:
+                    batch_idx = self.batch_ids[i * batch_size:(i+1) * batch_size]
+                    batch_features = self.features[batch_idx,:]
+                    batch_target = self.target[batch_idx,:]
+                    if self.weights is not None:
+                        batch_weights = self.weights[batch_idx]
+                        batch_weights = batch_weights/batch_weights.sum()
+                    else:
+                        batch_weights = None
                 else:
-                    batch_weights = None
+                    batch_features, batch_target, batch_weights = self.generator[i]
+                    if self.val_generator is not None:
+                        val_features, val_target, val_weights = self.val_generator[i]
+                        val_output = self.model(val_features, training=False)
+                        val_loss = self.model.loss(batch_target, val_output, sample_weight=val_weights)
+                        val_losses.append(np.average(val_loss))
                 loss = self._step(batch_features, batch_target, batch_weights)
                 losses.append(np.average(loss))
                 for attr_name in extras.keys():
                     attr = getattr(self.model, attr_name, None)
                     extras[attr_name].append(attr)
                 if verbose:
-                    progress.set_postfix(loss=np.average(losses), **{k:np.average(v) for k,v in extras.items()})
+                    if len(val_losses) > 0:
+                        progress.set_postfix(loss=np.average(losses), val_loss=np.average(val_losses), **{k:np.average(v) for k,v in extras.items()})
+                    else:
+                        progress.set_postfix(loss=np.average(losses), **{k:np.average(v) for k,v in extras.items()})
                     progress.update(1)
             if verbose:
                 #run model as if not training on validation data to get out of sample performance
@@ -76,3 +105,7 @@ class Trainer:
                     val_loss = self.model.loss(self.val_target, val_out, sample_weight=self.val_weights)
                     progress.set_postfix(loss=np.average(losses), val_loss=np.average(val_loss), **{k:np.average(v) for k,v in extras.items()})
                 progress.close()
+            if self.generator is not None:
+                self.generator.on_epoch_end()
+                if self.val_generator is not None:
+                    self.val_generator.on_epoch_end()

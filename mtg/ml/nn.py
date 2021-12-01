@@ -38,9 +38,9 @@ class MLP(tf.Module):
     @tf.function
     def __call__(self, x, training=None):
         if self.noise > 0.0 and training is not None:
-            x = tf.nn.dropout(x, self.noise)
+            x = tf.nn.dropout(x, rate=self.noise)
         for layer in self.layers:
             x = layer(x)
             if self.dropout > 0.0 and training is not None:
-                x = tf.nn.dropout(x, self.dropout)
+                x = tf.nn.dropout(x, rate=self.dropout)
         return x
