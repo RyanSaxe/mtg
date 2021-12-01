@@ -50,27 +50,7 @@ def load_bo1_data(filename, cards):
     card_col_prefixes = ['deck','opening_hand','drawn','sideboard']
     df = sort_cols_by_card_idxs(df, card_col_prefixes, cards)
     return df
-%%time
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-import re
-import logging
 
-data_file = '/content/drive/My Drive/mtg_data/draft_data_public.MID.PremierDraft.csv'
-def sort_cols_by_card_idxs(df, card_col_prefixes, cards):
-    #initialize columns to start with the non-card columns
-    column_order = [c for c in df.columns if not any([c.startswith(prefix) for prefix in card_col_prefixes])]
-    card_names = cards.sort_values(by="idx",ascending=True)['name'].tolist()
-    for prefix in card_col_prefixes:
-        prefix_columns = [prefix + "_" + name for name in card_names]
-        column_order += prefix_columns
-    #reorder dataframe to abide by new column ordering
-    #   this is just so df[self.deck_cols].to_numpy() 
-    #   yields a comparable matrix to df[self.sideboard_cols].to_numpy() 
-    df = df[column_order]
-    return df
-    
 def load_draft_data(filename, cards):
     COLUMN_REGEXES = {
         re.compile(r'user_match_win_rate_bucket'): 'float16',
