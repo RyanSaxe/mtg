@@ -153,7 +153,7 @@ class DraftGenerator(MTGDataGenerator):
             weights = None
         draft_info = tf.convert_to_tensor(draft_info.astype(np.float32), dtype=tf.float32)
         positions = tf.convert_to_tensor(positions.astype(np.int32), dtype=tf.int32)
-        picks = tf.convert_to_tensor(picks.astype(np.int32), dtype=tf.int32)
+        picks = tf.convert_to_tensor(picks.astype(np.float32), dtype=tf.float32)
         return (draft_info, positions), picks, weights
 
 class DeckGenerator(MTGDataGenerator):
