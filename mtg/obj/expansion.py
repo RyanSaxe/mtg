@@ -21,7 +21,7 @@ class Expansion:
             if name is None:
                 df = pd.read_csv(file_or_df)
             else:
-                df = load_data(file_or_df, name=name)
+                df = load_data(file_or_df, self.cards.copy(), name=name)
         else:
             df = file_or_df
         return df
