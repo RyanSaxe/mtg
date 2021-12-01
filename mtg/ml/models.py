@@ -91,8 +91,8 @@ class DraftBot(tf.Module):
         embs = draft_info_embeddings * tf.math.sqrt(self.emb_dim) + positional_embeddings
         if training and self.dropout > 0.0:
             embs = tf.nn.dropout(embs, rate=self.dropout)
-        # for memory_layer in self.memory_layers:
-        #     embs = memory_layer(embs, positional_masks, training=training) # (batch_size, t, emb_dim)
+        for memory_layer in self.memory_layers:
+            embs = memory_layer(embs, positional_masks, training=training) # (batch_size, t, emb_dim)
         card_rankings = self.decoder(embs, training=training) # (batch_size, t, n_cards)
         # zero out the rankings for cards not in the pack
         # note1: this only works because no foils on arena means packs can never have 2x of a card
@@ -147,10 +147,10 @@ class MemoryEmbedding(tf.Module):
         #kdim and dmodel are the same because the embedding dimension of the non-attended
         # embeddings are the same as the attention embeddings.
         self.attention = MultiHeadAttention(emb_dim, emb_dim, num_heads, name=self.name + "_attention")
-        # self.expand_attention = Dense(emb_dim, n_cards, activation=None, name=self.name + "_pointwise_in")
-        # self.compress_expansion = Dense(n_cards, emb_dim, activation=None, name=self.name + "_pointwise_out")
-        # self.attention_layer_norm = LayerNormalization(emb_dim, name=self.name + "_attention_norm")
-        # self.final_layer_norm = LayerNormalization(emb_dim, name=self.name + "_out_norm")
+        self.expand_attention = Dense(emb_dim, n_cards, activation=None, name=self.name + "_pointwise_in")
+        self.compress_expansion = Dense(n_cards, emb_dim, activation=None, name=self.name + "_pointwise_out")
+        self.attention_layer_norm = LayerNormalization(emb_dim, name=self.name + "_attention_norm")
+        self.final_layer_norm = LayerNormalization(emb_dim, name=self.name + "_out_norm")
     
     def pointwise_fnn(self, x, training=None):
         x = self.expand_attention(x, training=training)
@@ -160,11 +160,11 @@ class MemoryEmbedding(tf.Module):
         attention_emb, _ = self.attention(x, x, x, mask, training=training)
         if training and self.dropout > 0:
             attention_emb = tf.nn.dropout(attention_emb, rate=self.dropout)
-        return attention_emb# self.attention_layer_norm(x + attention_emb, training=training)
-        # process_emb = self.pointwise_fnn(residual_emb_w_memory, training=training)
-        # if training and self.dropout > 0:
-        #     process_emb = tf.nn.dropout(process_emb, rate=self.dropout)
-        # return self.final_layer_norm(residual_emb_w_memory + process_emb, training=training)
+        residual_emb_w_memory = self.attention_layer_norm(x + attention_emb, training=training)
+        process_emb = self.pointwise_fnn(residual_emb_w_memory, training=training)
+        if training and self.dropout > 0:
+            process_emb = tf.nn.dropout(process_emb, rate=self.dropout)
+        return self.final_layer_norm(residual_emb_w_memory + process_emb, training=training)
 
 class DeckBuilder(tf.Module):
     def __init__(self, n_cards, dropout=0.0, embeddings=None, name=None):
