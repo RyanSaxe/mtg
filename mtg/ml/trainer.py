@@ -107,7 +107,7 @@ class Trainer:
                     extra_to_show = {
                         **{k:np.average(v) for k,v in extras.items()},
                         **{k:np.average(v) for k,v in metrics.items()}
-                    }                        }
+                    }                        
                     if len(val_losses) > 0:
                         progress.set_postfix(loss=np.average(losses), val_loss=np.average(val_losses), **extra_to_show)
                     else:
