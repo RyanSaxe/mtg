@@ -136,6 +136,7 @@ class DraftGenerator(MTGDataGenerator):
         else:
             self.weights = None
         self.pick = data['pick']
+        data['position'] = data['pack_number'] * (data['pick_number'].max() + 1) + data['pick_number']
         self.position = data['position']
 
     def generate_data(self, indices):
