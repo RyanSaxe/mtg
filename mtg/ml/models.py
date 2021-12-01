@@ -64,7 +64,7 @@ class DraftBot(tf.Module):
             style="reverse_bottleneck"
         )
 
-    @tf.function
+    #@tf.function
     def __call__(self, features, training=None):
         draft_info, positions = features
         # draft_info is of shape (batch_size, t, n_cards * 2)
@@ -210,7 +210,7 @@ class DeckBuilder(tf.Module):
         shape = pool_embs.shape
         return tf.reshape(pool_embs, [shape[0], shape[1] * shape[2]])
 
-    @tf.function
+    #@tf.function
     def __call__(self, decks, training=None):
         basics = decks[:,:5]
         pools = decks[:,5:] 
