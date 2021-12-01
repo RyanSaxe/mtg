@@ -51,8 +51,8 @@ class DraftBot(tf.Module):
             out_dim=emb_dim,
             n_h_layers=1,
             name="non_memory_encoder",
-            start_act=None,
-            middle_act=None,
+            start_act=tf.nn.relu,
+            middle_act=tf.nn.relu,
             out_act=None,
             style="bottleneck",
         )
@@ -74,9 +74,9 @@ class DraftBot(tf.Module):
             n_h_layers=1,
             dropout=out_dropout,
             name="decoder",
-            start_act=None,
-            middle_act=None,
-            out_act=None,
+            start_act=tf.nn.relu,
+            middle_act=tf.nn.relu,
+            out_act=tf.nn.softmax,
             style="reverse_bottleneck",
         )
 
@@ -110,24 +110,19 @@ class DraftBot(tf.Module):
         self,
         optimizer=None,
     ):
-        learning_rate = CustomSchedule(self.emb_dim)
+        #learning_rate = CustomSchedule(self.emb_dim)
 
-        self.optimizer = tf.keras.optimizers.Adam(learning_rate, beta_1=0.9, beta_2=0.98,epsilon=1e-9)
-        self.loss_f = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True, reduction='none')
-        self.metrics = {
-            'top1':[],
-            'top2':[],
-            'top3':[],
-        }
+        self.optimizer = tf.keras.optimizers.Adam(0.001, beta_1=0.9, beta_2=0.98,epsilon=1e-9)
+        self.loss_f = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=False, reduction='none')
 
-    def loss(self, true, pred, sample_weight=None):
-        self.compute_metrics(true, pred, sample_weight=sample_weight)
+    def loss(self, true, pred, sample_weight=None, store=True):
         return self.loss_f(true, pred, sample_weight=sample_weight)
 
     def compute_metrics(self, true, pred, sample_weight=None):
-        self.metrics['top1'].append(tf.reduce_mean(tf.keras.metrics.sparse_top_k_categorical_accuracy(true, pred, 1)))
-        self.metrics['top2'].append(tf.reduce_mean(tf.keras.metrics.sparse_top_k_categorical_accuracy(true, pred, 2)))
-        self.metrics['top3'].append(tf.reduce_mean(tf.keras.metrics.sparse_top_k_categorical_accuracy(true, pred, 3)))
+        top1 = tf.reduce_mean(tf.keras.metrics.sparse_top_k_categorical_accuracy(true, pred, 1, sample_weight=sample_weight))
+        top2 = tf.reduce_mean(tf.keras.metrics.sparse_top_k_categorical_accuracy(true, pred, 2, sample_weight=sample_weight))
+        top3 = tf.reduce_mean(tf.keras.metrics.sparse_top_k_categorical_accuracy(true, pred, 3, sample_weight=sample_weight))
+        return top1, top2, top3
 
     def save(self, cards, location):
         pathlib.Path(location).mkdir(parents=True, exist_ok=True)

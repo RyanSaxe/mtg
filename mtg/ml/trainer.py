@@ -52,13 +52,14 @@ class Trainer:
         with tf.GradientTape() as tape:
             output = self.model(batch_features, training=True)
             loss = self.model.loss(batch_target, output, sample_weight=batch_weights)
+            metrics = self.model.compute_metrics(batch_target, output, sample_weight=batch_weights)
             #put regularization here if necessary
         grads = tape.gradient(loss, self.model.trainable_variables)
         if self.clip:
             grads, _ = tf.clip_by_global_norm(grads, self.clip)
         self.grads.append(grads)
         self.model.optimizer.apply_gradients(zip(grads, self.model.trainable_variables))
-        return loss
+        return loss, metrics
     def train(self, n_epochs, batch_size=32, verbose=True, print_keys=[]):
         n_batches = len(self.batch_ids) // batch_size if self.generator is None else len(self.generator)
         end_at = self.epoch_n + n_epochs
@@ -75,7 +76,7 @@ class Trainer:
             extras = {k:[] for k in print_keys}
             losses = []
             val_losses = []
-            metrics = {k:[] for k in self.model.metrics.keys()}
+            extra_metrics = {k:[] for k in ['top1','top2'.'top3', 'val_top1', 'val_top2', 'val_top3']}
             for i in range(n_batches):
                 val_loss = None
                 if self.generator is None:
@@ -89,24 +90,28 @@ class Trainer:
                         batch_weights = None
                 else:
                     batch_features, batch_target, batch_weights = self.generator[i]
-                loss = self._step(batch_features, batch_target, batch_weights)
-                losses.append(np.sum(loss))
+                loss, metrics = self._step(batch_features, batch_target, batch_weights)
+                extra_metrics['top1'].append(metrics[0])
+                extra_metrics['top2'].append(metrics[1])
+                extra_metrics['top3'].append(metrics[2])
+                losses.append(np.average(loss))
                 for attr_name in extras.keys():
                     attr = getattr(self.model, attr_name, None)
                     extras[attr_name].append(attr)
                 
-                for metric_name in metrics.keys():
-                    attr = self.model.metrics[metric_name][-1]
-                    metrics[metric_name].append(attr)
                 if self.val_generator is not None:
                     val_features, val_target, val_weights = self.val_generator[i]
                     val_output = self.model(val_features, training=False)
                     val_loss = self.model.loss(val_target, val_output, sample_weight=val_weights)
-                    val_losses.append(np.sum(val_loss))
+                    val_metrics = self.model.compute_metrics(val_target, val_output, sample_weight=val_weights)
+                    extra_metrics['val_top1'].append(val_metrics[0])
+                    extra_metrics['val_top2'].append(val_metrics[1])
+                    extra_metrics['val_top3'].append(val_metrics[2])
+                    val_losses.append(np.average(val_loss))
                 if verbose:
                     extra_to_show = {
                         **{k:np.average(v) for k,v in extras.items()},
-                        **{k:np.average(v) for k,v in metrics.items()}
+                        **{k:np.average(v) for k,v in extra_metrics.items()}
                     }                        
                     if len(val_losses) > 0:
                         progress.set_postfix(loss=np.average(losses), val_loss=np.average(val_losses), **extra_to_show)
