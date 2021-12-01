@@ -9,6 +9,7 @@ import pathlib
 import os
 import pickle
 from mtg.obj.cards import CardSet
+from tensorflow.keras.layers import LayerNormalization as LN
 
 class CustomSchedule(tf.keras.optimizers.schedules.LearningRateSchedule):
   def __init__(self, d_model, warmup_steps=4000):
@@ -148,8 +149,8 @@ class MemoryEmbedding(tf.Module):
         self.attention = MultiHeadAttention(emb_dim, emb_dim, num_heads, name=self.name + "_attention")
         self.expand_attention = Dense(emb_dim, n_cards, activation=None, name=self.name + "_pointwise_in")
         self.compress_expansion = Dense(n_cards, emb_dim, activation=None, name=self.name + "_pointwise_out")
-        self.attention_layer_norm = LayerNormalization(emb_dim, name=self.name + "_attention_norm")
-        self.final_layer_norm = LayerNormalization(emb_dim, name=self.name + "_out_norm")
+        self.attention_layer_norm = LN(name=self.name + "_attention_norm")
+        self.final_layer_norm = LN(name=self.name + "_out_norm")
     
     def pointwise_fnn(self, x, training=None):
         x = self.expand_attention(x, training=training)
