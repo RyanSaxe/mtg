@@ -171,7 +171,8 @@ class MultiHeadAttention(tf.Module):
 
         # add the mask to the scaled tensor.
         if mask is not None:
-            scaled_attention_logits += (mask * -1e9)
+            #expand mask dimension to allow for addition on all attention heads
+            scaled_attention_logits += (tf.expand_dims(mask,1) * -1e9)
 
         # softmax is normalized on the last axis (seq_len_k) so that the scores
         # add up to 1.
