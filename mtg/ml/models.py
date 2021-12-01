@@ -34,12 +34,11 @@ class DraftBot(tf.Module):
             start_dim=n_cards,
             out_dim=emb_dim,
             n_h_layers=1,
-            name="pool_pack_emb",
+            name="non_memory_encoder",
             start_act=tf.nn.relu,
             middle_act=tf.nn.relu,
             out_act=None,
             style="bottleneck",
-            name="non_memory_encoder"
         )
         self.memory_layers = [
             MemoryEmbedding(
