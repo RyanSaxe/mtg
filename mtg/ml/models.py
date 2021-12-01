@@ -119,9 +119,9 @@ class DraftBot(tf.Module):
         return self.loss_f(true, pred, sample_weight=sample_weight)
 
     def compute_metrics(self, true, pred, sample_weight=None):
-        top1 = tf.reduce_mean(tf.keras.metrics.sparse_top_k_categorical_accuracy(true, pred, 1, sample_weight=sample_weight))
-        top2 = tf.reduce_mean(tf.keras.metrics.sparse_top_k_categorical_accuracy(true, pred, 2, sample_weight=sample_weight))
-        top3 = tf.reduce_mean(tf.keras.metrics.sparse_top_k_categorical_accuracy(true, pred, 3, sample_weight=sample_weight))
+        top1 = tf.reduce_mean(tf.keras.metrics.sparse_top_k_categorical_accuracy(true, pred, 1))
+        top2 = tf.reduce_mean(tf.keras.metrics.sparse_top_k_categorical_accuracy(true, pred, 2))
+        top3 = tf.reduce_mean(tf.keras.metrics.sparse_top_k_categorical_accuracy(true, pred, 3))
         return top1, top2, top3
 
     def save(self, cards, location):
