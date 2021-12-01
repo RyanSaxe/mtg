@@ -15,7 +15,7 @@ class Trainer:
         val_features = None,
         val_target = None,
         val_weights = None,
-        clip = None,
+        clip = 5.0,
     ):
         self.generator=generator
         self.val_generator=val_generator
@@ -24,7 +24,10 @@ class Trainer:
         self.model = model
         self.epoch_n = 0
         self.clip = clip
-        self.batch_ids = np.arange(len(self.target))
+        if self.target is not None:
+            self.batch_ids = np.arange(len(self.target))
+        else:
+            self.batch_ids = None
         self.weights = weights
         self.val_features = val_features
         self.val_target = val_target
@@ -59,7 +62,8 @@ class Trainer:
         end_at = self.epoch_n + n_epochs
         for _ in range(n_epochs):
             self.epoch_n += 1
-            np.random.shuffle(self.batch_ids)
+            if self.batch_ids is not None:
+                np.random.shuffle(self.batch_ids)
             if verbose:
                 progress = tqdm(
                     total = n_batches,
@@ -82,16 +86,16 @@ class Trainer:
                         batch_weights = None
                 else:
                     batch_features, batch_target, batch_weights = self.generator[i]
-                    if self.val_generator is not None:
-                        val_features, val_target, val_weights = self.val_generator[i]
-                        val_output = self.model(val_features, training=False)
-                        val_loss = self.model.loss(batch_target, val_output, sample_weight=val_weights)
-                        val_losses.append(np.average(val_loss))
                 loss = self._step(batch_features, batch_target, batch_weights)
-                losses.append(np.average(loss))
+                losses.append(np.sum(loss))
                 for attr_name in extras.keys():
                     attr = getattr(self.model, attr_name, None)
                     extras[attr_name].append(attr)
+                if self.val_generator is not None:
+                    val_features, val_target, val_weights = self.val_generator[i]
+                    val_output = self.model(val_features, training=False)
+                    val_loss = self.model.loss(val_target, val_output, sample_weight=val_weights)
+                    val_losses.append(np.sum(val_loss))
                 if verbose:
                     if len(val_losses) > 0:
                         progress.set_postfix(loss=np.average(losses), val_loss=np.average(val_losses), **{k:np.average(v) for k,v in extras.items()})

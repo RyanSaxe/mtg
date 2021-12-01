@@ -91,6 +91,24 @@ class DraftBot(tf.Module):
         # note: may be a good idea to look into logits=False for numerical stability
         return card_rankings/tf.reduce_sum(card_rankings, axis=-1, keepdims=True)
 
+    def compile(
+        self,
+        optimizer=None,
+    ):
+        self.optimizer = tf.optimizers.Adam() if optimizer is None else optimizer
+        self.loss_f = tf.keras.losses.SparseCategoricalCrossentropy(reduction=tf.keras.losses.Reduction.NONE)
+
+    def loss(self, true, pred, sample_weight=None):
+        return self.loss_f(true, pred, sample_weight=sample_weight)
+
+    def save(self, cards, location):
+        pathlib.Path(location).mkdir(parents=True, exist_ok=True)
+        model_loc = os.path.join(location,"model")
+        data_loc = os.path.join(location,"cards.pkl")
+        tf.saved_model.save(self,model_loc)
+        with open(data_loc,'wb') as f:
+            pickle.dump(cards,f) 
+
 class MemoryEmbedding(tf.Module):
     """
     self attention block for encorporating memory into the draft bot
