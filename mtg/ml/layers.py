@@ -46,7 +46,7 @@ class LayerNormalization(tf.Module):
     def __init__(
         self,
         last_dim,
-        epsilon=1e-9,
+        epsilon=1e-3,
         center=True,
         scale=True,
         name=None,
@@ -57,7 +57,7 @@ class LayerNormalization(tf.Module):
         #current implementation can only normalize off last axis
         self.axis = -1
         if scale:
-            self.gamma = tf.Variable(tf.ones(last_dim), dtype=tf.float32, trainable=True, name=self.name + "_gamme")
+            self.gamma = tf.Variable(tf.ones(last_dim), dtype=tf.float32, trainable=True, name=self.name + "_gamma")
         else:
             self.gamma = None
         if center:

@@ -133,19 +133,19 @@ class MemoryEmbedding(tf.Module):
         self.attention_layer_norm = LayerNormalization(emb_dim, name=self.name + "_attention_norm")
         self.final_layer_norm = LayerNormalization(emb_dim, name=self.name + "_out_norm")
     
-    def pointwise_fnn(self, x):
-        x = self.expand_attention(x)
-        return self.compress_expansion(x)
+    def pointwise_fnn(self, x, training=None):
+        x = self.expand_attention(x, training=training)
+        return self.compress_expansion(x, training=training)
 
     def __call__(self, x, mask, training=None):
-        attention_emb, attention_weights = self.attention(x, x, x, mask, training=training)
+        attention_emb, _ = self.attention(x, x, x, mask, training=training)
         if training and self.dropout > 0:
             attention_emb = tf.nn.dropout(attention_emb, rate=self.dropout)
-        residual_emb_w_memory = self.attention_layer_norm(x + attention_emb)
-        process_emb = self.pointwise_fnn(residual_emb_w_memory)
+        residual_emb_w_memory = self.attention_layer_norm(x + attention_emb, training=training)
+        process_emb = self.pointwise_fnn(residual_emb_w_memory, training=training)
         if training and self.dropout > 0:
-            process_emb = tf.nn.dropout(attention_emb, rate=self.dropout)
-        return self.final_layer_norm(x + process_emb)
+            process_emb = tf.nn.dropout(process_emb, rate=self.dropout)
+        return self.final_layer_norm(x + process_emb, training=training)
 
 class DeckBuilder(tf.Module):
     def __init__(self, n_cards, dropout=0.0, embeddings=None, name=None):
