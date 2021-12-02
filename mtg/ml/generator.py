@@ -239,6 +239,8 @@ def create_train_and_val_gens(
             train_idxs = np.random.choice(idxs,int(len(idxs) * train_p),replace=False)
             train_data = data[data[id_col].isin(train_idxs)]
             test_data = data[~data[id_col].isin(train_idxs)]
+        n_train = int(len(idxs) * train_p)
+        n_test = len(idxs) - n_train
     else:
         train_data = data
         test_data = None
@@ -252,7 +254,7 @@ def create_train_and_val_gens(
     )
     if test_data is not None:
         n_train_batches = len(train_gen)
-        val_batch_size = test_data.shape[0] // n_train_batches
+        val_batch_size = n_test // n_train_batches
         val_gen = generator(
             test_data,
             cards.copy(),
