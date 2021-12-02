@@ -131,13 +131,10 @@ class DraftBot(tf.Module):
         top3 = tf.reduce_mean(tf.keras.metrics.sparse_top_k_categorical_accuracy(true, pred, 3))
         return top1, top2, top3
 
-    def save(self, cards, location):
+    def save(self, location):
         pathlib.Path(location).mkdir(parents=True, exist_ok=True)
         model_loc = os.path.join(location,"model")
-        data_loc = os.path.join(location,"cards.pkl")
         tf.saved_model.save(self,model_loc)
-        with open(data_loc,'wb') as f:
-            pickle.dump(cards,f) 
 
 class MemoryEmbedding(tf.Module):
     """
