@@ -113,7 +113,7 @@ class DraftBot(tf.Module):
         #learning_rate = CustomSchedule(self.emb_dim)
 
         self.optimizer = tf.keras.optimizers.Adam(0.001, beta_1=0.9, beta_2=0.98,epsilon=1e-9)
-        self.loss_f = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=False, reduction='none')
+        self.loss_f = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=False)
 
     def loss(self, true, pred, sample_weight=None, store=True):
         return self.loss_f(true, pred, sample_weight=sample_weight)
