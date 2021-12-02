@@ -120,7 +120,7 @@ class Trainer:
                     if len(val_losses) > 0:
                         progress.set_postfix(loss=np.average(losses), val_loss=np.average(val_losses), **extra_to_show)
                     else:
-                        progress.set_postfix(loss=np.average(losses), **{k:np.average(v) for k,v in extras.items()})
+                        progress.set_postfix(loss=np.average(losses), **extra_to_show)
                     progress.update(1)
             if verbose:
                 #run model as if not training on validation data to get out of sample performance
