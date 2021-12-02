@@ -52,18 +52,14 @@ def names_to_array(names, mapping):
     arr[unique] += counts
     return arr
 
-def draft_log_ai(draft_log_url, model, t=None, n_cards=None, idx_to_name=None, saved_batch_size=1, return_attention=False):
-    if saved_batch_size == 1:
-        t = model.t
-        n_cards = model.n_cards
-        idx_to_name = model.idx_to_name
+def draft_log_ai(draft_log_url, model, t=None, n_cards=None, idx_to_name=None, return_attention=False):
     name_to_idx = {v:k for k,v in idx_to_name.items()}
     picks = get_draft_json(draft_log_url)['picks']
     n_picks_per_pack = t/3
     n_cards = len(name_to_idx)
     pool = np.zeros(n_cards)
-    draft_info = np.zeros((saved_batch_size, t, n_cards * 2))
-    positions = tf.tile(np.expand_dims(np.arange(t, dtype=np.int32),0),[saved_batch_size,1])
+    draft_info = np.zeros((1, t, n_cards * 2))
+    positions = np.expand_dims(np.arange(t, dtype=np.int32),0)
     actual_pick = []
     position_to_pxpy = dict()
     for pick in picks:
@@ -140,3 +136,30 @@ def display_draft(df, cmap=None, pack=None):
         style = style.apply(f, axis=0, subset=column, good_c=good_c, bad_c=bad_c, human_col_val=human_col_val_map[column])
     style = style.apply(f, axis=0, subset="human_pick", good_c=good_c, bad_c=bad_c)
     return style.set_properties(**{'text-align': 'center', 'padding':"10px", 'border':'1px solid black', 'margin':'0px'})
+
+def plot_attention_head(attention, pxpy):
+
+    ax = plt.gca()
+    ax.matshow(attention)
+    ax.set_xticks(range(len(pxpy)))
+    ax.set_yticks(range(len(pxpy)))
+
+    ax.set_xticklabels(
+        pxpy, rotation=90)
+
+    ax.set_yticklabels(pxpy)
+
+def plot_attention_weights(attention_heads):
+  pxpy = []
+  seq_l = attention_heads.shape[-1]
+  for i in range(seq_l):
+      pack = i//(seq_l/3) + 1
+      pick = (i % (seq_l/3)) + 1
+      pxpy.append("P" + str(pack) + "P" + str(pick))
+
+  for h, head in enumerate(attention_heads):
+    fig = plt.figure(figsize=(10,30))
+    plot_attention_head(head, pxpy)
+    plt.title(f'Head {h+1}')
+    plt.tight_layout()
+    plt.show()
