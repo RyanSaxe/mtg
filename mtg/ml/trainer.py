@@ -76,7 +76,11 @@ class Trainer:
             extras = {k:[] for k in print_keys}
             losses = []
             val_losses = []
-            extra_metrics = {k:[] for k in ['top1','top2','top3', 'val_top1', 'val_top2', 'val_top3']}
+            has_val = self.val_generator is not None or self.val_features is not None
+            extra_metric_keys = ['top1','top2','top3']
+            if has_val:
+                extra_metric_keys += ['val_top1', 'val_top2', 'val_top3']
+            extra_metrics = {k:[] for k in extra_metric_keys}
             for i in range(n_batches):
                 val_loss = None
                 if self.generator is None:

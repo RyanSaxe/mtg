@@ -52,10 +52,13 @@ def names_to_array(names, mapping):
     arr[unique] += counts
     return arr
 
-def draft_log_ai(draft_log_url, model):
-    t = model.storage['t']
-    n_cards = model.storage['n_cards']
-    idx_to_name = model.idx_to_name
+def draft_log_ai(draft_log_url, model, t=None, n_cards=None, idx_to_name=None):
+    if hasattr(model, "t"):
+        t = model.t
+    if hasattr(model, "n_cards"):
+        n_cards = model.n_cards
+    if hasattr(model, "idx_to_name"):
+        idx_to_name = model.idx_to_name
     name_to_idx = {v:k for k,v in idx_to_name.items()}
     picks = get_draft_json(draft_log_url)['picks']
     n_picks_per_pack = t/3

@@ -80,9 +80,9 @@ def get_decks_for_ml(df, train_p=0.9):
         test_idxs = []
     return train_data, test_data, {'train':train_idxs, 'test':test_idxs, 'map':dict(zip(idxs,df.index.tolist()))}
 
-def load_model(location):
+def load_model(location, extra_pickle='attrs.pkl'):
     model_loc = os.path.join(location,"model")
-    data_loc = os.path.join(location,"cards.pkl")
+    data_loc = os.path.join(location,extra_pickle)
     model = tf.saved_model.load(model_loc)
     try:
         with open(data_loc,'rb') as f:

@@ -40,11 +40,7 @@ class DraftBot(tf.Module):
         super().__init__(name=name)
         self.idx_to_name = cards.set_index('idx')['name'].to_dict()
         self.n_cards = len(self.idx_to_name)
-        # model.save doesnt keep non list/dict/tuple attributes
-        self.storage = {
-            't': t,
-            'n_cards': self.n_cards
-        }
+        self.t = t
         self.emb_dim = tf.Variable(emb_dim, dtype=tf.float32, trainable=False, name="emb_dim")
         self.dropout = emb_dropout
         self.positional_embedding = Embedding(t, emb_dim, name="positional_embedding")
@@ -146,6 +142,14 @@ class DraftBot(tf.Module):
         pathlib.Path(location).mkdir(parents=True, exist_ok=True)
         model_loc = os.path.join(location,"model")
         tf.saved_model.save(self,model_loc)
+        data_loc = os.path.join(location,"attrs.pkl")
+        with open(data_loc,'wb') as f:
+            attrs = {
+                't': self.t,
+                'idx_to_name': self.idx_to_name,
+                'n_cards': self.n_cards
+            }
+            pickle.dump(attrs,f) 
 
 class MemoryEmbedding(tf.Module):
     """
