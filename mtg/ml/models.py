@@ -8,11 +8,9 @@ import pdb
 import pathlib
 import os
 import pickle
-from mtg.obj.cards import CardSet
-from tensorflow.keras.layers import LayerNormalization as LN
 
 class CustomSchedule(tf.keras.optimizers.schedules.LearningRateSchedule):
-  def __init__(self, d_model, warmup_steps=4000):
+  def __init__(self, d_model, warmup_steps=1000):
     super(CustomSchedule, self).__init__()
 
     self.d_model = d_model
@@ -51,8 +49,8 @@ class DraftBot(tf.Module):
             out_dim=emb_dim,
             n_h_layers=1,
             name="non_memory_encoder",
-            start_act=tf.nn.relu,
-            middle_act=tf.nn.relu,
+            start_act=tf.nn.selu,
+            middle_act=tf.nn.selu,
             out_act=None,
             style="bottleneck",
         )
@@ -74,8 +72,8 @@ class DraftBot(tf.Module):
             n_h_layers=1,
             dropout=out_dropout,
             name="decoder",
-            start_act=tf.nn.relu,
-            middle_act=tf.nn.relu,
+            start_act=tf.nn.selu,
+            middle_act=tf.nn.selu,
             out_act=tf.nn.softmax,
             style="reverse_bottleneck",
         )
@@ -110,9 +108,9 @@ class DraftBot(tf.Module):
         self,
         optimizer=None,
     ):
-        #learning_rate = CustomSchedule(self.emb_dim)
+        learning_rate = CustomSchedule(self.emb_dim)
 
-        self.optimizer = tf.keras.optimizers.Adam(0.001, beta_1=0.9, beta_2=0.98,epsilon=1e-9)
+        self.optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.9, beta_2=0.98,epsilon=1e-9)
         self.loss_f = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=False)
 
     def loss(self, true, pred, sample_weight=None, store=True):
@@ -189,9 +187,9 @@ class DeckBuilder(tf.Module):
             dropout=dropout,
             name="encoder",
             noise=0.0,
-            start_act=tf.nn.relu,
-            middle_act=tf.nn.relu,
-            out_act=tf.nn.relu,
+            start_act=tf.nn.selu,
+            middle_act=tf.nn.selu,
+            out_act=tf.nn.selu,
             style="bottleneck"
         )
         self.decoder = nn.MLP(
@@ -202,8 +200,8 @@ class DeckBuilder(tf.Module):
             dropout=0.0,
             name="decoder",
             noise=0.0,
-            start_act=tf.nn.relu,
-            middle_act=tf.nn.relu,
+            start_act=tf.nn.selu,
+            middle_act=tf.nn.selu,
             out_act=tf.nn.sigmoid,
             style="reverse_bottleneck"
         )

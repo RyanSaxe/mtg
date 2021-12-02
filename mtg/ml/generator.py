@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf
 from mtg.ml.utils import importance_weighting
+import gc
 
 class MTGDataGenerator(Sequence):
     def __init__(
@@ -48,6 +49,7 @@ class MTGDataGenerator(Sequence):
         Update indices after each epoch
         """
         self.reset_indices()
+        gc.collect()
 
     def card_name_to_idx(self, card_name, exclude_basics=True):
         return self.cards[self.cards['name'] == card_name]['idx'].iloc[0]
