@@ -84,9 +84,12 @@ def load_model(location):
     model_loc = os.path.join(location,"model")
     data_loc = os.path.join(location,"cards.pkl")
     model = tf.saved_model.load(model_loc)
-    with open(data_loc,'rb') as f:
-        cards = pickle.load(f)
-    return (model,cards)
+    try:
+        with open(data_loc,'rb') as f:
+            cards = pickle.load(f)
+        return (model,cards)
+    except:
+        return model
 
 def text_to_arr(deck,cards):
     id_lookup = cards.set_index('name')
