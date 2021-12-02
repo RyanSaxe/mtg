@@ -46,8 +46,8 @@ class DraftBot(tf.Module):
         self.positional_embedding = Embedding(t, emb_dim, name="positional_embedding")
         self.positional_mask = 1 - tf.linalg.band_part(tf.ones((t, t)), -1, 0)
         self.pool_pack_embedding = nn.MLP(
-            in_dim=n_cards * 2,
-            start_dim=n_cards,
+            in_dim=self.n_cards * 2,
+            start_dim=self.n_cards,
             out_dim=emb_dim,
             n_h_layers=1,
             name="non_memory_encoder",
@@ -58,7 +58,7 @@ class DraftBot(tf.Module):
         )
         self.memory_layers = [
             MemoryEmbedding(
-                n_cards,
+                self.n_cards,
                 emb_dim,
                 num_heads,
                 dropout=memory_dropout,
@@ -70,7 +70,7 @@ class DraftBot(tf.Module):
         self.decoder = nn.MLP(
             in_dim=emb_dim,
             start_dim=emb_dim * 2,
-            out_dim=n_cards,
+            out_dim=self.n_cards,
             n_h_layers=1,
             dropout=out_dropout,
             name="decoder",
