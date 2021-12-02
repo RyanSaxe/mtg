@@ -50,7 +50,7 @@ class LayerNormalization(tf.Module):
     def __init__(
         self,
         last_dim,
-        epsilon=1e-3,
+        epsilon=1e-6,
         center=True,
         scale=True,
         name=None,

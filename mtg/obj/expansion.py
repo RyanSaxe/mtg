@@ -27,7 +27,14 @@ class Expansion:
         return df
     
     def clean_card_df(self):
-        raise NotImplementedError
+        #set it so ramp spells that search for basics are seen as rainbow producers
+        # logic to subset by basic implemented where needed
+        search_check = lambda x: 'search your library' in x['oracle_text']
+        basic_check = lambda x: 'basic land' in x['oracle_text']
+        self.cards['basic_land_search'] = self.cards.apply(
+            lambda x: search_check(x) and basic_check(x),
+            axis=1
+        )
 
     def get_bo1_decks(self):
         d = {
@@ -46,12 +53,6 @@ class MID(Expansion):
     def __init__(self, bo1=None, bo3=None, quick=None, draft=None, replay=None):
         super().__init__(expansion='mid', bo1=bo1, bo3=bo3, quick=quick, draft=draft, replay=replay)
 
-    def clean_card_df(self):
-        #set it so ramp spells that search for basics are seen as rainbow producers
-        # logic to subset by basic implemented where needed
-        search_check = lambda x: 'search your library' in x['oracle_text']
-        basic_check = lambda x: 'basic land' in x['oracle_text']
-        self.cards['basic_land_search'] = self.cards.apply(
-            lambda x: search_check(x) and basic_check(x),
-            axis=1
-        )
+class VOW(Expansion):
+    def __init__(self, bo1=None, bo3=None, quick=None, draft=None, replay=None):
+        super().__init__(expansion='vow', bo1=bo1, bo3=bo3, quick=quick, draft=draft, replay=replay)

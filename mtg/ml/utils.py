@@ -31,7 +31,13 @@ def importance_weighting(df,minim=0.1,maxim=1.0):
     last = df['date'].max()
     # increase importance factor for recent data points according to number of weeks from most recent data point
     n_weeks = df['date'].apply(lambda x: (last - x).days // 7)
-    return scaled_win_rate * np.clip(df['won'],a_min=0.5,a_max=1.0) * 0.9 ** n_weeks 
+    #lower the value of pxp11 + 
+    if "position" in df.columns:
+        n_picks_per_pack = (df['position'].max() + 1)/3
+        position_scale = df['position'].apply(lambda x: 1.0 if x % n_picks_per_pack <= 9 else 0.5)
+    else:
+        position_scale = 1.0
+    return position_scale * scaled_win_rate * np.clip(df['won'],a_min=0.5,a_max=1.0) * 0.9 ** n_weeks 
 
 def get_decks_for_ml(df, train_p=0.9):
     #get each unique decks last build
@@ -81,6 +87,7 @@ def load_model(location):
     with open(data_loc,'rb') as f:
         cards = pickle.load(f)
     return (model,cards)
+
 def text_to_arr(deck,cards):
     id_lookup = cards.set_index('name')
     deck_arr = np.zeros(cards['idx'].max() + 1,dtype=np.float32)

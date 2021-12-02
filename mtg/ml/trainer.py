@@ -101,7 +101,7 @@ class Trainer:
                 
                 if self.val_generator is not None:
                     val_features, val_target, val_weights = self.val_generator[i]
-                    val_output = self.model(val_features, training=False)
+                    val_output = self.model(val_features)
                     val_loss = self.model.loss(val_target, val_output, sample_weight=val_weights)
                     val_metrics = self.model.compute_metrics(val_target, val_output, sample_weight=val_weights)
                     extra_metrics['val_top1'].append(val_metrics[0])
@@ -121,7 +121,7 @@ class Trainer:
             if verbose:
                 #run model as if not training on validation data to get out of sample performance
                 if self.val_features is not None:
-                    val_out = self.model(self.val_features, training=None)
+                    val_out = self.model(self.val_features)
                     val_loss = self.model.loss(self.val_target, val_out, sample_weight=self.val_weights)
                     progress.set_postfix(loss=np.average(losses), val_loss=np.average(val_loss), **extra_to_show)
                 progress.close()
