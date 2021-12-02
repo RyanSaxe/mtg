@@ -93,8 +93,7 @@ class DraftBot(tf.Module):
             embs = tf.nn.dropout(embs, rate=self.dropout)
         for memory_layer in self.memory_layers:
             embs = memory_layer(embs, positional_masks, training=training) # (batch_size, t, emb_dim)
-        # add epsilon to avoid an all zero output from relu
-        card_rankings = self.decoder(embs, training=training) + 1e-9 # (batch_size, t, n_cards)
+        card_rankings = self.decoder(embs, training=training) # (batch_size, t, n_cards)
         # zero out the rankings for cards not in the pack
         # note1: this only works because no foils on arena means packs can never have 2x of a card
         #       if this changes, modify to clip packs at 1
@@ -102,13 +101,14 @@ class DraftBot(tf.Module):
         #        affect backprop on cards that would techncally be taken if they were in the pack. However,
         #        if it turns out that there is a reason why these gradients shouldn't be zero, this
         #        multiplication could be done only during inference (when training is not True)
-        
-        card_rankings = (card_rankings + 1e-9) * packs
+
+        # add epsilon for cards in the pack to ensure they are non-zero (handles edge cases)
+        card_rankings = card_rankings * packs + 1e-9 * packs
         # after zeroing out cards not in packs, we readjust the output to maintain that it sums to one
         # note: currently this sums to one so we do from_logits=True in Categorical Cross Entropy,
         #       possible softmax is better than relu, regardless this does have numerical instability issues
         #       so that is something to look out for
-        return card_rankings/tf.reduce_sum(card_rankings, axis=-1)
+        return card_rankings/tf.reduce_sum(card_rankings, axis=-1, keepdims=True)
 
     def compile(
         self,
