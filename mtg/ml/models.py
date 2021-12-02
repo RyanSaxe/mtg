@@ -76,7 +76,7 @@ class DraftBot(tf.Module):
             name="decoder",
             start_act=tf.nn.selu,
             middle_act=tf.nn.selu,
-            out_act=tf.nn.softmax,
+            out_act=None,
             style="reverse_bottleneck",
         )
 
@@ -103,8 +103,8 @@ class DraftBot(tf.Module):
         #        multiplication could be done only during inference (when training is not True)
         card_rankings = card_rankings * packs
         # after zeroing out cards not in packs, we readjust the output to maintain that it sums to one
-        # note: may be a good idea to look into logits=False for numerical stability
-        return card_rankings/tf.reduce_sum(card_rankings, axis=-1, keepdims=True)
+        # note: currently does not sum to one so we can do "from_logits=False" for numerical stability
+        return card_rankings
 
     def compile(
         self,
@@ -120,7 +120,7 @@ class DraftBot(tf.Module):
             self.optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.9, beta_2=0.98,epsilon=1e-9)
         else:
             self.optimizer = optimizer
-        self.loss_f = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
+        self.loss_f = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=False)
 
     def loss(self, true, pred, sample_weight=None, store=True):
         return self.loss_f(true, pred, sample_weight=sample_weight)
