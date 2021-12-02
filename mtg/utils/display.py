@@ -52,20 +52,18 @@ def names_to_array(names, mapping):
     arr[unique] += counts
     return arr
 
-def draft_log_ai(draft_log_url, model, t=None, n_cards=None, idx_to_name=None):
-    if hasattr(model, "t"):
+def draft_log_ai(draft_log_url, model, t=None, n_cards=None, idx_to_name=None, saved_batch_size=1, return_attention=False):
+    if saved_batch_size == 1:
         t = model.t
-    if hasattr(model, "n_cards"):
         n_cards = model.n_cards
-    if hasattr(model, "idx_to_name"):
         idx_to_name = model.idx_to_name
     name_to_idx = {v:k for k,v in idx_to_name.items()}
     picks = get_draft_json(draft_log_url)['picks']
     n_picks_per_pack = t/3
     n_cards = len(name_to_idx)
     pool = np.zeros(n_cards)
-    draft_info = np.zeros((1, t, n_cards * 2))
-    positions = np.arange(t, dtype=np.int32).reshape((1, t))
+    draft_info = np.zeros((saved_batch_size, t, n_cards * 2))
+    positions = tf.tile(np.expand_dims(np.arange(t, dtype=np.int32),0),[saved_batch_size,1])
     actual_pick = []
     position_to_pxpy = dict()
     for pick in picks:
@@ -82,7 +80,12 @@ def draft_log_ai(draft_log_url, model, t=None, n_cards=None, idx_to_name=None):
         tf.convert_to_tensor(draft_info, dtype=tf.float32),
         tf.convert_to_tensor(positions, dtype=tf.int32)
     )
-    output = tf.squeeze(model(model_input, training=None))
+    if return_attention:
+        output, attention = model(model_input, training=False, return_attention=True)
+        output = tf.squeeze(output)
+        attention = tf.squeeze(attention)
+    else:
+        output = tf.squeeze(model(model_input, training=False))
     predictions = tf.math.top_k(output, k=3).indices.numpy()
     df = pd.DataFrame()
     df['predicted_pick'] = [idx_to_name[pred[0]] for pred in predictions]
@@ -96,6 +99,8 @@ def draft_log_ai(draft_log_url, model, t=None, n_cards=None, idx_to_name=None):
         [idx for idx in df.index if idx % n_picks_per_pack >= n_picks_per_pack - 2]
     ] = ''
     df.index = [position_to_pxpy[idx] for idx in df.index]
+    if return_attention:
+        return df, attention
     return df
 
 def display_draft(df, cmap=None, pack=None):

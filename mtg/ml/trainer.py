@@ -105,7 +105,8 @@ class Trainer:
                 
                 if self.val_generator is not None:
                     val_features, val_target, val_weights = self.val_generator[i]
-                    val_output = self.model(val_features, training=None)
+                    # must get attention here to serialize the input for saving
+                    val_output, attention = self.model(val_features, training=False, return_attention=True)
                     val_loss = self.model.loss(val_target, val_output, sample_weight=val_weights)
                     val_metrics = self.model.compute_metrics(val_target, val_output, sample_weight=val_weights)
                     extra_metrics['val_top1'].append(val_metrics[0])
