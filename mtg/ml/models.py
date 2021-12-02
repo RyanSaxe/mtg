@@ -27,7 +27,7 @@ class CustomSchedule(tf.keras.optimizers.schedules.LearningRateSchedule):
 class DraftBot(tf.Module):
     def __init__(
         self,
-        n_cards,
+        cards,
         emb_dim,
         t,
         num_heads,
@@ -38,7 +38,9 @@ class DraftBot(tf.Module):
         name=None
     ):
         super().__init__(name=name)
-        self.n_cards = n_cards
+        self.n_cards = len(cards)
+        self.idx_to_name = cards.set_index('idx')['name'].to_dict()
+        self.t = t
         self.emb_dim = tf.cast(emb_dim, tf.float32)
         self.dropout = emb_dropout
         self.positional_embedding = Embedding(t, emb_dim, name="positional_embedding")

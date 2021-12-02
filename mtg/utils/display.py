@@ -52,11 +52,13 @@ def names_to_array(names, mapping):
     arr[unique] += counts
     return arr
 
-def draft_log_ai(draft_log_url, cards, model, t=42):
+def draft_log_ai(draft_log_url, model, t=42):
+    t = model.t
+    n_cards = model.n_cards
+    idx_to_name = model.idx_to_name
+    name_to_idx = {v:k for k,v in idx_to_name.items()}
     picks = get_draft_json(draft_log_url)['picks']
     n_picks_per_pack = t/3
-    name_to_idx = cards.set_index('name')['idx'].to_dict()
-    idx_to_name = {v:k for k,v in name_to_idx.items()}
     n_cards = len(name_to_idx)
     pool = np.zeros(n_cards)
     draft_info = np.zeros((1, t, n_cards * 2))
