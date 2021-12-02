@@ -107,16 +107,16 @@ class Trainer:
                     extra_metrics['val_top1'].append(val_metrics[0])
                     extra_metrics['val_top2'].append(val_metrics[1])
                     extra_metrics['val_top3'].append(val_metrics[2])
-                    val_losses.append(np.average(val_loss))
+                    val_losses.append(np.nanmean(val_loss))
                 if verbose:
                     extra_to_show = {
-                        **{k:np.average(v) for k,v in extras.items()},
-                        **{k:np.average(v) for k,v in extra_metrics.items()}
+                        **{k:np.nanmean(v) for k,v in extras.items()},
+                        **{k:np.nanmean(v) for k,v in extra_metrics.items()}
                     }                        
                     if len(val_losses) > 0:
-                        progress.set_postfix(loss=np.average(losses), val_loss=np.average(val_losses), **extra_to_show)
+                        progress.set_postfix(loss=np.average(losses), val_loss=np.nanmean(val_losses), **extra_to_show)
                     else:
-                        progress.set_postfix(loss=np.average(losses), **{k:np.average(v) for k,v in extras.items()})
+                        progress.set_postfix(loss=np.average(losses), **{k:np.nanmean(v) for k,v in extras.items()})
                     progress.update(1)
             if verbose:
                 #run model as if not training on validation data to get out of sample performance
