@@ -38,10 +38,14 @@ class DraftBot(tf.Module):
         name=None
     ):
         super().__init__(name=name)
-        self.n_cards = len(cards)
         self.idx_to_name = cards.set_index('idx')['name'].to_dict()
-        self.t = t
-        self.emb_dim = tf.cast(emb_dim, tf.float32)
+        self.n_cards = len(self.idx_to_name)
+        # model.save doesnt keep non list/dict/tuple attributes
+        self.storage = {
+            't': t,
+            'n_cards': self.n_cards
+        }
+        self.emb_dim = tf.Variable(emb_dim, dtype=tf.float32, trainable=False, name="emb_dim")
         self.dropout = emb_dropout
         self.positional_embedding = Embedding(t, emb_dim, name="positional_embedding")
         self.positional_mask = 1 - tf.linalg.band_part(tf.ones((t, t)), -1, 0)
@@ -81,7 +85,7 @@ class DraftBot(tf.Module):
         )
 
     @tf.function
-    def __call__(self, features, training=None):
+    def __call__(self, features, training=None, return_attention=False):
         draft_info, positions = features
         # draft_info is of shape (batch_size, t, n_cards * 2)
         packs = draft_info[:, :, :self.n_cards]
@@ -92,7 +96,7 @@ class DraftBot(tf.Module):
         if training and self.dropout > 0.0:
             embs = tf.nn.dropout(embs, rate=self.dropout)
         for memory_layer in self.memory_layers:
-            embs = memory_layer(embs, positional_masks, training=training) # (batch_size, t, emb_dim)
+            embs, attention_weights = memory_layer(embs, positional_masks, training=training) # (batch_size, t, emb_dim)
         card_rankings = self.decoder(embs, training=training) # (batch_size, t, n_cards)
         # zero out the rankings for cards not in the pack
         # note1: this only works because no foils on arena means packs can never have 2x of a card
@@ -107,8 +111,11 @@ class DraftBot(tf.Module):
         # after zeroing out cards not in packs, we readjust the output to maintain that it sums to one
         # note: currently this sums to one so we do from_logits=True in Categorical Cross Entropy,
         #       possible softmax is better than relu, regardless this does have numerical instability issues
-        #       so that is something to look out for
-        return card_rankings/tf.reduce_sum(card_rankings, axis=-1, keepdims=True)
+        #       so that is something to look out for. But from_logits=False had terrible performance
+        output = card_rankings/tf.reduce_sum(card_rankings, axis=-1, keepdims=True)
+        if return_attention:
+            return output, attention_weights
+        return output
 
     def compile(
         self,
@@ -160,14 +167,14 @@ class MemoryEmbedding(tf.Module):
         return self.compress_expansion(x, training=training)
 
     def __call__(self, x, mask, training=None):
-        attention_emb, _ = self.attention(x, x, x, mask, training=training)
+        attention_emb, attention_weights = self.attention(x, x, x, mask, training=training)
         if training and self.dropout > 0:
             attention_emb = tf.nn.dropout(attention_emb, rate=self.dropout)
         residual_emb_w_memory = self.attention_layer_norm(x + attention_emb, training=training)
         process_emb = self.pointwise_fnn(residual_emb_w_memory, training=training)
         if training and self.dropout > 0:
             process_emb = tf.nn.dropout(process_emb, rate=self.dropout)
-        return self.final_layer_norm(residual_emb_w_memory + process_emb, training=training)
+        return self.final_layer_norm(residual_emb_w_memory + process_emb, training=training), attention_weights
 
 class DeckBuilder(tf.Module):
     def __init__(self, n_cards, dropout=0.0, embeddings=None, name=None):

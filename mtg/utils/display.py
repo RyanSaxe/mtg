@@ -53,8 +53,8 @@ def names_to_array(names, mapping):
     return arr
 
 def draft_log_ai(draft_log_url, model):
-    t = model.t
-    n_cards = model.n_cards
+    t = model.storage['t']
+    n_cards = model.storage['n_cards']
     idx_to_name = model.idx_to_name
     name_to_idx = {v:k for k,v in idx_to_name.items()}
     picks = get_draft_json(draft_log_url)['picks']
@@ -86,18 +86,18 @@ def draft_log_ai(draft_log_url, model):
     df['human_pick'] = actual_pick
     df['second_choice'] = [idx_to_name[pred[1]] for pred in predictions]
     df['second_choice'].loc[
-        [idx for idx in df.index if idx >= n_picks_per_pack - 1]
+        [idx for idx in df.index if idx % n_picks_per_pack >= n_picks_per_pack - 1]
     ] = ''
     df['third_choice'] = [idx_to_name[pred[2]] for pred in predictions]
     df['third_choice'].loc[
-        [idx for idx in df.index if idx >= n_picks_per_pack - 2]
+        [idx for idx in df.index if idx % n_picks_per_pack >= n_picks_per_pack - 2]
     ] = ''
     df.index = [position_to_pxpy[idx] for idx in df.index]
     return df
 
 def display_draft(df, cmap=None, pack=None):
     if pack is not None:
-        df = df.loc[[x for x in test.index if x.startswith("P" + str(pack))]]
+        df = df.loc[[x for x in df.index if x.startswith("P" + str(pack))]]
     if cmap is None:
         cmap=LinearSegmentedColormap.from_list('gr',["g", "w", "r"], N=256)
     cm = plt.cm.get_cmap(cmap)
