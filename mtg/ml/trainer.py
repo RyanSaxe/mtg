@@ -91,39 +91,38 @@ class Trainer:
                 else:
                     batch_features, batch_target, batch_weights = self.generator[i]
                 loss, metrics = self._step(batch_features, batch_target, batch_weights)
-                loss = loss/batch_target.shape[0]
                 extra_metrics['top1'].append(metrics[0])
                 extra_metrics['top2'].append(metrics[1])
                 extra_metrics['top3'].append(metrics[2])
-                losses.append(loss)
+                losses.append(np.average(loss))
                 for attr_name in extras.keys():
                     attr = getattr(self.model, attr_name, None)
                     extras[attr_name].append(attr)
                 
                 if self.val_generator is not None:
                     val_features, val_target, val_weights = self.val_generator[i]
-                    val_output = self.model(val_features)
-                    val_loss = self.model.loss(val_target, val_output, sample_weight=val_weights)/val_target.shape[0]
+                    val_output = self.model(val_features, training=False)
+                    val_loss = self.model.loss(val_target, val_output, sample_weight=val_weights)
                     val_metrics = self.model.compute_metrics(val_target, val_output, sample_weight=val_weights)
                     extra_metrics['val_top1'].append(val_metrics[0])
                     extra_metrics['val_top2'].append(val_metrics[1])
                     extra_metrics['val_top3'].append(val_metrics[2])
-                    val_losses.append(val_loss)
+                    val_losses.append(np.average(val_loss))
                 if verbose:
                     extra_to_show = {
-                        **{k:np.nanmean(v) for k,v in extras.items()},
-                        **{k:np.nanmean(v) for k,v in extra_metrics.items()}
+                        **{k:np.average(v) for k,v in extras.items()},
+                        **{k:np.average(v) for k,v in extra_metrics.items()}
                     }                        
                     if len(val_losses) > 0:
-                        progress.set_postfix(loss=np.average(losses), val_loss=np.nanmean(val_losses), **extra_to_show)
+                        progress.set_postfix(loss=np.average(losses), val_loss=np.average(val_losses), **extra_to_show)
                     else:
-                        progress.set_postfix(loss=np.average(losses), **{k:np.nanmean(v) for k,v in extras.items()})
+                        progress.set_postfix(loss=np.average(losses), **{k:np.average(v) for k,v in extras.items()})
                     progress.update(1)
             if verbose:
                 #run model as if not training on validation data to get out of sample performance
                 if self.val_features is not None:
-                    val_out = self.model(self.val_features)
-                    val_loss = self.model.loss(self.val_target, val_out, sample_weight=self.val_weights)/self.val_target.shape[0]
+                    val_out = self.model(self.val_features, training=None)
+                    val_loss = self.model.loss(self.val_target, val_out, sample_weight=self.val_weights)
                     progress.set_postfix(loss=np.average(losses), val_loss=np.average(val_loss), **extra_to_show)
                 progress.close()
             if self.generator is not None:
