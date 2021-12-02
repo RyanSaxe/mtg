@@ -101,13 +101,17 @@ class Trainer:
                 
                 if self.val_generator is not None:
                     val_features, val_target, val_weights = self.val_generator[i]
-                    val_output = self.model(val_features, training=False)
+                    val_output = self.model(val_features, training=None)
                     val_loss = self.model.loss(val_target, val_output, sample_weight=val_weights)
                     val_metrics = self.model.compute_metrics(val_target, val_output, sample_weight=val_weights)
                     extra_metrics['val_top1'].append(val_metrics[0])
                     extra_metrics['val_top2'].append(val_metrics[1])
                     extra_metrics['val_top3'].append(val_metrics[2])
-                    val_losses.append(np.average(val_loss))
+                    val_loss_avg = np.average(val_loss)
+                    if np.isnan(val_loss_avg):
+                        print("nan loss at",i)
+                    else:
+                        val_losses.append(val_loss_avg)
                 if verbose:
                     extra_to_show = {
                         **{k:np.average(v) for k,v in extras.items()},

@@ -76,7 +76,7 @@ class DraftBot(tf.Module):
             name="decoder",
             start_act=tf.nn.selu,
             middle_act=tf.nn.selu,
-            out_act=None,
+            out_act=tf.nn.relu,
             style="reverse_bottleneck",
         )
 
@@ -93,7 +93,8 @@ class DraftBot(tf.Module):
             embs = tf.nn.dropout(embs, rate=self.dropout)
         for memory_layer in self.memory_layers:
             embs = memory_layer(embs, positional_masks, training=training) # (batch_size, t, emb_dim)
-        card_rankings = self.decoder(embs, training=training) # (batch_size, t, n_cards)
+        # add epsilon to avoid an all zero output from relu
+        card_rankings = self.decoder(embs, training=training) + 1e-9 # (batch_size, t, n_cards)
         # zero out the rankings for cards not in the pack
         # note1: this only works because no foils on arena means packs can never have 2x of a card
         #       if this changes, modify to clip packs at 1
@@ -101,10 +102,13 @@ class DraftBot(tf.Module):
         #        affect backprop on cards that would techncally be taken if they were in the pack. However,
         #        if it turns out that there is a reason why these gradients shouldn't be zero, this
         #        multiplication could be done only during inference (when training is not True)
-        card_rankings = card_rankings * packs
+        
+        card_rankings = (card_rankings + 1e-9) * packs
         # after zeroing out cards not in packs, we readjust the output to maintain that it sums to one
-        # note: currently does not sum to one so we can do "from_logits=False" for numerical stability
-        return card_rankings
+        # note: currently this sums to one so we do from_logits=True in Categorical Cross Entropy,
+        #       possible softmax is better than relu, regardless this does have numerical instability issues
+        #       so that is something to look out for
+        return card_rankings/tf.reduce_sum(card_rankings, axis=-1)
 
     def compile(
         self,
@@ -120,7 +124,7 @@ class DraftBot(tf.Module):
             self.optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.9, beta_2=0.98,epsilon=1e-9)
         else:
             self.optimizer = optimizer
-        self.loss_f = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=False, reduction=tf.keras.losses.Reduction.NONE)
+        self.loss_f = tf.keras.losses.SparseCategoricalCrossentropy(reduction=tf.keras.losses.Reduction.NONE)
 
     def loss(self, true, pred, sample_weight=None, store=True):
         return self.loss_f(true, pred, sample_weight=sample_weight)
