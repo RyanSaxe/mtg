@@ -52,7 +52,7 @@ def names_to_array(names, mapping):
     arr[unique] += counts
     return arr
 
-def draft_log_ai(draft_log_url, model, t=42):
+def draft_log_ai(draft_log_url, model):
     t = model.t
     n_cards = model.n_cards
     idx_to_name = model.idx_to_name
