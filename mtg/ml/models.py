@@ -81,11 +81,11 @@ class DraftBot(tf.Module):
     @tf.function
     def __call__(self, features, training=None, return_attention=False):
         packs, picks, positions = features
-        # draft_info is of shape (batch_size, t, n_cards * 2)
+        # draft_info is of shape (batch_size, t, n_cards)
         positional_masks = tf.gather(self.positional_mask, positions)
         positional_embeddings = self.positional_embedding(positions, training=training)
         #pack embedding = mean of card embeddings for only cards in the pack
-        pack_embeddings = tf.reduce_sum(packs[:,:,:,None] * self.card_embeddings[None,None,:,:], axis=-1)/tf.reduce_sum(packs, axis=-1, keepdims=True)
+        pack_embeddings = tf.reduce_sum(packs[:,:,:,None] * self.card_embeddings[None,None,:,:], axis=2)/tf.reduce_sum(packs, axis=-1, keepdims=True)
         dec_embs = tf.gather(self.card_embeddings, picks)
         embs = pack_embeddings * tf.math.sqrt(self.emb_dim) + positional_embeddings
         if training and self.dropout > 0.0:
