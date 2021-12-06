@@ -45,18 +45,14 @@ class DraftBot(tf.Module):
         self.dropout = emb_dropout
         self.positional_embedding = Embedding(t, emb_dim, name="positional_embedding")
         self.positional_mask = 1 - tf.linalg.band_part(tf.ones((t, t)), -1, 0)
-        self.pool_pack_embedding = nn.MLP(
-            in_dim=self.n_cards * 2,
-            start_dim=self.n_cards,
-            out_dim=emb_dim,
-            n_h_layers=1,
-            name="non_memory_encoder",
-            start_act=tf.nn.selu,
-            middle_act=tf.nn.selu,
-            out_act=None,
-            style="bottleneck",
+        initializer = tf.initializers.glorot_normal()
+        self.card_embeddings = tf.Variable(
+            initializer(shape=(self.n_cards, emb_dim)),
+            dtype=tf.float32,
+            name="card_embedding",
+            trainable=True,
         )
-        self.memory_layers = [
+        self.encoder_layers = [
             MemoryEmbedding(
                 self.n_cards,
                 emb_dim,
@@ -66,34 +62,38 @@ class DraftBot(tf.Module):
             )
             for i in range(num_memory_layers)
         ]
-        #sigmoid instead of softmax means from_logits=True. This is done for numerical stability.
-        self.decoder = nn.MLP(
-            in_dim=emb_dim,
-            start_dim=emb_dim * 2,
-            out_dim=self.n_cards,
-            n_h_layers=1,
-            dropout=out_dropout,
-            name="decoder",
-            start_act=tf.nn.selu,
-            middle_act=tf.nn.selu,
-            out_act=tf.nn.relu,
-            style="reverse_bottleneck",
-        )
+        self.decoder_layers = [
+            MemoryEmbedding(
+                self.n_cards,
+                emb_dim,
+                num_heads,
+                dropout=memory_dropout,
+                name=f"memory_decoder_{i}",
+                decode=True,
+            )
+            for i in range(num_memory_layers)
+        ]
+        #we use linear activation because softmax has numerical stability issues, but
+        # for some reason from_logits=False wasn't training well, so we divide by the sum
+        # of the vector at the end and use from_logits=True 
+        self.output_layer = Dense(emb_dim, self.n_cards, activation=None, name="output")
 
     @tf.function
     def __call__(self, features, training=None, return_attention=False):
-        draft_info, positions = features
+        packs, picks, positions = features
         # draft_info is of shape (batch_size, t, n_cards * 2)
-        packs = draft_info[:, :, :self.n_cards]
         positional_masks = tf.gather(self.positional_mask, positions)
         positional_embeddings = self.positional_embedding(positions, training=training)
-        draft_info_embeddings = self.pool_pack_embedding(draft_info, training=training)
-        embs = draft_info_embeddings * tf.math.sqrt(self.emb_dim) + positional_embeddings
+        pack_embeddings = tf.reduce_sum(packs[:,:,:,None] * self.card_embeddings[None,None,:,:], axis=-1)
+        dec_embs = tf.gather(self.catd_embeddings, picks)
+        embs = pack_embeddings * tf.math.sqrt(self.emb_dim) + positional_embeddings
         if training and self.dropout > 0.0:
             embs = tf.nn.dropout(embs, rate=self.dropout)
-        for memory_layer in self.memory_layers:
+        for memory_layer in self.encoder_layers:
             embs, attention_weights = memory_layer(embs, positional_masks, training=training) # (batch_size, t, emb_dim)
-        card_rankings = self.decoder(embs, training=training) # (batch_size, t, n_cards)
+        for memory_layer in self.decoder_layers:
+            dec_embs, attention_weights = memory_layer(dec_embs, positional_masks, encoder_input=embs, training=training) # (batch_size, t, emb_dim)
+        card_rankings = self.output_layer(dec_embs, training=training) # (batch_size, t, n_cards)
         # zero out the rankings for cards not in the pack
         # note1: this only works because no foils on arena means packs can never have 2x of a card
         #       if this changes, modify to clip packs at 1
@@ -155,26 +155,45 @@ class MemoryEmbedding(tf.Module):
     """
     self attention block for encorporating memory into the draft bot
     """
-    def __init__(self, n_cards, emb_dim, num_heads, dropout=0.0, name=None):
+    def __init__(self, n_cards, emb_dim, num_heads, dropout=0.0, decode=False, name=None):
         super().__init__(name=name)
         self.dropout = dropout
         #kdim and dmodel are the same because the embedding dimension of the non-attended
         # embeddings are the same as the attention embeddings.
         self.attention = MultiHeadAttention(emb_dim, emb_dim, num_heads, name=self.name + "_attention")
-        self.expand_attention = Dense(emb_dim, n_cards, activation=None, name=self.name + "_pointwise_in")
+        self.expand_attention = Dense(emb_dim, n_cards, activation=tf.nn.relu, name=self.name + "_pointwise_in")
         self.compress_expansion = Dense(n_cards, emb_dim, activation=None, name=self.name + "_pointwise_out")
         self.attention_layer_norm = LayerNormalization(emb_dim, name=self.name + "_attention_norm")
         self.final_layer_norm = LayerNormalization(emb_dim, name=self.name + "_out_norm")
+        self.decode = decode
+        if self.decode:
+            self.decode_layer_norm = LayerNormalization(emb_dim, name=self.name + "_decode_norm")
+            self.decode_attention = MultiHeadAttention(emb_dim, emb_dim, num_heads, name=self.name + "_decode_attention")
     
     def pointwise_fnn(self, x, training=None):
         x = self.expand_attention(x, training=training)
         return self.compress_expansion(x, training=training)
 
-    def __call__(self, x, mask, training=None):
+    def __call__(self, x, mask, encoder_output=None, training=None):
         attention_emb, attention_weights = self.attention(x, x, x, mask, training=training)
         if training and self.dropout > 0:
             attention_emb = tf.nn.dropout(attention_emb, rate=self.dropout)
         residual_emb_w_memory = self.attention_layer_norm(x + attention_emb, training=training)
+        if self.decode:
+            assert encoder_output is not None
+            # mask.shape = batch_size, seq_length, seq_length
+            decoder_mask = mask - tf.eye(mask.shape[1], batch_shape=[mask.shape[0]])
+            decode_attention_emb, decode_attention_weights = self.decode_attention(
+                encoder_output,
+                encoder_output,
+                residual_emb_w_memory,
+                decoder_mask,
+                training=training
+            )
+            if training and self.dropout > 0:
+                decode_attention_emb = tf.nn.dropout(decode_attention_emb, rate=self.dropout)
+            residual_emb_w_memory = self.decode_layer_norm(residual_emb_w_memory + decode_attention_emb, training=training)
+            attention_weights = (attention_weights, decode_attention_weights)
         process_emb = self.pointwise_fnn(residual_emb_w_memory, training=training)
         if training and self.dropout > 0:
             process_emb = tf.nn.dropout(process_emb, rate=self.dropout)
