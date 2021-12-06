@@ -93,7 +93,7 @@ class DraftBot(tf.Module):
         for memory_layer in self.encoder_layers:
             embs, attention_weights = memory_layer(embs, positional_masks, training=training) # (batch_size, t, emb_dim)
         for memory_layer in self.decoder_layers:
-            dec_embs, attention_weights = memory_layer(dec_embs, positional_masks, encoder_input=embs, training=training) # (batch_size, t, emb_dim)
+            dec_embs, attention_weights = memory_layer(dec_embs, positional_masks, encoder_output=embs, training=training) # (batch_size, t, emb_dim)
         card_rankings = self.output_layer(dec_embs, training=training) # (batch_size, t, n_cards)
         # zero out the rankings for cards not in the pack
         # note1: this only works because no foils on arena means packs can never have 2x of a card
