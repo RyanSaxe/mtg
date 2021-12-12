@@ -194,7 +194,7 @@ class MemoryEmbedding(tf.Module):
 
     def __call__(self, x, mask, encoder_output=None, training=None):
         if self.decode:
-            decoder_mask = mask + tf.eye(mask.shape[1], batch_shape=[mask.shape[0]])
+            decoder_mask = mask - tf.eye(mask.shape[1], batch_shape=[mask.shape[0]])
             # x is the pick here, which means we are not allowed to look at it in order to make the prediction
             #     normally, we can look at the current time and everything before, but for the decoder we
             #     are only allowed to look before it, which is what subtracting tf.eye accomplishes
