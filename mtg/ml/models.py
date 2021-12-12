@@ -55,17 +55,17 @@ class DraftBot(tf.Module):
         #MLP where the first hidden layer is of
         # the same size of the input layer to conceptually
         # cover all card x card interactions
-        # self.pool_pack_embedding = nn.MLP(
-        #     in_dim=self.n_cards * 2,
-        #     start_dim=self.n_cards,
-        #     out_dim=emb_dim,
-        #     n_h_layers=1,
-        #     name="pack_embedding",
-        #     start_act=None,
-        #     middle_act=None,
-        #     out_act=None,
-        #     style="bottleneck",
-        # )
+        self.pool_pack_embedding = nn.MLP(
+            in_dim=self.n_cards * 2,
+            start_dim=self.n_cards,
+            out_dim=emb_dim,
+            n_h_layers=1,
+            name="pack_embedding",
+            start_act=None,
+            middle_act=None,
+            out_act=None,
+            style="bottleneck",
+        )
         self.encoder_layers = [
             MemoryEmbedding(
                 self.n_cards,
@@ -101,8 +101,8 @@ class DraftBot(tf.Module):
         positional_masks = tf.gather(self.positional_mask, positions)
         positional_embeddings = self.positional_embedding(positions, training=training)
         #old way: pack embedding = mean of card embeddings for only cards in the pack
-        pack_embeddings = tf.reduce_sum(packs[:,:,:,None] * self.card_embeddings[None,None,:,:], axis=2)/tf.reduce_sum(packs, axis=-1, keepdims=True)
-        #pack_embeddings = self.pool_pack_embedding(draft_info)
+        #pack_embeddings = tf.reduce_sum(packs[:,:,:,None] * self.card_embeddings[None,None,:,:], axis=2)/tf.reduce_sum(packs, axis=-1, keepdims=True)
+        pack_embeddings = self.pool_pack_embedding(draft_info)
         dec_embs = tf.gather(self.card_embeddings, picks)
         embs = pack_embeddings * tf.math.sqrt(self.emb_dim) + positional_embeddings
         if training and self.dropout > 0.0:
@@ -179,7 +179,7 @@ class MemoryEmbedding(tf.Module):
         #kdim and dmodel are the same because the embedding dimension of the non-attended
         # embeddings are the same as the attention embeddings.
         self.attention = MultiHeadAttention(emb_dim, emb_dim, num_heads, name=self.name + "_attention")
-        self.expand_attention = Dense(emb_dim, n_cards, activation=None, name=self.name + "_pointwise_in")
+        self.expand_attention = Dense(emb_dim, n_cards, activation=tf.nn.relu, name=self.name + "_pointwise_in")
         self.compress_expansion = Dense(n_cards, emb_dim, activation=None, name=self.name + "_pointwise_out")
         self.attention_layer_norm = LayerNormalization(emb_dim, name=self.name + "_attention_norm")
         self.final_layer_norm = LayerNormalization(emb_dim, name=self.name + "_out_norm")
@@ -193,16 +193,19 @@ class MemoryEmbedding(tf.Module):
         return self.compress_expansion(x, training=training)
 
     def __call__(self, x, mask, encoder_output=None, training=None):
-        # if self.decode:
-        #     decoder_mask = mask - tf.eye(mask.shape[1], batch_shape=[mask.shape[0]])
-        attention_emb, attention_weights = self.attention(x, x, x, mask, training=training)
+        if self.decode:
+            decoder_mask = mask + tf.eye(mask.shape[1], batch_shape=[mask.shape[0]])
+            # x is the pick here, which means we are not allowed to look at it in order to make the prediction
+            #     normally, we can look at the current time and everything before, but for the decoder we
+            #     are only allowed to look before it, which is what subtracting tf.eye accomplishes
+            attention_emb, attention_weights = self.attention(x, x, x, decoder_mask, training=training)
+        else:
+            attention_emb, attention_weights = self.attention(x, x, x, mask, training=training)
         if training and self.dropout > 0:
             attention_emb = tf.nn.dropout(attention_emb, rate=self.dropout)
         residual_emb_w_memory = self.attention_layer_norm(x + attention_emb, training=training)
         if self.decode:
             assert encoder_output is not None
-            # mask.shape = batch_size, seq_length, seq_length
-            
             decode_attention_emb, decode_attention_weights = self.decode_attention(
                 encoder_output,
                 encoder_output,
