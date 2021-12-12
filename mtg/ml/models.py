@@ -87,7 +87,7 @@ class DraftBot(tf.Module):
                     dropout=memory_dropout,
                     name=f"memory_decoder_{i}",
                     decode=True,
-                    first_decoder_flag=False,
+                    first_decoder_flag=i==0,
                 )
                 for i in range(num_memory_layers)
             ]
