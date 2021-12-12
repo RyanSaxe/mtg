@@ -72,7 +72,8 @@ class DraftBot(tf.Module):
         ]
         self.attention_decoder = attention_decoder
         if self.attention_decoder:
-            self.card_embeddings = Embedding(self.n_cards, emb_dim, name="card_embeddings")
+            initializer=tf.initializers.GlorotNormal()
+            self.card_embeddings =  tf.Variable(initializer(shape=(self.n_cards, emb_dim)), dtype=tf.float32, name=self.name + "_embedding")
             self.decoder_layers = [
                 MemoryEmbedding(
                     self.n_cards,
@@ -117,7 +118,7 @@ class DraftBot(tf.Module):
         for memory_layer in self.encoder_layers:
             embs, attention_weights = memory_layer(embs, positional_masks, training=training) # (batch_size, t, emb_dim)
         if self.attention_decoder:
-            dec_embs = self.card_embeddings(picks)
+            dec_embs = tf.gather(self.card_embeddings, picks)
             for memory_layer in self.decoder_layers:
                 dec_embs, attention_weights = memory_layer(dec_embs, positional_masks, encoder_output=embs, training=training) # (batch_size, t, emb_dim)
             embs = dec_embs
