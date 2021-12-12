@@ -187,8 +187,9 @@ class MemoryEmbedding(tf.Module):
         self.decode = decode
         self.first_decoder_flag = first_decoder_flag
         if self.decode:
-            self.decode_layer_norm = LayerNormalization(emb_dim, name=self.name + "_decode_norm")
             self.decode_attention = MultiHeadAttention(emb_dim, emb_dim, num_heads, name=self.name + "_decode_attention")
+            if not self.first_decoder_flag:
+                self.decode_layer_norm = LayerNormalization(emb_dim, name=self.name + "_decode_norm")
     
     def pointwise_fnn(self, x, training=None):
         x = self.expand_attention(x, training=training)
