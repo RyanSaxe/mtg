@@ -117,13 +117,13 @@ class DraftBot(tf.Module):
         #old way: pack embedding = mean of card embeddings for only cards in the pack
         #pack_embeddings = tf.reduce_sum(packs[:,:,:,None] * self.card_embeddings[None,None,:,:], axis=2)/tf.reduce_sum(packs, axis=-1, keepdims=True)
         pack_embeddings = self.pool_pack_embedding(draft_info)
-        dec_embs = tf.gather(self.card_embeddings, picks)
         embs = pack_embeddings * tf.math.sqrt(self.emb_dim) + positional_embeddings
         if training and self.dropout > 0.0:
             embs = tf.nn.dropout(embs, rate=self.dropout)
         for memory_layer in self.encoder_layers:
             embs, attention_weights = memory_layer(embs, positional_masks, training=training) # (batch_size, t, emb_dim)
         if self.attention_decoder:
+            dec_embs = tf.gather(self.card_embeddings, picks)
             for memory_layer in self.decoder_layers:
                 dec_embs, attention_weights = memory_layer(dec_embs, positional_masks, encoder_output=embs, training=training) # (batch_size, t, emb_dim)
             embs = dec_embs
