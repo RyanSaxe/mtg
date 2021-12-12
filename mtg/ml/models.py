@@ -90,7 +90,7 @@ class DraftBot(tf.Module):
         #we use linear activation because softmax has numerical stability issues, but
         # for some reason from_logits=False wasn't training well, so we divide by the sum
         # of the vector at the end and use from_logits=True 
-        self.output_layer = Dense(emb_dim, self.n_cards, activation=None, name="output")
+        self.output_layer = Dense(emb_dim, self.n_cards, activation=tf.nn.softplus, name="output")
 
     @tf.function
     def __call__(self, features, training=None, return_attention=False):
