@@ -76,21 +76,21 @@ class DraftBot(tf.Module):
             )
             for i in range(num_memory_layers)
         ]
-        self.decoder_layers = [
-            MemoryEmbedding(
-                self.n_cards,
-                emb_dim,
-                num_heads,
-                dropout=memory_dropout,
-                name=f"memory_decoder_{i}",
-                decode=True,
-            )
-            for i in range(num_memory_layers)
-        ]
+        # self.decoder_layers = [
+        #     MemoryEmbedding(
+        #         self.n_cards,
+        #         emb_dim,
+        #         num_heads,
+        #         dropout=memory_dropout,
+        #         name=f"memory_decoder_{i}",
+        #         decode=True,
+        #     )
+        #     for i in range(num_memory_layers)
+        # ]
         #we use linear activation because softmax has numerical stability issues, but
         # for some reason from_logits=False wasn't training well, so we divide by the sum
         # of the vector at the end and use from_logits=True 
-        self.output_layer = Dense(emb_dim, self.n_cards, activation=None, name="output")
+        self.output_layer = Dense(emb_dim, self.n_cards, activation=tf.nn.softplus, name="output")
 
     @tf.function
     def __call__(self, features, training=None, return_attention=False):
@@ -109,9 +109,9 @@ class DraftBot(tf.Module):
             embs = tf.nn.dropout(embs, rate=self.dropout)
         for memory_layer in self.encoder_layers:
             embs, attention_weights = memory_layer(embs, positional_masks, training=training) # (batch_size, t, emb_dim)
-        for memory_layer in self.decoder_layers:
-            dec_embs, attention_weights = memory_layer(dec_embs, positional_masks, encoder_output=embs, training=training) # (batch_size, t, emb_dim)
-        card_rankings = self.output_layer(dec_embs, training=training) # (batch_size, t, n_cards)
+        # for memory_layer in self.decoder_layers:
+        #     dec_embs, attention_weights = memory_layer(dec_embs, positional_masks, encoder_output=embs, training=training) # (batch_size, t, emb_dim)
+        card_rankings = self.output_layer(embs, training=training) # (batch_size, t, n_cards)
         # zero out the rankings for cards not in the pack
         # note1: this only works because no foils on arena means packs can never have 2x of a card
         #       if this changes, modify to clip packs at 1
