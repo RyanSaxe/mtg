@@ -193,14 +193,14 @@ class MemoryEmbedding(tf.Module):
         return self.compress_expansion(x, training=training)
 
     def __call__(self, x, mask, encoder_output=None, training=None):
-        # if self.decode:
-        #     decoder_mask = mask + tf.eye(mask.shape[1], batch_shape=[mask.shape[0]])
-        #     # x is the pick here, which means we are not allowed to look at it in order to make the prediction
-        #     #     normally, we can look at the current time and everything before, but for the decoder we
-        #     #     are only allowed to look before it, which is what subtracting tf.eye accomplishes
-        #     attention_emb, attention_weights = self.attention(x, x, x, decoder_mask, training=training)
-        # else:
-        attention_emb, attention_weights = self.attention(x, x, x, mask, training=training)
+        if self.decode:
+            decoder_mask = mask + tf.eye(mask.shape[1], batch_shape=[mask.shape[0]])
+            # x is the pick here, which means we are not allowed to look at it in order to make the prediction
+            #     normally, we can look at the current time and everything before, but for the decoder we
+            #     are only allowed to look before it, which is what subtracting tf.eye accomplishes
+            attention_emb, attention_weights = self.attention(x, x, x, decoder_mask, training=training)
+        else:
+            attention_emb, attention_weights = self.attention(x, x, x, mask, training=training)
         if training and self.dropout > 0:
             attention_emb = tf.nn.dropout(attention_emb, rate=self.dropout)
         residual_emb_w_memory = self.attention_layer_norm(x + attention_emb, training=training)
