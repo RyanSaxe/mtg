@@ -72,8 +72,10 @@ def draft_log_ai(draft_log_url, model, t=None, n_cards=None, idx_to_name=None, r
         draft_info[0, position, n_cards:] = pool
         pool[pick_idx] += 1
         actual_pick.append(correct_pick)
+    np_pick = np.asarray([name_to_idx[name] for name in actual_pick])
     model_input = (
         tf.convert_to_tensor(draft_info, dtype=tf.float32),
+        tf.convert_to_tensor(np_pick, dtype=tf.int32),
         tf.convert_to_tensor(positions, dtype=tf.int32)
     )
     if return_attention:
