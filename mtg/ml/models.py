@@ -46,13 +46,6 @@ class DraftBot(tf.Module):
         self.dropout = emb_dropout
         self.positional_embedding = Embedding(t, emb_dim, name="positional_embedding")
         self.positional_mask = 1 - tf.linalg.band_part(tf.ones((t, t)), -1, 0)
-        initializer = tf.initializers.glorot_normal()
-        self.card_embeddings = tf.Variable(
-            initializer(shape=(self.n_cards, emb_dim)),
-            dtype=tf.float32,
-            name="card_embedding",
-            trainable=True,
-        )
         #MLP where the first hidden layer is of
         # the same size of the input layer to conceptually
         # cover all card x card interactions
@@ -79,6 +72,13 @@ class DraftBot(tf.Module):
         ]
         self.attention_decoder = attention_decoder
         if self.attention_decoder:
+            initializer = tf.initializers.glorot_normal()
+            self.card_embeddings = tf.Variable(
+                initializer(shape=(self.n_cards, emb_dim)),
+                dtype=tf.float32,
+                name="card_embedding",
+                trainable=True,
+            )
             self.decoder_layers = [
                 MemoryEmbedding(
                     self.n_cards,
@@ -91,7 +91,19 @@ class DraftBot(tf.Module):
                 )
                 for i in range(num_memory_layers)
             ]
-        self.output_layer = Dense(emb_dim, self.n_cards, activation=tf.nn.softplus, name="output")
+
+        self.output_decoder = nn.MLP(
+            in_dim=emb_dim,
+            start_dim=emb_dim * 2,
+            out_dim=self.n_cards,
+            n_h_layers=1,
+            dropout=out_dropout,
+            name="output_decoder",
+            start_act=tf.nn.selu,
+            middle_act=tf.nn.selu,
+            out_act=tf.nn.relu,
+            style="reverse_bottleneck",
+        )
 
 
     @tf.function
@@ -115,7 +127,7 @@ class DraftBot(tf.Module):
             for memory_layer in self.decoder_layers:
                 dec_embs, attention_weights = memory_layer(dec_embs, positional_masks, encoder_output=embs, training=training) # (batch_size, t, emb_dim)
             embs = dec_embs
-        card_rankings = self.output_layer(embs, training=training) # (batch_size, t, n_cards)
+        card_rankings = self.output_decoder(embs, training=training) # (batch_size, t, n_cards)
         # zero out the rankings for cards not in the pack
         # note1: this only works because no foils on arena means packs can never have 2x of a card
         #       if this changes, modify to clip packs at 1
