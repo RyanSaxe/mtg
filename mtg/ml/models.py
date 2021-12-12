@@ -198,6 +198,7 @@ class MemoryEmbedding(tf.Module):
             # x is the pick here, which means we are not allowed to look at it in order to make the prediction
             #     normally, we can look at the current time and everything before, but for the decoder we
             #     are only allowed to look before it, which is what subtracting tf.eye accomplishes
+            #extra comment
             attention_emb, attention_weights = self.attention(x, x, x, decoder_mask, training=training)
         else:
             attention_emb, attention_weights = self.attention(x, x, x, mask, training=training)
