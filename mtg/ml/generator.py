@@ -107,7 +107,7 @@ class DraftGenerator(MTGDataGenerator):
         super().__init__(
             data,
             cards,
-            card_col_prefixes=['pack_card', 'pool'],
+            card_col_prefixes=['pack_card','pool'],
             batch_size=batch_size,
             shuffle=shuffle,
             to_fit=to_fit,
