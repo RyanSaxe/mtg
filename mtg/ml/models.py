@@ -55,17 +55,17 @@ class DraftBot(tf.Module):
         #MLP where the first hidden layer is of
         # the same size of the input layer to conceptually
         # cover all card x card interactions
-        self.pack_embedding = nn.MLP(
-            in_dim=self.n_cards,
-            start_dim=self.n_cards,
-            out_dim=emb_dim,
-            n_h_layers=1,
-            name="pack_embedding",
-            start_act=None,
-            middle_act=None,
-            out_act=None,
-            style="bottleneck",
-        )
+        # self.pool_pack_embedding = nn.MLP(
+        #     in_dim=self.n_cards * 2,
+        #     start_dim=self.n_cards,
+        #     out_dim=emb_dim,
+        #     n_h_layers=1,
+        #     name="pack_embedding",
+        #     start_act=None,
+        #     middle_act=None,
+        #     out_act=None,
+        #     style="bottleneck",
+        # )
         self.encoder_layers = [
             MemoryEmbedding(
                 self.n_cards,
@@ -94,13 +94,15 @@ class DraftBot(tf.Module):
 
     @tf.function
     def __call__(self, features, training=None, return_attention=False):
-        packs, picks, positions = features
-        # draft_info is of shape (batch_size, t, n_cards)
+        draft_info, picks, positions = features
+        packs = draft_info[:, :, :self.n_cards]
+        # pools = draft_info[:, :, self.n_cards:]
+        # draft_info is of shape (batch_size, t, n_cards * 2)
         positional_masks = tf.gather(self.positional_mask, positions)
         positional_embeddings = self.positional_embedding(positions, training=training)
         #old way: pack embedding = mean of card embeddings for only cards in the pack
-        #tf.reduce_sum(packs[:,:,:,None] * self.card_embeddings[None,None,:,:], axis=2)/tf.reduce_sum(packs, axis=-1, keepdims=True)
-        pack_embeddings = self.pack_embedding(packs)
+        pack_embeddings = tf.reduce_sum(packs[:,:,:,None] * self.card_embeddings[None,None,:,:], axis=2)/tf.reduce_sum(packs, axis=-1, keepdims=True)
+        #pack_embeddings = self.pool_pack_embedding(draft_info)
         dec_embs = tf.gather(self.card_embeddings, picks)
         embs = pack_embeddings * tf.math.sqrt(self.emb_dim) + positional_embeddings
         if training and self.dropout > 0.0:
@@ -191,6 +193,8 @@ class MemoryEmbedding(tf.Module):
         return self.compress_expansion(x, training=training)
 
     def __call__(self, x, mask, encoder_output=None, training=None):
+        # if self.decode:
+        #     decoder_mask = mask - tf.eye(mask.shape[1], batch_shape=[mask.shape[0]])
         attention_emb, attention_weights = self.attention(x, x, x, mask, training=training)
         if training and self.dropout > 0:
             attention_emb = tf.nn.dropout(attention_emb, rate=self.dropout)
@@ -198,12 +202,12 @@ class MemoryEmbedding(tf.Module):
         if self.decode:
             assert encoder_output is not None
             # mask.shape = batch_size, seq_length, seq_length
-            decoder_mask = mask - tf.eye(mask.shape[1], batch_shape=[mask.shape[0]])
+            
             decode_attention_emb, decode_attention_weights = self.decode_attention(
                 encoder_output,
                 encoder_output,
                 residual_emb_w_memory,
-                decoder_mask,
+                mask,
                 training=training
             )
             if training and self.dropout > 0:

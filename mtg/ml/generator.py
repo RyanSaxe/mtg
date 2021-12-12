@@ -145,15 +145,15 @@ class DraftGenerator(MTGDataGenerator):
     def generate_data(self, indices):
         draft_ids = self.draft_ids[indices]
         packs = self.pack_card.loc[draft_ids].values.reshape(len(indices), self.t, len(self.pack_card.columns))
-        #pools = self.pool.loc[draft_ids].values.reshape(len(indices), self.t, len(self.pack_card.columns))
+        pools = self.pool.loc[draft_ids].values.reshape(len(indices), self.t, len(self.pack_card.columns))
         picks = self.pick.loc[draft_ids].values.reshape(len(indices), self.t)
         positions = self.position.loc[draft_ids].values.reshape(len(indices), self.t)
-        #draft_info = np.concatenate([packs, pools], axis=-1)
+        draft_info = np.concatenate([packs, pools], axis=-1)
         if self.weights is not None:
             weights = self.weights[indices]/self.weights[indices].sum()
         else:
             weights = None
-        packs = tf.convert_to_tensor(packs.astype(np.float32), dtype=tf.float32)
+        draft_info = tf.convert_to_tensor(draft_info.astype(np.float32), dtype=tf.float32)
         positions = tf.convert_to_tensor(positions.astype(np.int32), dtype=tf.int32)
         picks = tf.convert_to_tensor(picks.astype(np.float32), dtype=tf.int32)
         return (packs, picks, positions), picks, weights
