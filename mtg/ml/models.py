@@ -46,12 +46,12 @@ class DraftBot(tf.Module):
         self.positional_embedding = Embedding(t, emb_dim, name="positional_embedding")
         self.positional_mask = 1 - tf.linalg.band_part(tf.ones((t, t)), -1, 0)
         initializer = tf.initializers.glorot_normal()
-        self.card_embeddings = tf.Variable(
-            initializer(shape=(self.n_cards, emb_dim)),
-            dtype=tf.float32,
-            name="card_embedding",
-            trainable=True,
-        )
+        # self.card_embeddings = tf.Variable(
+        #     initializer(shape=(self.n_cards, emb_dim)),
+        #     dtype=tf.float32,
+        #     name="card_embedding",
+        #     trainable=True,
+        # )
         #MLP where the first hidden layer is of
         # the same size of the input layer to conceptually
         # cover all card x card interactions
@@ -101,9 +101,9 @@ class DraftBot(tf.Module):
         positional_masks = tf.gather(self.positional_mask, positions)
         positional_embeddings = self.positional_embedding(positions, training=training)
         #old way: pack embedding = mean of card embeddings for only cards in the pack
-        pack_embeddings = tf.reduce_sum(packs[:,:,:,None] * self.card_embeddings[None,None,:,:], axis=2)/tf.reduce_sum(packs, axis=-1, keepdims=True)
-        #pack_embeddings = self.pool_pack_embedding(draft_info)
-        dec_embs = tf.gather(self.card_embeddings, picks)
+        # pack_embeddings = tf.reduce_sum(packs[:,:,:,None] * self.card_embeddings[None,None,:,:], axis=2)/tf.reduce_sum(packs, axis=-1, keepdims=True)
+        pack_embeddings = self.pool_pack_embedding(draft_info)
+        #dec_embs = tf.gather(self.card_embeddings, picks)
         embs = pack_embeddings * tf.math.sqrt(self.emb_dim) + positional_embeddings
         if training and self.dropout > 0.0:
             embs = tf.nn.dropout(embs, rate=self.dropout)
