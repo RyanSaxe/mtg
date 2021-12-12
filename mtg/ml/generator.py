@@ -224,7 +224,7 @@ def create_train_and_val_gens(
     to_fit=True, 
     exclude_basics=True,
     generator=MTGDataGenerator,
-
+    include_val=True,
 ):
     if weights:
         data['ml_weights'] = importance_weighting(data)
@@ -253,7 +253,7 @@ def create_train_and_val_gens(
         to_fit = to_fit,
         exclude_basics = exclude_basics
     )
-    if test_data is not None:
+    if test_data is not None and include_val:
         n_train_batches = len(train_gen)
         val_batch_size = n_test // n_train_batches
         val_gen = generator(
