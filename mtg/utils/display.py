@@ -72,7 +72,7 @@ def draft_log_ai(draft_log_url, model, t=None, n_cards=None, idx_to_name=None, r
         draft_info[0, position, n_cards:] = pool
         pool[pick_idx] += 1
         actual_pick.append(correct_pick)
-    np_pick = np.asarray([name_to_idx[name] for name in actual_pick])
+    np_pick = np.expand_dims(np.asarray([name_to_idx[name] for name in actual_pick]), 0)
     model_input = (
         tf.convert_to_tensor(draft_info, dtype=tf.float32),
         tf.convert_to_tensor(np_pick, dtype=tf.int32),
@@ -81,7 +81,7 @@ def draft_log_ai(draft_log_url, model, t=None, n_cards=None, idx_to_name=None, r
     if return_attention:
         output, attention = model(model_input, training=False, return_attention=True)
         output = tf.squeeze(output)
-        attention = tf.squeeze(attention)
+        #attention = tf.squeeze(attention)
     else:
         output = tf.squeeze(model(model_input, training=False))
     predictions = tf.math.top_k(output, k=3).indices.numpy()
