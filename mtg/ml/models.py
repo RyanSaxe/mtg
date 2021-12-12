@@ -55,17 +55,17 @@ class DraftBot(tf.Module):
         #MLP where the first hidden layer is of
         # the same size of the input layer to conceptually
         # cover all card x card interactions
-        self.pool_pack_embedding = nn.MLP(
-            in_dim=self.n_cards * 2,
-            start_dim=self.n_cards,
-            out_dim=emb_dim,
-            n_h_layers=1,
-            name="pack_embedding",
-            start_act=None,
-            middle_act=None,
-            out_act=None,
-            style="bottleneck",
-        )
+        # self.pool_pack_embedding = nn.MLP(
+        #     in_dim=self.n_cards * 2,
+        #     start_dim=self.n_cards,
+        #     out_dim=emb_dim,
+        #     n_h_layers=1,
+        #     name="pack_embedding",
+        #     start_act=None,
+        #     middle_act=None,
+        #     out_act=None,
+        #     style="bottleneck",
+        # )
         self.encoder_layers = [
             MemoryEmbedding(
                 self.n_cards,
