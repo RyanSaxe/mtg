@@ -177,19 +177,19 @@ class MemoryEmbedding(tf.Module):
     def __init__(self, n_cards, emb_dim, num_heads, dropout=0.0, decode=False, first_decoder_flag=False, name=None):
         super().__init__(name=name)
         self.dropout = dropout
+        self.decode = decode
+        self.first_decoder_flag = first_decoder_flag
         #kdim and dmodel are the same because the embedding dimension of the non-attended
         # embeddings are the same as the attention embeddings.
         self.attention = MultiHeadAttention(emb_dim, emb_dim, num_heads, name=self.name + "_attention")
         self.expand_attention = Dense(emb_dim, n_cards, activation=tf.nn.relu, name=self.name + "_pointwise_in")
         self.compress_expansion = Dense(n_cards, emb_dim, activation=None, name=self.name + "_pointwise_out")
-        self.attention_layer_norm = LayerNormalization(emb_dim, name=self.name + "_attention_norm")
+        if not self.first_decoder_flag:           
+            self.attention_layer_norm = LayerNormalization(emb_dim, name=self.name + "_attention_norm")
         self.final_layer_norm = LayerNormalization(emb_dim, name=self.name + "_out_norm")
-        self.decode = decode
-        self.first_decoder_flag = first_decoder_flag
         if self.decode:
             self.decode_attention = MultiHeadAttention(emb_dim, emb_dim, num_heads, name=self.name + "_decode_attention")
-            if not self.first_decoder_flag:
-                self.decode_layer_norm = LayerNormalization(emb_dim, name=self.name + "_decode_norm")
+            self.decode_layer_norm = LayerNormalization(emb_dim, name=self.name + "_decode_norm")
     
     def pointwise_fnn(self, x, training=None):
         x = self.expand_attention(x, training=training)
