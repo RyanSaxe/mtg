@@ -52,6 +52,17 @@ class DraftBot(tf.Module):
             name="card_embedding",
             trainable=True,
         )
+        self.pack_embedding = nn.MLP(
+            in_dim=n_cards,
+            start_dim=n_cards,
+            out_dim=emb_dim,
+            n_h_layers=1,
+            name="pack_embedding",
+            start_act=None,
+            middle_act=None,
+            out_act=None,
+            style="bottleneck",
+        )
         self.encoder_layers = [
             MemoryEmbedding(
                 self.n_cards,
@@ -84,8 +95,9 @@ class DraftBot(tf.Module):
         # draft_info is of shape (batch_size, t, n_cards)
         positional_masks = tf.gather(self.positional_mask, positions)
         positional_embeddings = self.positional_embedding(positions, training=training)
-        #pack embedding = mean of card embeddings for only cards in the pack
-        pack_embeddings = tf.reduce_sum(packs[:,:,:,None] * self.card_embeddings[None,None,:,:], axis=2)/tf.reduce_sum(packs, axis=-1, keepdims=True)
+        #old way: pack embedding = mean of card embeddings for only cards in the pack
+        #tf.reduce_sum(packs[:,:,:,None] * self.card_embeddings[None,None,:,:], axis=2)/tf.reduce_sum(packs, axis=-1, keepdims=True)
+        pack_embeddings = self.pack_embedding(packs)
         dec_embs = tf.gather(self.card_embeddings, picks)
         embs = pack_embeddings * tf.math.sqrt(self.emb_dim) + positional_embeddings
         if training and self.dropout > 0.0:
@@ -162,7 +174,7 @@ class MemoryEmbedding(tf.Module):
         #kdim and dmodel are the same because the embedding dimension of the non-attended
         # embeddings are the same as the attention embeddings.
         self.attention = MultiHeadAttention(emb_dim, emb_dim, num_heads, name=self.name + "_attention")
-        self.expand_attention = Dense(emb_dim, n_cards, activation=tf.nn.relu, name=self.name + "_pointwise_in")
+        self.expand_attention = Dense(emb_dim, n_cards, activation=None, name=self.name + "_pointwise_in")
         self.compress_expansion = Dense(n_cards, emb_dim, activation=None, name=self.name + "_pointwise_out")
         self.attention_layer_norm = LayerNormalization(emb_dim, name=self.name + "_attention_norm")
         self.final_layer_norm = LayerNormalization(emb_dim, name=self.name + "_out_norm")
