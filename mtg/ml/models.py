@@ -84,6 +84,7 @@ class DraftBot(tf.Module):
                 dropout=memory_dropout,
                 name=f"memory_decoder_{i}",
                 decode=True,
+                first_decoder_flag=i==0,
             )
             for i in range(num_memory_layers)
         ]
@@ -109,9 +110,8 @@ class DraftBot(tf.Module):
             embs = tf.nn.dropout(embs, rate=self.dropout)
         for memory_layer in self.encoder_layers:
             embs, attention_weights = memory_layer(embs, positional_masks, training=training) # (batch_size, t, emb_dim)
-        for i,memory_layer in enumerate(self.decoder_layers):
-            skip = i == 0
-            dec_embs, attention_weights = memory_layer(dec_embs, positional_masks, encoder_output=embs, training=training, skip=skip) # (batch_size, t, emb_dim)
+        for memory_layer in self.decoder_layers:
+            dec_embs, attention_weights = memory_layer(dec_embs, positional_masks, encoder_output=embs, training=training) # (batch_size, t, emb_dim)
         card_rankings = self.output_layer(dec_embs, training=training) # (batch_size, t, n_cards)
         # zero out the rankings for cards not in the pack
         # note1: this only works because no foils on arena means packs can never have 2x of a card
@@ -174,7 +174,7 @@ class MemoryEmbedding(tf.Module):
     """
     self attention block for encorporating memory into the draft bot
     """
-    def __init__(self, n_cards, emb_dim, num_heads, dropout=0.0, decode=False, name=None):
+    def __init__(self, n_cards, emb_dim, num_heads, dropout=0.0, decode=False, first_decoder_flag=False, name=None):
         super().__init__(name=name)
         self.dropout = dropout
         #kdim and dmodel are the same because the embedding dimension of the non-attended
@@ -185,6 +185,7 @@ class MemoryEmbedding(tf.Module):
         self.attention_layer_norm = LayerNormalization(emb_dim, name=self.name + "_attention_norm")
         self.final_layer_norm = LayerNormalization(emb_dim, name=self.name + "_out_norm")
         self.decode = decode
+        self.first_decoder_flag = first_decoder_flag
         if self.decode:
             self.decode_layer_norm = LayerNormalization(emb_dim, name=self.name + "_decode_norm")
             self.decode_attention = MultiHeadAttention(emb_dim, emb_dim, num_heads, name=self.name + "_decode_attention")
@@ -194,18 +195,17 @@ class MemoryEmbedding(tf.Module):
         return self.compress_expansion(x, training=training)
 
     def __call__(self, x, mask, encoder_output=None, training=None, skip=False):
-        if skip:
+        if self.first_decoder_flag:
             decoder_mask = mask + tf.eye(mask.shape[1], batch_shape=[mask.shape[0]])
             # x is the pick here, which means we are not allowed to look at it in order to make the prediction
             #     normally, we can look at the current time and everything before, but for the decoder we
             #     are only allowed to look before it, which is what subtracting tf.eye accomplishes
-            #extra comment
             attention_emb, attention_weights = self.attention(x, x, x, decoder_mask, training=training)
         else:
             attention_emb, attention_weights = self.attention(x, x, x, mask, training=training)
         if training and self.dropout > 0:
             attention_emb = tf.nn.dropout(attention_emb, rate=self.dropout)
-        if skip:
+        if self.first_decoder_flag:
             residual_emb_w_memory = attention_emb
         else:
             residual_emb_w_memory = self.attention_layer_norm(x + attention_emb, training=training)
