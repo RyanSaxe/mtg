@@ -109,8 +109,8 @@ class DraftBot(tf.Module):
         positional_masks = tf.gather(self.positional_mask, positions)
         positional_embeddings = self.positional_embedding(positions, training=training)
         #old way: pack embedding = mean of card embeddings for only cards in the pack
-        #pack_embeddings = tf.reduce_sum(packs[:,:,:,None] * self.card_embeddings[None,None,:,:], axis=2)/tf.reduce_sum(packs, axis=-1, keepdims=True)
-        pack_embeddings = self.pool_pack_embedding(draft_info)
+        pack_embeddings = tf.reduce_sum(packs[:,:,:,None] * self.card_embeddings[None,None,:,:], axis=2)/tf.reduce_sum(packs, axis=-1, keepdims=True)
+        #pack_embeddings = self.pool_pack_embedding(draft_info)
         embs = pack_embeddings * tf.math.sqrt(self.emb_dim) + positional_embeddings
         if training and self.dropout > 0.0:
             embs = tf.nn.dropout(embs, rate=self.dropout)
