@@ -211,7 +211,7 @@ class MemoryEmbedding(tf.Module):
                 encoder_output,
                 encoder_output,
                 residual_emb_w_memory,
-                mask,
+                decoder_mask,
                 training=training
             )
             if training and self.dropout > 0:
