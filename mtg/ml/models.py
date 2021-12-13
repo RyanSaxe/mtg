@@ -98,7 +98,7 @@ class DraftBot(tf.Module):
 
         initializer=tf.initializers.GlorotNormal()
         self.initial_card_bias = tf.Variable(
-            initializer(shape=(1, 1, self.n_cards)),
+            initializer(shape=(1, 1, emb_dim)),
             dtype=tf.float32,
             name=self.name + "_initial_card_bias",
         )
@@ -120,8 +120,9 @@ class DraftBot(tf.Module):
         embs = pack_embeddings * tf.math.sqrt(self.emb_dim) + positional_embeddings
         # insert an embedding to represent bias towards cards/archetypes/concepts you have before the draft starts
         # --> this could range from "generic pick order of all cards" to "blue is the best color", etc etc
+        tile_bias = tf.tile(self.initial_card_bias, [embs.shape[0],1,1])
         embs = tf.concat([
-            self.initial_card_bias,
+            tile_bias,
             embs,
         ], axis=1)
         if training and self.dropout > 0.0:
