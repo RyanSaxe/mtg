@@ -52,20 +52,29 @@ def names_to_array(names, mapping):
     arr[unique] += counts
     return arr
 
-def draft_log_ai(draft_log_url, model, t=None, n_cards=None, idx_to_name=None, return_attention=False, return_df=True, batch_size=1):
+def draft_log_ai(draft_log_url, model, t=None, n_cards=None, idx_to_name=None, return_attention=False, return_df=True, batch_size=1, exchange_at=-1):
     name_to_idx = {v:k for k,v in idx_to_name.items()}
     picks = get_draft_json(draft_log_url)['picks']
     n_picks_per_pack = t/3
     n_cards = len(name_to_idx)
     pool = np.zeros(n_cards)
     draft_info = np.zeros((batch_size, t, n_cards * 2))
-    positions = np.tile(np.expand_dims(np.arange(42, dtype=np.int32),0),32).reshape(batch_size,42)
+    positions = np.tile(np.expand_dims(np.arange(t, dtype=np.int32),0),batch_size).reshape(batch_size,t)
     actual_pick = []
     position_to_pxpy = dict()
     for pick in picks:
+        if pick['pick_number'] == exchange_at:
+            exchange = True
+        else:
+            exchange = False
         position = int(pick['pack_number'] * n_picks_per_pack + pick['pick_number'])
-        position_to_pxpy[position] = "P" + str(pick['pack_number'] + 1) + "P" + str(pick['pick_number'] + 1)
-        correct_pick = pick['pick']['name'].lower().split("//")[0].strip()
+        if exchange:
+            correct_pick_options = [x['name'].lower().split("//")[0].strip() for x in pick['available'] if x['name'] != pick['pick']['name']]
+            correct_pick = np.random.choice(correct_pick_options)
+            position_to_pxpy[position] = "P" + str(pick['pack_number'] + 1) + "P*" + str(pick['pick_number'] + 1)
+        else:
+            correct_pick = pick['pick']['name'].lower().split("//")[0].strip()
+            position_to_pxpy[position] = "P" + str(pick['pack_number'] + 1) + "P" + str(pick['pick_number'] + 1)
         pick_idx = name_to_idx[correct_pick]
         pack = names_to_array(pick['available'], name_to_idx)
         draft_info[0, position, :n_cards] = pack
@@ -78,12 +87,15 @@ def draft_log_ai(draft_log_url, model, t=None, n_cards=None, idx_to_name=None, r
         tf.convert_to_tensor(np_pick, dtype=tf.int32),
         tf.convert_to_tensor(positions, dtype=tf.int32)
     )
+    # we get the first element in anything we return to handle the case where the model couldn't properly serialize
+    # and we hence need to copy the data to be the same shape as the batch size in order to run a stored model
     if return_attention:
         output, attention = model(model_input, training=False, return_attention=True)
-        output = tf.squeeze(output)
+        output = output[0]
+        attention = (attention[0][0], attention[1][0])
         #attention = tf.squeeze(attention)
     else:
-        output = tf.squeeze(model(model_input, training=False))
+        output = model(model_input, training=False)[0]
     if not return_df:
         if return_attention:
             return output, attention
