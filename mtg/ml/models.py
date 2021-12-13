@@ -120,8 +120,8 @@ class DraftBot(tf.Module):
         embs = pack_embeddings * tf.math.sqrt(self.emb_dim) + positional_embeddings
         # insert an embedding to represent bias towards cards/archetypes/concepts you have before the draft starts
         # --> this could range from "generic pick order of all cards" to "blue is the best color", etc etc
-        batch_bias = tf.tile(tf.expand_dims(self.initial_card_bias), [embs.shape[0],1,1])
-        batch_mask = tf.tile(tf.expand_dims(self.positional_mask), [embs.shape[0],1,1])
+        batch_bias = tf.tile(tf.expand_dims(self.initial_card_bias,0), [embs.shape[0],1,1])
+        batch_mask = tf.tile(tf.expand_dims(self.positional_mask,0), [embs.shape[0],1,1])
         embs = tf.concat([
             batch_bias,
             embs,
