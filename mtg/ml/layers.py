@@ -123,7 +123,7 @@ class MultiHeadAttention(tf.Module):
         x = tf.reshape(x, (batch_size, -1, self.num_heads, self.depth))
         return tf.transpose(x, perm=[0, 2, 1, 3])
 
-    @tf.function
+    #@tf.function
     def __call__(self, v, k, q, mask, training=None):
         batch_size = tf.shape(q)[0]
 
