@@ -52,7 +52,7 @@ def names_to_array(names, mapping):
     arr[unique] += counts
     return arr
 
-def draft_log_ai(draft_log_url, model, t=None, n_cards=None, idx_to_name=None, return_attention=False):
+def draft_log_ai(draft_log_url, model, t=None, n_cards=None, idx_to_name=None, return_attention=False, return_df=True):
     name_to_idx = {v:k for k,v in idx_to_name.items()}
     picks = get_draft_json(draft_log_url)['picks']
     n_picks_per_pack = t/3
@@ -80,10 +80,15 @@ def draft_log_ai(draft_log_url, model, t=None, n_cards=None, idx_to_name=None, r
     )
     if return_attention:
         output, attention = model(model_input, training=False, return_attention=True)
-        output = tf.squeeze(output)
+        output = tf.squeeze(output), attention
         #attention = tf.squeeze(attention)
     else:
         output = tf.squeeze(model(model_input, training=False))
+    if not return_df:
+        if return_attention:
+            return output, attention
+        else:
+            return output
     predictions = tf.math.top_k(output, k=3).indices.numpy()
     df = pd.DataFrame()
     df['predicted_pick'] = [idx_to_name[pred[0]] for pred in predictions]
@@ -97,8 +102,6 @@ def draft_log_ai(draft_log_url, model, t=None, n_cards=None, idx_to_name=None, r
         [idx for idx in df.index if idx % n_picks_per_pack >= n_picks_per_pack - 2]
     ] = ''
     df.index = [position_to_pxpy[idx] for idx in df.index]
-    if return_attention:
-        return df, attention
     return df
 
 def display_draft(df, cmap=None, pack=None):

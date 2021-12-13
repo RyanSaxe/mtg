@@ -46,10 +46,11 @@ class DraftBot(tf.Module):
         self.dropout = emb_dropout
         self.positional_embedding = Embedding(t, emb_dim, name="positional_embedding")
         self.positional_mask = 1 - tf.linalg.band_part(tf.ones((t, t)), -1, 0)
-        initializer=tf.initializers.GlorotNormal()
-        self.card_embeddings =  tf.Variable(initializer(shape=(self.n_cards, emb_dim)), dtype=tf.float32, name=self.name + "_embedding")
+        #initializer=tf.initializers.GlorotNormal()
+        self.card_embedding = Embedding(self.n_cards, emb_dim, name="positional_embedding")
+        # tf.Variable(initializer(shape=(self.n_cards, emb_dim)), dtype=tf.float32, name=self.name + "_embedding")
         self.encoder_layers = [
-            MemoryEmbedding(
+            TransformerBlock(
                 self.n_cards,
                 emb_dim,
                 num_heads,
@@ -61,7 +62,7 @@ class DraftBot(tf.Module):
         self.attention_decoder = attention_decoder
         if self.attention_decoder:
             self.decoder_layers = [
-                MemoryEmbedding(
+                TransformerBlock(
                     self.n_cards,
                     emb_dim,
                     num_heads,
@@ -72,6 +73,18 @@ class DraftBot(tf.Module):
                 )
                 for i in range(num_memory_layers)
             ]
+        else:
+            self.pool_pack_embedding = nn.MLP(
+                in_dim=self.n_cards * 2,
+                start_dim=self.n_cards,
+                out_dim=emb_dim,
+                n_h_layers=1,
+                name="pack_embedding",
+                start_act=None,
+                middle_act=None,
+                out_act=None,
+                style="bottleneck",
+            )
 
         self.output_decoder = nn.MLP(
             in_dim=emb_dim,
@@ -96,15 +109,17 @@ class DraftBot(tf.Module):
         positional_masks = tf.gather(self.positional_mask, positions)
         positional_embeddings = self.positional_embedding(positions, training=training)
         #old way: pack embedding = mean of card embeddings for only cards in the pack
-        pack_embeddings = tf.reduce_sum(packs[:,:,:,None] * self.card_embeddings[None,None,:,:], axis=2)/tf.reduce_sum(packs, axis=-1, keepdims=True)
-        #pack_embeddings = self.pool_pack_embedding(draft_info)
+        if self.attention_decoder:
+            pack_embeddings = tf.reduce_sum(packs[:,:,:,None] * self.card_embedding.embedding[None,None,:,:], axis=2)/tf.reduce_sum(packs, axis=-1, keepdims=True)
+        else:
+            pack_embeddings = self.pool_pack_embedding(draft_info)
         embs = pack_embeddings * tf.math.sqrt(self.emb_dim) + positional_embeddings
         if training and self.dropout > 0.0:
             embs = tf.nn.dropout(embs, rate=self.dropout)
         for memory_layer in self.encoder_layers:
             embs, attention_weights = memory_layer(embs, positional_masks, training=training) # (batch_size, t, emb_dim)
         if self.attention_decoder:
-            dec_embs = tf.gather(self.card_embeddings, picks)
+            dec_embs = self.card_embedding(picks)
             for memory_layer in self.decoder_layers:
                 dec_embs, attention_weights = memory_layer(dec_embs, positional_masks, encoder_output=embs, training=training) # (batch_size, t, emb_dim)
             embs = dec_embs
@@ -166,7 +181,7 @@ class DraftBot(tf.Module):
             }
             pickle.dump(attrs,f) 
 
-class MemoryEmbedding(tf.Module):
+class TransformerBlock(tf.Module):
     """
     self attention block for encorporating memory into the draft bot
     """
