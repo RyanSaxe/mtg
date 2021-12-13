@@ -52,7 +52,9 @@ def names_to_array(names, mapping):
     arr[unique] += counts
     return arr
 
-def draft_log_ai(draft_log_url, model, t=None, n_cards=None, idx_to_name=None, return_attention=False, return_df=True, batch_size=1, exchange_at=-1, exchange_picks=-1):
+def draft_log_ai(draft_log_url, model, t=None, n_cards=None, idx_to_name=None, return_attention=False, return_df=True, batch_size=1, exchange_picks=-1, exchange_packs=-1):
+    exchange_picks = [exchange_picks] if isinstance(exchange_picks, int) else exchange_picks
+    exchange_packs = [exchange_packs] if isinstance(exchange_packs, int) else exchange_packs
     name_to_idx = {v:k for k,v in idx_to_name.items()}
     picks = get_draft_json(draft_log_url)['picks']
     n_picks_per_pack = t/3
@@ -63,12 +65,12 @@ def draft_log_ai(draft_log_url, model, t=None, n_cards=None, idx_to_name=None, r
     actual_pick = []
     position_to_pxpy = dict()
     for pick in picks:
-        if pick['pick_number'] == exchange_at:
+        if pick['pick_number'] in exchange_picks:
             exchange = True
         else:
             exchange = False
         position = int(pick['pack_number'] * n_picks_per_pack + pick['pick_number'])
-        if exchange and exchange_picks == pick['pack_number']:
+        if exchange and pick['pack_number'] in exchange_packs:
             correct_pick_options = [x['name'].lower().split("//")[0].strip() for x in pick['available'] if x['name'] != pick['pick']['name']]
             correct_pick = np.random.choice(correct_pick_options)
             position_to_pxpy[position] = "P" + str(pick['pack_number'] + 1) + "P*" + str(pick['pick_number'] + 1)
