@@ -69,7 +69,6 @@ class DraftBot(tf.Module):
                     dropout=memory_dropout,
                     name=f"memory_decoder_{i}",
                     decode=True,
-                    first_decoder_flag=i==0,
                 )
                 for i in range(num_memory_layers)
             ]
@@ -185,7 +184,7 @@ class TransformerBlock(tf.Module):
     """
     self attention block for encorporating memory into the draft bot
     """
-    def __init__(self, n_cards, emb_dim, num_heads, dropout=0.0, decode=False, first_decoder_flag=False, name=None):
+    def __init__(self, n_cards, emb_dim, num_heads, dropout=0.0, decode=False, name=None):
         super().__init__(name=name)
         self.dropout = dropout
         self.decode = decode
@@ -195,19 +194,19 @@ class TransformerBlock(tf.Module):
         self.attention = MultiHeadAttention(emb_dim, emb_dim, num_heads, name=self.name + "_attention")
         self.expand_attention = Dense(emb_dim, n_cards, activation=tf.nn.relu, name=self.name + "_pointwise_in")
         self.compress_expansion = Dense(n_cards, emb_dim, activation=None, name=self.name + "_pointwise_out")
-        if not self.first_decoder_flag:           
-            self.attention_layer_norm = LayerNormalization(emb_dim, name=self.name + "_attention_norm")
         self.final_layer_norm = LayerNormalization(emb_dim, name=self.name + "_out_norm")
         if self.decode:
             self.decode_attention = MultiHeadAttention(emb_dim, emb_dim, num_heads, name=self.name + "_decode_attention")
             self.decode_layer_norm = LayerNormalization(emb_dim, name=self.name + "_decode_norm")
+        else:
+            self.attention_layer_norm = LayerNormalization(emb_dim, name=self.name + "_attention_norm")
     
     def pointwise_fnn(self, x, training=None):
         x = self.expand_attention(x, training=training)
         return self.compress_expansion(x, training=training)
 
     def __call__(self, x, mask, encoder_output=None, training=None):
-        if self.first_decoder_flag:
+        if self.decode:
             decoder_mask = mask + tf.eye(mask.shape[1], batch_shape=[mask.shape[0]])
             # x is the pick here, which means we are not allowed to look at it in order to make the prediction
             #     normally, we can look at the current time and everything before, but for the decoder we
@@ -217,7 +216,7 @@ class TransformerBlock(tf.Module):
             attention_emb, attention_weights = self.attention(x, x, x, mask, training=training)
         if training and self.dropout > 0:
             attention_emb = tf.nn.dropout(attention_emb, rate=self.dropout)
-        if self.first_decoder_flag:
+        if self.decode:
             # x is the pick here, which means adding a residual connection to it is leakage
             residual_emb_w_memory = attention_emb
         else:
