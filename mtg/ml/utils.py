@@ -33,8 +33,13 @@ def importance_weighting(df,minim=0.1,maxim=1.0):
     n_weeks = df['date'].apply(lambda x: (last - x).days // 7)
     #lower the value of pxp11 + 
     if "position" in df.columns:
-        n_picks_per_pack = (df['position'].max() + 1)/3
-        position_scale = df['position'].apply(lambda x: 1.0 if x % n_picks_per_pack <= 9 else 0.5)
+        pack_size = (df['position'].max() + 1)/3
+        pick_nums = df['position'] % pack_size + 1
+        # alpha default to this (~0.54) because it places highest
+        # importance in the beginning of the pack, but lower on PxP1
+        # to help reduce rare drafting. Nice property of PxP1 ~= PxP8
+        alpha = np.e/5.0
+        position_scale = pick_nums.apply(lambda x: (np.log(x) + 1)/np.power(x, alpha))
     else:
         position_scale = 1.0
     return position_scale * scaled_win_rate * np.clip(df['won'],a_min=0.5,a_max=1.0) * 0.9 ** n_weeks 

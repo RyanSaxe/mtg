@@ -150,7 +150,8 @@ class DraftGenerator(MTGDataGenerator):
         positions = self.position.loc[draft_ids].values.reshape(len(indices), self.t)
         draft_info = np.concatenate([packs, pools], axis=-1)
         if self.weights is not None:
-            weights = self.weights[indices]/self.weights[indices].sum()
+            weights = self.weights.loc[draft_ids].values.reshape(len(indices), self.t)
+            weights = weights/weights.groupby(level=0).sum()
         else:
             weights = None
         # convert to tensor needed for tf.function

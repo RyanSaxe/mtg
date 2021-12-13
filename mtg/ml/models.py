@@ -45,9 +45,7 @@ class DraftBot(tf.Module):
         self.emb_dim = tf.Variable(emb_dim, dtype=tf.float32, trainable=False, name="emb_dim")
         self.dropout = emb_dropout
         self.positional_embedding = Embedding(t, emb_dim, name="positional_embedding")
-        self.positional_mask = 1 - tf.linalg.band_part(tf.ones((t, t)), -1, 0)
-        #initializer=tf.initializers.GlorotNormal()
-        # tf.Variable(initializer(shape=(self.n_cards, emb_dim)), dtype=tf.float32, name=self.name + "_embedding")
+        self.positional_mask = 1 - tf.linalg.band_part(tf.ones((t + 1, t + 1)), -1, 0)
         self.encoder_layers = [
             TransformerBlock(
                 self.n_cards,
@@ -94,8 +92,15 @@ class DraftBot(tf.Module):
             name="output_decoder",
             start_act=tf.nn.selu,
             middle_act=tf.nn.selu,
-            out_act=tf.nn.relu,
+            out_act=tf.nn.softmax,
             style="reverse_bottleneck",
+        )
+
+        initializer=tf.initializers.GlorotNormal()
+        self.initial_card_bias = tf.Variable(
+            initializer(shape=(1, 1, self.n_cards)),
+            dtype=tf.float32,
+            name=self.name + "_initial_card_bias",
         )
 
 
@@ -105,7 +110,7 @@ class DraftBot(tf.Module):
         packs = draft_info[:, :, :self.n_cards]
         # pools = draft_info[:, :, self.n_cards:]
         # draft_info is of shape (batch_size, t, n_cards * 2)
-        positional_masks = tf.gather(self.positional_mask, positions)
+        #positional_masks = tf.gather(self.positional_mask, positions)
         positional_embeddings = self.positional_embedding(positions, training=training)
         #old way: pack embedding = mean of card embeddings for only cards in the pack
         # if self.attention_decoder:
@@ -113,15 +118,27 @@ class DraftBot(tf.Module):
         # else:
         pack_embeddings = self.pool_pack_embedding(draft_info)
         embs = pack_embeddings * tf.math.sqrt(self.emb_dim) + positional_embeddings
+        # insert an embedding to represent bias towards cards/archetypes/concepts you have before the draft starts
+        # --> this could range from "generic pick order of all cards" to "blue is the best color", etc etc
+        embs = tf.concat([
+            self.initial_card_bias,
+            embs,
+        ], axis=1)
         if training and self.dropout > 0.0:
             embs = tf.nn.dropout(embs, rate=self.dropout)
         for memory_layer in self.encoder_layers:
-            embs, attention_weights = memory_layer(embs, positional_masks, training=training) # (batch_size, t, emb_dim)
+            embs, attention_weights = memory_layer(embs, self.positional_mask, training=training) # (batch_size, t, emb_dim)
         if self.attention_decoder:
             dec_embs = self.card_embedding(picks)
+            dec_embs = tf.concat([
+                self.initial_card_bias,
+                dec_embs,
+            ], axis=1)
             for memory_layer in self.decoder_layers:
-                dec_embs, attention_weights = memory_layer(dec_embs, positional_masks, encoder_output=embs, training=training) # (batch_size, t, emb_dim)
+                dec_embs, attention_weights = memory_layer(dec_embs, self.positional_mask, encoder_output=embs, training=training) # (batch_size, t, emb_dim)
             embs = dec_embs
+        #get rid of output with respect to initial bias vector, as that is not part of prediction
+        embs = embs[:,1:,:]
         card_rankings = self.output_decoder(embs, training=training) # (batch_size, t, n_cards)
         # zero out the rankings for cards not in the pack
         # note1: this only works because no foils on arena means packs can never have 2x of a card
@@ -207,6 +224,9 @@ class TransformerBlock(tf.Module):
     def __call__(self, x, mask, encoder_output=None, training=None):
         if self.decode:
             decoder_mask = mask + tf.eye(mask.shape[1], batch_shape=[mask.shape[0]])
+            allow_self_attention_on_bias_embedding = np.ones_like(decoder_mask.numpy())
+            allow_self_attention_on_bias_embedding[:.0,0] = 0
+            decoder_mask = decoder_mask * allow_self_attention_on_bias_embedding
             # x is the pick here, which means we are not allowed to look at it in order to make the prediction
             #     normally, we can look at the current time and everything before, but for the decoder we
             #     are only allowed to look before it, which is what subtracting tf.eye accomplishes
@@ -226,7 +246,7 @@ class TransformerBlock(tf.Module):
                 encoder_output,
                 encoder_output,
                 residual_emb_w_memory,
-                decoder_mask,
+                mask,
                 training=training
             )
             if training and self.dropout > 0:
