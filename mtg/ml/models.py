@@ -188,7 +188,6 @@ class TransformerBlock(tf.Module):
         super().__init__(name=name)
         self.dropout = dropout
         self.decode = decode
-        self.first_decoder_flag = first_decoder_flag
         #kdim and dmodel are the same because the embedding dimension of the non-attended
         # embeddings are the same as the attention embeddings.
         self.attention = MultiHeadAttention(emb_dim, emb_dim, num_heads, name=self.name + "_attention")
