@@ -171,10 +171,11 @@ def plot_attention_head(attention, pxpy):
     ax.set_yticklabels(pxpy)
 
 def plot_attention_weights(attention_heads):
-  pxpy = ["BIAS"]
+  #pxpy = ["BIAS"]
+  pxpy = []
   seq_l = attention_heads.shape[-1]
-  n_picks = (seq_l - 1)/3
-  for i in range(seq_l - 1):
+  n_picks = (seq_l)/3
+  for i in range(seq_l):
       pack = i//n_picks + 1
       pick = (i % n_picks) + 1
       pxpy.append("P" + str(int(pack)) + "P" + str(int(pick)))
