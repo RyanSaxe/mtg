@@ -147,8 +147,8 @@ class DraftGenerator(MTGDataGenerator):
         draft_ids = self.draft_ids[indices]
         packs = self.pack_card.loc[draft_ids].values.reshape(len(indices), self.t, len(self.pack_card.columns))
         pools = self.pool.loc[draft_ids].values.reshape(len(indices), self.t, len(self.pack_card.columns))
-        picks = self.pick.loc[draft_ids].reshape(len(indices), self.t)
-        shifted_picks = self.shifted_pick.loc[draft_ids].reshape(len(indices), self.t)
+        picks = self.pick.loc[draft_ids].values.reshape(len(indices), self.t)
+        shifted_picks = self.shifted_pick.loc[draft_ids].values.reshape(len(indices), self.t)
         positions = self.position.loc[draft_ids].values.reshape(len(indices), self.t)
         draft_info = np.concatenate([packs, pools], axis=-1)
         if self.weights is not None:
