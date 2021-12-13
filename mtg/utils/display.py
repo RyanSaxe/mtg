@@ -80,7 +80,7 @@ def draft_log_ai(draft_log_url, model, t=None, n_cards=None, idx_to_name=None, r
     )
     if return_attention:
         output, attention = model(model_input, training=False, return_attention=True)
-        output = tf.squeeze(output), attention
+        output = tf.squeeze(output)
         #attention = tf.squeeze(attention)
     else:
         output = tf.squeeze(model(model_input, training=False))
