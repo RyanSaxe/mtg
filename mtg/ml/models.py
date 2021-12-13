@@ -98,7 +98,7 @@ class DraftBot(tf.Module):
 
         initializer=tf.initializers.GlorotNormal()
         self.initial_card_bias = tf.Variable(
-            initializer(shape=(1, 1, emb_dim)),
+            initializer(shape=(1, emb_dim)),
             dtype=tf.float32,
             name=self.name + "_initial_card_bias",
         )
@@ -120,15 +120,16 @@ class DraftBot(tf.Module):
         embs = pack_embeddings * tf.math.sqrt(self.emb_dim) + positional_embeddings
         # insert an embedding to represent bias towards cards/archetypes/concepts you have before the draft starts
         # --> this could range from "generic pick order of all cards" to "blue is the best color", etc etc
-        tile_bias = tf.tile(self.initial_card_bias, [embs.shape[0],1,1])
+        batch_bias = tf.tile(tf.expand_dims(self.initial_card_bias), [embs.shape[0],1,1])
+        batch_mask = tf.tile(tf.expand_dims(self.positional_mask), [embs.shape[0],1,1])
         embs = tf.concat([
-            tile_bias,
+            batch_bias,
             embs,
         ], axis=1)
         if training and self.dropout > 0.0:
             embs = tf.nn.dropout(embs, rate=self.dropout)
         for memory_layer in self.encoder_layers:
-            embs, attention_weights = memory_layer(embs, self.positional_mask, training=training) # (batch_size, t, emb_dim)
+            embs, attention_weights = memory_layer(embs, batch_mask, training=training) # (batch_size, t, emb_dim)
         if self.attention_decoder:
             dec_embs = self.card_embedding(picks)
             dec_embs = tf.concat([
@@ -136,7 +137,7 @@ class DraftBot(tf.Module):
                 dec_embs,
             ], axis=1)
             for memory_layer in self.decoder_layers:
-                dec_embs, attention_weights = memory_layer(dec_embs, self.positional_mask, encoder_output=embs, training=training) # (batch_size, t, emb_dim)
+                dec_embs, attention_weights = memory_layer(dec_embs, batch_mask, encoder_output=embs, training=training) # (batch_size, t, emb_dim)
             embs = dec_embs
         #get rid of output with respect to initial bias vector, as that is not part of prediction
         embs = embs[:,1:,:]
