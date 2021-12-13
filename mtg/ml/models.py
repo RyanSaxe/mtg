@@ -47,7 +47,6 @@ class DraftBot(tf.Module):
         self.positional_embedding = Embedding(t, emb_dim, name="positional_embedding")
         self.positional_mask = 1 - tf.linalg.band_part(tf.ones((t, t)), -1, 0)
         #initializer=tf.initializers.GlorotNormal()
-        self.card_embedding = Embedding(self.n_cards, emb_dim, name="positional_embedding")
         # tf.Variable(initializer(shape=(self.n_cards, emb_dim)), dtype=tf.float32, name=self.name + "_embedding")
         self.encoder_layers = [
             TransformerBlock(
@@ -61,6 +60,7 @@ class DraftBot(tf.Module):
         ]
         self.attention_decoder = attention_decoder
         if self.attention_decoder:
+            self.card_embedding = Embedding(self.n_cards, emb_dim, name="card_embedding")
             self.decoder_layers = [
                 TransformerBlock(
                     self.n_cards,
