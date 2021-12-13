@@ -52,14 +52,14 @@ def names_to_array(names, mapping):
     arr[unique] += counts
     return arr
 
-def draft_log_ai(draft_log_url, model, t=None, n_cards=None, idx_to_name=None, return_attention=False, return_df=True):
+def draft_log_ai(draft_log_url, model, t=None, n_cards=None, idx_to_name=None, return_attention=False, return_df=True, batch_size=1):
     name_to_idx = {v:k for k,v in idx_to_name.items()}
     picks = get_draft_json(draft_log_url)['picks']
     n_picks_per_pack = t/3
     n_cards = len(name_to_idx)
     pool = np.zeros(n_cards)
-    draft_info = np.zeros((1, t, n_cards * 2))
-    positions = np.expand_dims(np.arange(t, dtype=np.int32),0)
+    draft_info = np.zeros((batch_size, t, n_cards * 2))
+    positions = np.tile(np.expand_dims(np.arange(42, dtype=np.int32),0),32).reshape(batch_size,42)
     actual_pick = []
     position_to_pxpy = dict()
     for pick in picks:
@@ -72,7 +72,7 @@ def draft_log_ai(draft_log_url, model, t=None, n_cards=None, idx_to_name=None, r
         draft_info[0, position, n_cards:] = pool
         pool[pick_idx] += 1
         actual_pick.append(correct_pick)
-    np_pick = np.expand_dims(np.asarray([name_to_idx[name] for name in actual_pick]), 0)
+    np_pick = np.tile(np.expand_dims(np.asarray([name_to_idx[name] for name in actual_pick]), 0),batch_size).reshape(batch_size,42)
     model_input = (
         tf.convert_to_tensor(draft_info, dtype=tf.float32),
         tf.convert_to_tensor(np_pick, dtype=tf.int32),
@@ -102,6 +102,8 @@ def draft_log_ai(draft_log_url, model, t=None, n_cards=None, idx_to_name=None, r
         [idx for idx in df.index if idx % n_picks_per_pack >= n_picks_per_pack - 2]
     ] = ''
     df.index = [position_to_pxpy[idx] for idx in df.index]
+    if return_attention:
+        return df, attention
     return df
 
 def display_draft(df, cmap=None, pack=None):
