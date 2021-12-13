@@ -112,7 +112,7 @@ class DraftBot(tf.Module):
         packs = draft_info[:, :, :self.n_cards]
         # pools = draft_info[:, :, self.n_cards:]
         # draft_info is of shape (batch_size, t, n_cards * 2)
-        #positional_masks = tf.gather(self.positional_mask, positions)
+        positional_masks = tf.gather(self.positional_mask, positions)
         positional_embeddings = self.positional_embedding(positions, training=training)
         #old way: pack embedding = mean of card embeddings for only cards in the pack
         # if self.attention_decoder:
@@ -131,7 +131,7 @@ class DraftBot(tf.Module):
         if training and self.dropout > 0.0:
             embs = tf.nn.dropout(embs, rate=self.dropout)
         for memory_layer in self.encoder_layers:
-            embs, attention_weights = memory_layer(embs, self.positional_mask, training=training) # (batch_size, t, emb_dim)
+            embs, attention_weights = memory_layer(embs, positional_masks, training=training) # (batch_size, t, emb_dim)
         if self.attention_decoder:
             dec_embs = self.card_embedding(picks)
             # dec_embs = tf.concat([
@@ -139,7 +139,7 @@ class DraftBot(tf.Module):
             #     dec_embs,
             # ], axis=1)
             for memory_layer in self.decoder_layers:
-                dec_embs, attention_weights = memory_layer(dec_embs, self.positional_mask, encoder_output=embs, training=training) # (batch_size, t, emb_dim)
+                dec_embs, attention_weights = memory_layer(dec_embs, positional_masks, encoder_output=embs, training=training) # (batch_size, t, emb_dim)
             embs = dec_embs
         #get rid of output with respect to initial bias vector, as that is not part of prediction
         #embs = embs[:,1:,:]
