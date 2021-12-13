@@ -227,7 +227,7 @@ class TransformerBlock(tf.Module):
         if self.decode:
             decoder_mask = mask + tf.eye(mask.shape[1], batch_shape=[mask.shape[0]])
             allow_self_attention_on_bias_embedding = np.ones_like(decoder_mask.numpy())
-            allow_self_attention_on_bias_embedding[:.0,0] = 0
+            allow_self_attention_on_bias_embedding[:,0,0] = 0
             decoder_mask = decoder_mask * allow_self_attention_on_bias_embedding
             # x is the pick here, which means we are not allowed to look at it in order to make the prediction
             #     normally, we can look at the current time and everything before, but for the decoder we
