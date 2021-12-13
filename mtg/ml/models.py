@@ -74,7 +74,7 @@ class DraftBot(tf.Module):
             ]
         # else:
         self.pool_pack_embedding = nn.MLP(
-            in_dim=self.n_cards * 2,
+            in_dim=self.n_cards,
             start_dim=self.n_cards,
             out_dim=emb_dim,
             n_h_layers=1,
@@ -118,7 +118,7 @@ class DraftBot(tf.Module):
         # if self.attention_decoder:
         #     pack_embeddings = tf.reduce_sum(packs[:,:,:,None] * self.card_embedding.embedding[None,None,:,:], axis=2)/tf.reduce_sum(packs, axis=-1, keepdims=True)
         # else:
-        pack_embeddings = self.pool_pack_embedding(draft_info)
+        pack_embeddings = self.pool_pack_embedding(packs)
         embs = pack_embeddings * tf.math.sqrt(self.emb_dim) + positional_embeddings
         # insert an embedding to represent bias towards cards/archetypes/concepts you have before the draft starts
         # --> this could range from "generic pick order of all cards" to "blue is the best color", etc etc
