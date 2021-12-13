@@ -104,7 +104,7 @@ class DraftBot(tf.Module):
         )
 
 
-    #@tf.function
+    @tf.function
     def __call__(self, features, training=None, return_attention=False):
         draft_info, picks, positions = features
         packs = draft_info[:, :, :self.n_cards]
@@ -334,7 +334,7 @@ class DeckBuilder(tf.Module):
         shape = pool_embs.shape
         return tf.reshape(pool_embs, [shape[0], shape[1] * shape[2]])
 
-    #@tf.function
+    @tf.function
     def __call__(self, decks, training=None):
         basics = decks[:,:5]
         pools = decks[:,5:] 
