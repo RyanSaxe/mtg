@@ -133,7 +133,7 @@ class DraftBot(tf.Module):
         if self.attention_decoder:
             dec_embs = self.card_embedding(picks)
             dec_embs = tf.concat([
-                self.initial_card_bias,
+                batch_bias,
                 dec_embs,
             ], axis=1)
             for memory_layer in self.decoder_layers:
