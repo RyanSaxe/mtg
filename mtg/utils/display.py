@@ -52,7 +52,7 @@ def names_to_array(names, mapping):
     arr[unique] += counts
     return arr
 
-def draft_log_ai(draft_log_url, model, t=None, n_cards=None, idx_to_name=None, return_attention=False, return_df=True, batch_size=1, exchange_picks=-1, exchange_packs=-1):
+def draft_log_ai(draft_log_url, model, t=None, n_cards=None, idx_to_name=None, return_attention=False, return_df=True, batch_size=1, exchange_picks=-1, exchange_packs=-1, return_model_input=False):
     exchange_picks = [exchange_picks] if isinstance(exchange_picks, int) else exchange_picks
     exchange_packs = [exchange_packs] if isinstance(exchange_packs, int) else exchange_packs
     name_to_idx = {v:k for k,v in idx_to_name.items()}
@@ -90,6 +90,8 @@ def draft_log_ai(draft_log_url, model, t=None, n_cards=None, idx_to_name=None, r
         tf.convert_to_tensor(np_pick, dtype=tf.int32),
         tf.convert_to_tensor(positions, dtype=tf.int32)
     )
+    if return_model_input:
+        return model_input
     # we get the first element in anything we return to handle the case where the model couldn't properly serialize
     # and we hence need to copy the data to be the same shape as the batch size in order to run a stored model
     if return_attention:
