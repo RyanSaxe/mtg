@@ -46,20 +46,8 @@ class DraftBot(tf.Module):
         self.dropout = emb_dropout
         self.positional_embedding = Embedding(t, emb_dim, name="positional_embedding")
         self.positional_mask = 1 - tf.linalg.band_part(tf.ones((t, t)), -1, 0)
-        #MLP where the first hidden layer is of
-        # the same size of the input layer to conceptually
-        # cover all card x card interactions
-        # self.pool_pack_embedding = nn.MLP(
-        #     in_dim=self.n_cards * 2,
-        #     start_dim=self.n_cards,
-        #     out_dim=emb_dim,
-        #     n_h_layers=1,
-        #     name="pack_embedding",
-        #     start_act=None,
-        #     middle_act=None,
-        #     out_act=None,
-        #     style="bottleneck",
-        # )
+        initializer=tf.initializers.GlorotNormal()
+        self.card_embeddings =  tf.Variable(initializer(shape=(self.n_cards, emb_dim)), dtype=tf.float32, name=self.name + "_embedding")
         self.encoder_layers = [
             MemoryEmbedding(
                 self.n_cards,
@@ -72,8 +60,6 @@ class DraftBot(tf.Module):
         ]
         self.attention_decoder = attention_decoder
         if self.attention_decoder:
-            initializer=tf.initializers.GlorotNormal()
-            self.card_embeddings =  tf.Variable(initializer(shape=(self.n_cards, emb_dim)), dtype=tf.float32, name=self.name + "_embedding")
             self.decoder_layers = [
                 MemoryEmbedding(
                     self.n_cards,
