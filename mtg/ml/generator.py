@@ -140,13 +140,15 @@ class DraftGenerator(MTGDataGenerator):
             self.weights = None
         name_to_idx_mapping = {k.split("//")[0].strip().lower():v for k,v in self.cards.set_index('name')['idx'].to_dict().items()}
         self.pick = data['pick'].apply(lambda x: name_to_idx_mapping[x])
+        self.shifted_pick = self.pick.groupby(level=0).shift(1).fillna(self.n_cards)
         self.position = data['pack_number'] * (data['pick_number'].max() + 1) + data['pick_number']
 
     def generate_data(self, indices):
         draft_ids = self.draft_ids[indices]
         packs = self.pack_card.loc[draft_ids].values.reshape(len(indices), self.t, len(self.pack_card.columns))
         pools = self.pool.loc[draft_ids].values.reshape(len(indices), self.t, len(self.pack_card.columns))
-        picks = self.pick.loc[draft_ids].values.reshape(len(indices), self.t)
+        picks = self.pick.loc[draft_ids].reshape(len(indices), self.t)
+        shifted_picks = self.shifted_pick.loc[draft_ids].reshape(len(indices), self.t)
         positions = self.position.loc[draft_ids].values.reshape(len(indices), self.t)
         draft_info = np.concatenate([packs, pools], axis=-1)
         if self.weights is not None:
@@ -157,7 +159,8 @@ class DraftGenerator(MTGDataGenerator):
         draft_info = tf.convert_to_tensor(draft_info.astype(np.float32), dtype=tf.float32)
         positions = tf.convert_to_tensor(positions.astype(np.int32), dtype=tf.int32)
         picks = tf.convert_to_tensor(picks.astype(np.float32), dtype=tf.int32)
-        return (draft_info, picks, positions), picks, weights
+        shifted_picks = tf.convert_to_tensor(shifted_picks.astype(np.float32), dtype=tf.int32)
+        return (draft_info, shifted_picks, positions), picks, weights
 
 class DeckGenerator(MTGDataGenerator):
     def __init__(

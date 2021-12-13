@@ -45,7 +45,7 @@ class DraftBot(tf.Module):
         self.emb_dim = tf.Variable(emb_dim, dtype=tf.float32, trainable=False, name="emb_dim")
         self.dropout = emb_dropout
         self.positional_embedding = Embedding(t, emb_dim, name="positional_embedding")
-        self.positional_mask = 1 - tf.linalg.band_part(tf.ones((t + 1, t + 1)), -1, 0)
+        self.positional_mask = 1 - tf.linalg.band_part(tf.ones((t, t)), -1, 0)
         self.encoder_layers = [
             TransformerBlock(
                 self.n_cards,
@@ -58,7 +58,9 @@ class DraftBot(tf.Module):
         ]
         self.attention_decoder = attention_decoder
         if self.attention_decoder:
-            self.card_embedding = Embedding(self.n_cards, emb_dim, name="card_embedding")
+            # extra embedding as representation of bias before the draft starts. This is grabbed as the
+            # representation for the "previous pick" that goes into the decoder for P1P1
+            self.card_embedding = Embedding(self.n_cards + 1, emb_dim, name="card_embedding")
             self.decoder_layers = [
                 TransformerBlock(
                     self.n_cards,
@@ -96,12 +98,12 @@ class DraftBot(tf.Module):
             style="reverse_bottleneck",
         )
 
-        initializer=tf.initializers.GlorotNormal()
-        self.initial_card_bias = tf.Variable(
-            initializer(shape=(1, emb_dim)),
-            dtype=tf.float32,
-            name=self.name + "_initial_card_bias",
-        )
+        # initializer=tf.initializers.GlorotNormal()
+        # self.initial_card_bias = tf.Variable(
+        #     initializer(shape=(1, emb_dim)),
+        #     dtype=tf.float32,
+        #     name=self.name + "_initial_card_bias",
+        # )
 
 
     @tf.function
@@ -120,27 +122,27 @@ class DraftBot(tf.Module):
         embs = pack_embeddings * tf.math.sqrt(self.emb_dim) + positional_embeddings
         # insert an embedding to represent bias towards cards/archetypes/concepts you have before the draft starts
         # --> this could range from "generic pick order of all cards" to "blue is the best color", etc etc
-        batch_bias = tf.tile(tf.expand_dims(self.initial_card_bias,0), [embs.shape[0],1,1])
-        batch_mask = tf.tile(tf.expand_dims(self.positional_mask,0), [embs.shape[0],1,1])
-        embs = tf.concat([
-            batch_bias,
-            embs,
-        ], axis=1)
+        # batch_bias = tf.tile(tf.expand_dims(self.initial_card_bias,0), [embs.shape[0],1,1])
+        # batch_mask = tf.tile(tf.expand_dims(self.positional_mask,0), [embs.shape[0],1,1])
+        # embs = tf.concat([
+        #     batch_bias,
+        #     embs,
+        # ], axis=1)
         if training and self.dropout > 0.0:
             embs = tf.nn.dropout(embs, rate=self.dropout)
         for memory_layer in self.encoder_layers:
-            embs, attention_weights = memory_layer(embs, batch_mask, training=training) # (batch_size, t, emb_dim)
+            embs, attention_weights = memory_layer(embs, self.positional_mask, training=training) # (batch_size, t, emb_dim)
         if self.attention_decoder:
             dec_embs = self.card_embedding(picks)
-            dec_embs = tf.concat([
-                batch_bias,
-                dec_embs,
-            ], axis=1)
+            # dec_embs = tf.concat([
+            #     batch_bias,
+            #     dec_embs,
+            # ], axis=1)
             for memory_layer in self.decoder_layers:
-                dec_embs, attention_weights = memory_layer(dec_embs, batch_mask, encoder_output=embs, training=training) # (batch_size, t, emb_dim)
+                dec_embs, attention_weights = memory_layer(dec_embs, self.positional_mask, encoder_output=embs, training=training) # (batch_size, t, emb_dim)
             embs = dec_embs
         #get rid of output with respect to initial bias vector, as that is not part of prediction
-        embs = embs[:,1:,:]
+        #embs = embs[:,1:,:]
         card_rankings = self.output_decoder(embs, training=training) # (batch_size, t, n_cards)
         # zero out the rankings for cards not in the pack
         # note1: this only works because no foils on arena means packs can never have 2x of a card
@@ -213,42 +215,27 @@ class TransformerBlock(tf.Module):
         self.expand_attention = Dense(emb_dim, n_cards, activation=tf.nn.relu, name=self.name + "_pointwise_in")
         self.compress_expansion = Dense(n_cards, emb_dim, activation=None, name=self.name + "_pointwise_out")
         self.final_layer_norm = LayerNormalization(emb_dim, name=self.name + "_out_norm")
+        self.attention_layer_norm = LayerNormalization(emb_dim, name=self.name + "_attention_norm")
         if self.decode:
             self.decode_attention = MultiHeadAttention(emb_dim, emb_dim, num_heads, name=self.name + "_decode_attention")
-            self.decode_layer_norm = LayerNormalization(emb_dim, name=self.name + "_decode_norm")
-        else:
-            self.attention_layer_norm = LayerNormalization(emb_dim, name=self.name + "_attention_norm")
+            self.decode_layer_norm = LayerNormalization(emb_dim, name=self.name + "_decode_norm")            
     
     def pointwise_fnn(self, x, training=None):
         x = self.expand_attention(x, training=training)
         return self.compress_expansion(x, training=training)
 
     def __call__(self, x, mask, encoder_output=None, training=None):
-        if self.decode:
-            decoder_mask = mask + tf.eye(mask.shape[1], batch_shape=[mask.shape[0]])
-            allow_self_attention_on_bias_embedding = np.ones(decoder_mask.shape)
-            allow_self_attention_on_bias_embedding[:,0,0] = 0
-            decoder_mask = decoder_mask * allow_self_attention_on_bias_embedding
-            # x is the pick here, which means we are not allowed to look at it in order to make the prediction
-            #     normally, we can look at the current time and everything before, but for the decoder we
-            #     are only allowed to look before it, which is what subtracting tf.eye accomplishes
-            attention_emb, attention_weights = self.attention(x, x, x, decoder_mask, training=training)
-        else:
-            attention_emb, attention_weights = self.attention(x, x, x, mask, training=training)
+        attention_emb, attention_weights = self.attention(x, x, x, mask, training=training)
         if training and self.dropout > 0:
             attention_emb = tf.nn.dropout(attention_emb, rate=self.dropout)
-        if self.decode:
-            # x is the pick here, which means adding a residual connection to it is leakage
-            residual_emb_w_memory = attention_emb
-        else:
-            residual_emb_w_memory = self.attention_layer_norm(x + attention_emb, training=training)
+        residual_emb_w_memory = self.attention_layer_norm(x + attention_emb, training=training)
         if self.decode:
             assert encoder_output is not None
             decode_attention_emb, decode_attention_weights = self.decode_attention(
                 encoder_output,
                 encoder_output,
                 residual_emb_w_memory,
-                decoder_mask,
+                mask,
                 training=training
             )
             if training and self.dropout > 0:
