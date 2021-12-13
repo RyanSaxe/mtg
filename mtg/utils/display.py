@@ -52,7 +52,7 @@ def names_to_array(names, mapping):
     arr[unique] += counts
     return arr
 
-def draft_log_ai(draft_log_url, model, t=None, n_cards=None, idx_to_name=None, return_attention=False, return_df=True, batch_size=1, exchange_at=-1):
+def draft_log_ai(draft_log_url, model, t=None, n_cards=None, idx_to_name=None, return_attention=False, return_df=True, batch_size=1, exchange_at=-1, exchange_picks=-1):
     name_to_idx = {v:k for k,v in idx_to_name.items()}
     picks = get_draft_json(draft_log_url)['picks']
     n_picks_per_pack = t/3
@@ -68,7 +68,7 @@ def draft_log_ai(draft_log_url, model, t=None, n_cards=None, idx_to_name=None, r
         else:
             exchange = False
         position = int(pick['pack_number'] * n_picks_per_pack + pick['pick_number'])
-        if exchange:
+        if exchange and exchange_picks == pick['pack_number']:
             correct_pick_options = [x['name'].lower().split("//")[0].strip() for x in pick['available'] if x['name'] != pick['pick']['name']]
             correct_pick = np.random.choice(correct_pick_options)
             position_to_pxpy[position] = "P" + str(pick['pack_number'] + 1) + "P*" + str(pick['pick_number'] + 1)
@@ -169,16 +169,19 @@ def plot_attention_head(attention, pxpy):
     ax.set_yticklabels(pxpy)
 
 def plot_attention_weights(attention_heads):
-  pxpy = []
+  pxpy = ["BIAS"]
   seq_l = attention_heads.shape[-1]
-  for i in range(seq_l):
-      pack = i//(seq_l/3) + 1
-      pick = (i % (seq_l/3)) + 1
-      pxpy.append("P" + str(pack) + "P" + str(pick))
+  n_picks = (seq_l - 1)/3
+  for i in range(seq_l - 1):
+      pack = i//n_picks + 1
+      pick = (i % n_picks) + 1
+      pxpy.append("P" + str(int(pack)) + "P" + str(int(pick)))
 
   for h, head in enumerate(attention_heads):
     fig = plt.figure(figsize=(10,30))
     plot_attention_head(head, pxpy)
+    plt.scatter(range(seq_l),range(seq_l), color="red")
+    plt.grid()
     plt.title(f'Head {h+1}')
     plt.tight_layout()
     plt.show()
