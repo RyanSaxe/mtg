@@ -91,8 +91,8 @@ def draft_log_ai(draft_log_url, model, t=None, n_cards=None, idx_to_name=None, r
     for pick in picks:
         arena_ids_in_pack, arena_id_mapping = names_to_arena_ids(pick['available'], mapping=arena_id_mapping, return_mapping=True)
         pick_js = {
-            "pack_number":pick['pick_number'],
-            "pack_number":pick['pick_number'],
+            "pack_number":pick['pack_number'],
+            "pick_number":pick['pick_number'],
             "pack_cards": arena_ids_in_pack,
             "pick":-1
         }
