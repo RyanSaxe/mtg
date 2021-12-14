@@ -213,7 +213,7 @@ class TransformerBlock(tf.Module):
         # embeddings are the same as the attention embeddings.
         self.attention = MultiHeadAttention(emb_dim, emb_dim, num_heads, name=self.name + "_attention")
         self.expand_attention = Dense(emb_dim, emb_dim * 4, activation=tf.nn.relu, name=self.name + "_pointwise_in")
-        self.compress_expansion = Dense(n_cards, emb_dim, activation=None, name=self.name + "_pointwise_out")
+        self.compress_expansion = Dense(emb_dim * 4, emb_dim, activation=None, name=self.name + "_pointwise_out")
         self.final_layer_norm = LayerNormalization(emb_dim, name=self.name + "_out_norm")
         self.attention_layer_norm = LayerNormalization(emb_dim, name=self.name + "_attention_norm")
         if self.decode:
