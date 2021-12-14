@@ -58,7 +58,7 @@ class DraftBot(tf.Module):
         ]
         # extra embedding as representation of bias before the draft starts. This is grabbed as the
         # representation for the "previous pick" that goes into the decoder for P1P1
-        self.card_embedding = Embedding(self.n_cards + 1, emb_dim, name="card_embedding")
+        self.card_embedding = Embedding(self.n_cards + 1, emb_dim, name="card_embedding", activation=None)
         self.attention_decoder = attention_decoder
         if self.attention_decoder:
             self.decoder_layers = [
@@ -118,7 +118,8 @@ class DraftBot(tf.Module):
         #batch_size x t x n_cards x emb_dim
         pack_card_embeddings = packs[:,:,:,None] * self.card_embedding(tf.range(self.n_cards))[None,None,:,:]
         if self.attention_decoder:
-            pack_embeddings = tf.reduce_sum(pack_card_embeddings, axis=2)/tf.reduce_sum(packs, axis=-1, keepdims=True)
+            n_options = tf.reduce_sum(packs, axis=-1, keepdims=True)
+            pack_embeddings = tf.reduce_sum(pack_card_embeddings, axis=2)/n_options
         else:
             pack_embeddings = self.pool_pack_embedding(draft_info)
         embs = pack_embeddings * tf.math.sqrt(self.emb_dim) + positional_embeddings
@@ -148,9 +149,11 @@ class DraftBot(tf.Module):
         #    pack_card_embeddings
         #batch_size x t x emb_dim
         #    embs
-        emb_dists = tf.sqrt(tf.reduce_sum(tf.square(pack_card_embeddings - embs[:,:,None,:]), -1)) * packs + 1e-9 * packs
+        emb_dists = tf.sqrt(tf.reduce_sum(tf.square(pack_card_embeddings - embs[:,:,None,:]), -1)) * packs
         mask_for_softmax = -1 * (emb_dists + 1e9 * (1 - packs))
         output = tf.nn.softmax(mask_for_softmax)
+        if training:
+            output = (output, emb_dists)
         #get rid of output with respect to initial bias vector, as that is not part of prediction
         #embs = embs[:,1:,:]
         # card_rankings = self.output_decoder(embs, training=training) # (batch_size, t, n_cards)
@@ -177,8 +180,8 @@ class DraftBot(tf.Module):
         self,
         optimizer=None,
         learning_rate=0.001,
-        margin=0.1,
-        emb_lambda=1.0,
+        margin=5.0,
+        emb_lambda=0.1,
         pred_lambda=1.0,
     ):
         if optimizer is None:
@@ -196,12 +199,14 @@ class DraftBot(tf.Module):
         self.pred_lambda = pred_lambda
 
     def loss(self, true, pred, sample_weight=None, store=True):
+        pred, emb_dists = pred
         self.prediction_loss = self.loss_f(true, pred, sample_weight=sample_weight)
         correct_one_hot = tf.one_hot(true, self.n_cards)
-        pred_without_correct = pred * (1 - correct_one_hot)
-        prediction_of_correct = tf.reduce_sum(pred * correct_one_hot, axis=-1, keepdims=True)
-        probabilistic_distance = pred_without_correct - prediction_of_correct
-        self.embedding_loss = tf.reduce_sum(tf.maximum(probabilistic_distance + self.margin, 0.), axis=-1)
+        dist_of_not_correct = emb_dists * (1 - correct_one_hot)
+        dist_of_correct = tf.reduce_sum(emb_dists * correct_one_hot, axis=-1, keepdims=True)
+        dist_loss = dist_of_not_correct - dist_of_correct
+        sample_weight = 1 if sample_weight is None else sample_weight
+        self.embedding_loss = tf.reduce_sum(tf.maximum(dist_loss + self.margin, 0.), axis=-1) * sample_weight
         return self.pred_lambda * self.prediction_loss + self.emb_lambda * self.embedding_loss
 
     def compute_metrics(self, true, pred, sample_weight=None):

@@ -187,9 +187,13 @@ class MultiHeadAttention(tf.Module):
         return output, attention_weights
 
 class Embedding(tf.Module):
-    def __init__(self, num_items, emb_dim, initializer=tf.initializers.GlorotNormal(), name=None):
+    def __init__(self, num_items, emb_dim, initializer=tf.initializers.GlorotNormal(), name=None, activation=None,):
         super().__init__(name=name)
         self.embedding = tf.Variable(initializer(shape=(num_items, emb_dim)), dtype=tf.float32, name=self.name + "_embedding")
+        self.activation = activation
 
     def __call__(self, x, training=None):
-        return tf.gather(self.embedding, x)
+        embeddings = tf.gather(self.embedding, x)
+        if self.activation is not None:
+            embeddings = self.activation(embeddings)
+        return embeddings
