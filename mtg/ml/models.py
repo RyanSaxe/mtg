@@ -72,18 +72,18 @@ class DraftBot(tf.Module):
                 )
                 for i in range(num_memory_layers)
             ]
-        # else:
-        self.pool_pack_embedding = nn.MLP(
-            in_dim=self.n_cards,
-            start_dim=self.n_cards,
-            out_dim=emb_dim,
-            n_h_layers=1,
-            name="pack_embedding",
-            start_act=None,
-            middle_act=None,
-            out_act=None,
-            style="bottleneck",
-        )
+        else:
+            self.pool_pack_embedding = nn.MLP(
+                in_dim=self.n_cards * 2,
+                start_dim=self.n_cards,
+                out_dim=emb_dim,
+                n_h_layers=1,
+                name="pack_embedding",
+                start_act=None,
+                middle_act=None,
+                out_act=None,
+                style="bottleneck",
+            )
 
         self.output_decoder = nn.MLP(
             in_dim=emb_dim,
@@ -115,10 +115,10 @@ class DraftBot(tf.Module):
         positional_masks = tf.gather(self.positional_mask, positions)
         positional_embeddings = self.positional_embedding(positions, training=training)
         #old way: pack embedding = mean of card embeddings for only cards in the pack
-        # if self.attention_decoder:
-        #     pack_embeddings = tf.reduce_sum(packs[:,:,:,None] * self.card_embedding.embedding[None,None,:,:], axis=2)/tf.reduce_sum(packs, axis=-1, keepdims=True)
-        # else:
-        pack_embeddings = self.pool_pack_embedding(packs)
+        if self.attention_decoder:
+            pack_embeddings = tf.reduce_sum(packs[:,:,:,None] * self.card_embedding.embedding[None,None,:,:], axis=2)/tf.reduce_sum(packs, axis=-1, keepdims=True)
+        else:
+            pack_embeddings = self.pool_pack_embedding(draft_info)
         embs = pack_embeddings * tf.math.sqrt(self.emb_dim) + positional_embeddings
         # insert an embedding to represent bias towards cards/archetypes/concepts you have before the draft starts
         # --> this could range from "generic pick order of all cards" to "blue is the best color", etc etc
