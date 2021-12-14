@@ -201,7 +201,7 @@ class DraftBot(tf.Module):
         pred_without_correct = pred * (1 - correct_one_hot)
         prediction_of_correct = tf.reduce_sum(pred * correct_one_hot, axis=-1, keepdims=True)
         probabilistic_distance = pred_without_correct - prediction_of_correct
-        self.embedding_loss = tf.maximum(probabilistic_distance + self.margin, 0.)
+        self.embedding_loss = tf.reduce_sum(tf.maximum(probabilistic_distance + self.margin, 0.), axis=-1)
         return self.pred_lambda * self.prediction_loss + self.emb_lambda * self.embedding_loss
 
     def compute_metrics(self, true, pred, sample_weight=None):
