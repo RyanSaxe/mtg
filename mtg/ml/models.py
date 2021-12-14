@@ -116,7 +116,7 @@ class DraftBot(tf.Module):
         positional_embeddings = self.positional_embedding(positions, training=training)
         #old way: pack embedding = mean of card embeddings for only cards in the pack
         if self.attention_decoder:
-            pack_embeddings = tf.reduce_sum(packs[:,:,:,None] * self.card_embedding.embedding[None,None,:,:], axis=2)/tf.reduce_sum(packs, axis=-1, keepdims=True)
+            pack_embeddings = tf.reduce_sum(packs[:,:,:,None] * self.card_embedding.embedding[None,None,:-1,:], axis=2)/tf.reduce_sum(packs, axis=-1, keepdims=True)
         else:
             pack_embeddings = self.pool_pack_embedding(draft_info)
         embs = pack_embeddings * tf.math.sqrt(self.emb_dim) + positional_embeddings
