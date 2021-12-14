@@ -1,4 +1,3 @@
-import json
 import tensorflow as tf
 import requests
 import numpy as np
@@ -6,6 +5,7 @@ import pandas as pd
 from matplotlib import colors
 from matplotlib.colors import LinearSegmentedColormap
 import matplotlib.pyplot as plt
+import warnings
 
 def print_deck(deck, cards, sort_by="name", return_str=False):
     cards = cards.sort_values(by=sort_by)
@@ -70,7 +70,7 @@ def names_to_arena_ids(names, expansion='VOW', mapping=None, return_mapping=Fals
         output = (output, mapping)
     return output
 
-def draft_log_ai(draft_log_url, model, t=None, n_cards=None, idx_to_name=None, return_attention=False, return_style='df', batch_size=1, exchange_picks=-1, exchange_packs=-1, return_model_input=False):
+def draft_log_ai(draft_log_url, model, t=None, n_cards=None, idx_to_name=None, return_attention=False, return_style='df', batch_size=1, exchange_picks=-1, exchange_packs=-1, return_model_input=False, token=""):
     exchange_picks = [exchange_picks] if isinstance(exchange_picks, int) else exchange_picks
     exchange_packs = [exchange_packs] if isinstance(exchange_packs, int) else exchange_packs
     name_to_idx = {v:k for k,v in idx_to_name.items()}
@@ -84,7 +84,7 @@ def draft_log_ai(draft_log_url, model, t=None, n_cards=None, idx_to_name=None, r
     position_to_pxpy = dict()
     js = {
         "expansion":"VOW",
-        "token":"abc",
+        "token":f"{token}",
         "picks":[]
     }
     arena_id_mapping = None
