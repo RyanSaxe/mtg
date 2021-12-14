@@ -161,11 +161,11 @@ def draft_log_ai(draft_log_url, model, t=None, n_cards=None, idx_to_name=None, r
     r = requests.post(url = "https://www.17lands.com/api/submit_draft", json = js)
     r_js = r.json()
     try:
-        draft_id = r['id']
+        draft_id = r_js['id']
         return f"https://www.17lands.com/submitted_draft/{draft_id}"
     except:
         warnings.warn("Draft Log Upload Failed. Returning sent JSON to help debug.")
-        return js
+        return (js, r)
 
 def display_draft(df, cmap=None, pack=None):
     if pack is not None:
