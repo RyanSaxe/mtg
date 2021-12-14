@@ -58,7 +58,7 @@ class DraftBot(tf.Module):
         ]
         # extra embedding as representation of bias before the draft starts. This is grabbed as the
         # representation for the "previous pick" that goes into the decoder for P1P1
-        self.card_embedding = Embedding(self.n_cards + 1, emb_dim, name="card_embedding", activation=None)
+        self.card_embedding = Embedding(self.n_cards + 1, emb_dim, name="card_embedding", activation=tf.nn.tanh)
         self.attention_decoder = attention_decoder
         if self.attention_decoder:
             self.decoder_layers = [
@@ -149,7 +149,7 @@ class DraftBot(tf.Module):
         #    pack_card_embeddings
         #batch_size x t x emb_dim
         #    embs
-        emb_dists = tf.sqrt(tf.reduce_sum(tf.square(pack_card_embeddings - embs[:,:,None,:]), -1)) * packs
+        emb_dists = tf.sqrt(tf.reduce_sum(tf.square(pack_card_embeddings - tf.nn.tanh(embs)[:,:,None,:]), -1)) * packs
         mask_for_softmax = -1 * (emb_dists + 1e9 * (1 - packs))
         output = tf.nn.softmax(mask_for_softmax)
         if not inference:
