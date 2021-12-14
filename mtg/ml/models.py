@@ -198,8 +198,9 @@ class DraftBot(tf.Module):
         self.emb_lambda = emb_lambda
         self.pred_lambda = pred_lambda
 
-    def loss(self, true, pred, sample_weight=None, store=True):
-        pred, emb_dists = pred
+    def loss(self, true, pred, sample_weight=None, training=None):
+        if training:
+            pred, emb_dists = pred
         self.prediction_loss = self.loss_f(true, pred, sample_weight=sample_weight)
         correct_one_hot = tf.one_hot(true, self.n_cards)
         dist_of_not_correct = emb_dists * (1 - correct_one_hot)
@@ -209,8 +210,9 @@ class DraftBot(tf.Module):
         self.embedding_loss = tf.reduce_sum(tf.maximum(dist_loss + self.margin, 0.), axis=-1) * sample_weight
         return self.pred_lambda * self.prediction_loss + self.emb_lambda * self.embedding_loss
 
-    def compute_metrics(self, true, pred, sample_weight=None):
-        pred, emb_dists = pred
+    def compute_metrics(self, true, pred, sample_weight=None, training=None):
+        if training:
+            pred, emb_dists = pred
         top1 = tf.reduce_mean(tf.keras.metrics.sparse_top_k_categorical_accuracy(true, pred, 1))
         top2 = tf.reduce_mean(tf.keras.metrics.sparse_top_k_categorical_accuracy(true, pred, 2))
         top3 = tf.reduce_mean(tf.keras.metrics.sparse_top_k_categorical_accuracy(true, pred, 3))

@@ -50,8 +50,8 @@ class Trainer:
     def _step(self, batch_features, batch_target, batch_weights):
         with tf.GradientTape() as tape:
             output = self.model(batch_features, training=True)
-            loss = self.model.loss(batch_target, output, sample_weight=batch_weights)
-            metrics = self.model.compute_metrics(batch_target, output, sample_weight=batch_weights)
+            loss = self.model.loss(batch_target, output, sample_weight=batch_weights, training=True)
+            metrics = self.model.compute_metrics(batch_target, output, sample_weight=batch_weights, training=True)
             #put regularization here if necessary
         grads = tape.gradient(loss, self.model.trainable_variables)
         if self.clip:
@@ -105,8 +105,8 @@ class Trainer:
                     val_features, val_target, val_weights = self.val_generator[i]
                     # must get attention here to serialize the input for saving
                     val_output = self.model(val_features, training=False)
-                    val_loss = self.model.loss(val_target, val_output, sample_weight=val_weights)
-                    val_metrics = self.model.compute_metrics(val_target, val_output, sample_weight=val_weights)
+                    val_loss = self.model.loss(val_target, val_output, sample_weight=val_weights, training=False)
+                    val_metrics = self.model.compute_metrics(val_target, val_output, sample_weight=val_weights, training=False)
                     extra_metrics['val_top1'].append(val_metrics[0])
                     extra_metrics['val_top2'].append(val_metrics[1])
                     extra_metrics['val_top3'].append(val_metrics[2])
@@ -125,7 +125,7 @@ class Trainer:
                 #run model as if not training on validation data to get out of sample performance
                 if self.val_features is not None:
                     val_out = self.model(self.val_features, training=False)
-                    val_loss = self.model.loss(self.val_target, val_out, sample_weight=self.val_weights)
+                    val_loss = self.model.loss(self.val_target, val_out, sample_weight=self.val_weights, training=False)
                     progress.set_postfix(loss=np.average(losses), val_loss=np.average(val_loss), **extra_to_show)
                 progress.close()
             if self.generator is not None:
