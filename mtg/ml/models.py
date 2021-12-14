@@ -56,11 +56,11 @@ class DraftBot(tf.Module):
             )
             for i in range(num_memory_layers)
         ]
+        # extra embedding as representation of bias before the draft starts. This is grabbed as the
+        # representation for the "previous pick" that goes into the decoder for P1P1
+        self.card_embedding = Embedding(self.n_cards + 1, emb_dim, name="card_embedding")
         self.attention_decoder = attention_decoder
         if self.attention_decoder:
-            # extra embedding as representation of bias before the draft starts. This is grabbed as the
-            # representation for the "previous pick" that goes into the decoder for P1P1
-            self.card_embedding = Embedding(self.n_cards + 1, emb_dim, name="card_embedding")
             self.decoder_layers = [
                 TransformerBlock(
                     self.n_cards,
@@ -72,31 +72,31 @@ class DraftBot(tf.Module):
                 )
                 for i in range(num_memory_layers)
             ]
-        # else:
-        self.pool_pack_embedding = nn.MLP(
-            in_dim=self.n_cards * 2,
-            start_dim=self.n_cards,
-            out_dim=emb_dim,
-            n_h_layers=1,
-            name="pack_embedding",
-            start_act=None,
-            middle_act=None,
-            out_act=None,
-            style="bottleneck",
-        )
+        else:
+            self.pool_pack_embedding = nn.MLP(
+                in_dim=self.n_cards * 2,
+                start_dim=self.n_cards,
+                out_dim=emb_dim,
+                n_h_layers=1,
+                name="pack_embedding",
+                start_act=None,
+                middle_act=None,
+                out_act=None,
+                style="bottleneck",
+            )
 
-        self.output_decoder = nn.MLP(
-            in_dim=emb_dim,
-            start_dim=emb_dim * 2,
-            out_dim=self.n_cards,
-            n_h_layers=1,
-            dropout=out_dropout,
-            name="output_decoder",
-            start_act=tf.nn.selu,
-            middle_act=tf.nn.selu,
-            out_act=tf.nn.softmax,
-            style="reverse_bottleneck",
-        )
+        # self.output_decoder = nn.MLP(
+        #     in_dim=emb_dim,
+        #     start_dim=emb_dim * 2,
+        #     out_dim=self.n_cards,
+        #     n_h_layers=1,
+        #     dropout=out_dropout,
+        #     name="output_decoder",
+        #     start_act=tf.nn.selu,
+        #     middle_act=tf.nn.selu,
+        #     out_act=tf.nn.softmax,
+        #     style="reverse_bottleneck",
+        # )
 
         # initializer=tf.initializers.GlorotNormal()
         # self.initial_card_bias = tf.Variable(
@@ -115,10 +115,12 @@ class DraftBot(tf.Module):
         positional_masks = tf.gather(self.positional_mask, positions)
         positional_embeddings = self.positional_embedding(positions, training=training)
         #old way: pack embedding = mean of card embeddings for only cards in the pack
-        # if self.attention_decoder:
-        #     pack_embeddings = tf.reduce_sum(packs[:,:,:,None] * self.card_embedding.embedding[None,None,:-1,:], axis=2)/tf.reduce_sum(packs, axis=-1, keepdims=True)
-        # else:
-        pack_embeddings = self.pool_pack_embedding(draft_info)
+        #batch_size x t x n_cards x emb_dim
+        pack_card_embeddings = packs[:,:,:,None] * self.card_embedding(tf.range(self.n_cards))[None,None,:,:]
+        if self.attention_decoder:
+            pack_embeddings = tf.reduce_sum(pack_card_embeddings/tf.reduce_sum(packs, axis=-1, keepdims=True), axis=2)
+        else:
+            pack_embeddings = self.pool_pack_embedding(draft_info)
         embs = pack_embeddings * tf.math.sqrt(self.emb_dim) + positional_embeddings
         # insert an embedding to represent bias towards cards/archetypes/concepts you have before the draft starts
         # --> this could range from "generic pick order of all cards" to "blue is the best color", etc etc
@@ -141,9 +143,17 @@ class DraftBot(tf.Module):
             for memory_layer in self.decoder_layers:
                 dec_embs, attention_weights = memory_layer(dec_embs, positional_masks, encoder_output=embs, training=training) # (batch_size, t, emb_dim)
             embs = dec_embs
+
+        #batch_size x t x n_cards x emb_dim
+        #    pack_card_embeddings
+        #batch_size x t x emb_dim
+        #    embs
+        emb_dists = tf.sqrt(tf.reduce_sum(tf.square(pack_card_embeddings - embs[:,:,None,:]), -1)) * packs + 1e-9 * packs
+        mask_for_softmax = -1 * (emb_dists + 1e9 * (1 - packs))
+        output = tf.nn.softmax(mask_for_softmax)
         #get rid of output with respect to initial bias vector, as that is not part of prediction
         #embs = embs[:,1:,:]
-        card_rankings = self.output_decoder(embs, training=training) # (batch_size, t, n_cards)
+        # card_rankings = self.output_decoder(embs, training=training) # (batch_size, t, n_cards)
         # zero out the rankings for cards not in the pack
         # note1: this only works because no foils on arena means packs can never have 2x of a card
         #       if this changes, modify to clip packs at 1
@@ -153,12 +163,12 @@ class DraftBot(tf.Module):
         #        multiplication could be done only during inference (when training is not True)
 
         # add epsilon for cards in the pack to ensure they are non-zero (handles edge cases)
-        card_rankings = card_rankings * packs + 1e-9 * packs
+        # card_rankings = card_rankings * packs + 1e-9 * packs
         # after zeroing out cards not in packs, we readjust the output to maintain that it sums to one
         # note: currently this sums to one so we do from_logits=True in Categorical Cross Entropy,
         #       possible softmax is better than relu, regardless this does have numerical instability issues
         #       so that is something to look out for. But from_logits=False had terrible performance
-        output = card_rankings/tf.reduce_sum(card_rankings, axis=-1, keepdims=True)
+        # output = card_rankings/tf.reduce_sum(card_rankings, axis=-1, keepdims=True)
         if return_attention:
             return output, attention_weights
         return output
@@ -166,7 +176,10 @@ class DraftBot(tf.Module):
     def compile(
         self,
         optimizer=None,
-        learning_rate=0.001
+        learning_rate=0.001,
+        margin=0.1,
+        emb_lambda=1.0,
+        pred_lambda=1.0,
     ):
         if optimizer is None:
             if isinstance(learning_rate, dict):
@@ -178,9 +191,18 @@ class DraftBot(tf.Module):
         else:
             self.optimizer = optimizer
         self.loss_f = tf.keras.losses.SparseCategoricalCrossentropy(reduction=tf.keras.losses.Reduction.NONE)
+        self.margin = margin
+        self.emb_lambda = emb_lambda
+        self.pred_lambda = pred_lambda
 
     def loss(self, true, pred, sample_weight=None, store=True):
-        return self.loss_f(true, pred, sample_weight=sample_weight)
+        self.prediction_loss = self.loss_f(true, pred, sample_weight=sample_weight)
+        correct_one_hot = tf.one_hot(true, self.n_cards)
+        pred_without_correct = pred * (1 - correct_one_hot)
+        prediction_of_correct = tf.reduce_sum(pred * correct_one_hot, axis=-1, keepdims=True)
+        probabilistic_distance = pred_without_correct - prediction_of_correct
+        self.embedding_loss = pred_without_correct tf.maximum(probabilistic_distance + self.margin, 0.)
+        return self.pred_lambda * self.prediction_loss + self.emb_lambda * self.embedding_loss
 
     def compute_metrics(self, true, pred, sample_weight=None):
         top1 = tf.reduce_mean(tf.keras.metrics.sparse_top_k_categorical_accuracy(true, pred, 1))

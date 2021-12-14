@@ -56,7 +56,7 @@ def names_to_array(names, mapping):
 def load_arena_ids(expansion):
     arena_id_file = '/content/drive/My Drive/mtg_data/card_list.csv'
     id_df = pd.read_csv(arena_id_file)
-    id_df = id_df[id_df['expansion'] == expansion]
+    id_df = id_df[(id_df['expansion'] == expansion) & (id_df['is_booster'])]
     id_df['name'] = id_df['name'].str.lower()
     return id_df.set_index('name')['id'].to_dict()
 
