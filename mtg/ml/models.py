@@ -118,7 +118,7 @@ class DraftBot(tf.Module):
         #batch_size x t x n_cards x emb_dim
         pack_card_embeddings = packs[:,:,:,None] * self.card_embedding(tf.range(self.n_cards))[None,None,:,:]
         if self.attention_decoder:
-            pack_embeddings = tf.reduce_sum(pack_card_embeddings/tf.reduce_sum(packs, axis=-1, keepdims=True), axis=2)
+            pack_embeddings = tf.reduce_sum(pack_card_embeddings, axis=2)/tf.reduce_sum(packs, axis=-1, keepdims=True)
         else:
             pack_embeddings = self.pool_pack_embedding(draft_info)
         embs = pack_embeddings * tf.math.sqrt(self.emb_dim) + positional_embeddings
