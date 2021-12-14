@@ -1,3 +1,4 @@
+import json
 import tensorflow as tf
 import requests
 import numpy as np
@@ -52,7 +53,24 @@ def names_to_array(names, mapping):
     arr[unique] += counts
     return arr
 
-def draft_log_ai(draft_log_url, model, t=None, n_cards=None, idx_to_name=None, return_attention=False, return_df=True, batch_size=1, exchange_picks=-1, exchange_packs=-1, return_model_input=False):
+def load_arena_ids(expansion):
+    arena_id_file = '/content/drive/My Drive/mtg_data/card_list.csv'
+    id_df = pd.read_csv(arena_id_file)
+    id_df = id_df[id_df['expansion'] == expansion]
+    id_df['name'] = id_df['name'].str.lower()
+    return id_df.set_index('name')['id'].to_dict()
+
+def names_to_arena_ids(names, expansion='VOW', mapping=None, return_mapping=False):
+    if mapping is None:
+        mapping = load_arena_ids(expansion)
+    if not isinstance(names, list):
+        names = [names]
+    output = [mapping[x['name'].lower().split("//")[0].strip()] for x in names]
+    if return_mapping:
+        output = (output, mapping)
+    return output
+
+def draft_log_ai(draft_log_url, model, t=None, n_cards=None, idx_to_name=None, return_attention=False, return_style='df', batch_size=1, exchange_picks=-1, exchange_packs=-1, return_model_input=False):
     exchange_picks = [exchange_picks] if isinstance(exchange_picks, int) else exchange_picks
     exchange_packs = [exchange_packs] if isinstance(exchange_packs, int) else exchange_packs
     name_to_idx = {v:k for k,v in idx_to_name.items()}
@@ -64,7 +82,21 @@ def draft_log_ai(draft_log_url, model, t=None, n_cards=None, idx_to_name=None, r
     positions = np.tile(np.expand_dims(np.arange(t, dtype=np.int32),0),batch_size).reshape(batch_size,t)
     actual_pick = []
     position_to_pxpy = dict()
+    js = {
+        "expansion":"VOW",
+        "token":"abc",
+        "picks":[]
+    }
+    arena_id_mapping = None
     for pick in picks:
+        arena_ids_in_pack, arena_id_mapping = names_to_arena_ids(pick['available'], mapping=arena_id_mapping, return_mapping=True)
+        pick_js = {
+            "pack_number":pick['pick_number'],
+            "pack_number":pick['pick_number'],
+            "pack_cards": arena_ids_in_pack,
+            "pick":-1
+        }
+        js['picks'].append(pick_js)
         if pick['pick_number'] in exchange_picks:
             exchange = True
         else:
@@ -90,7 +122,7 @@ def draft_log_ai(draft_log_url, model, t=None, n_cards=None, idx_to_name=None, r
         tf.convert_to_tensor(np_pick, dtype=tf.int32),
         tf.convert_to_tensor(positions, dtype=tf.int32)
     )
-    if return_model_input:
+    if return_style=='input':
         return model_input
     # we get the first element in anything we return to handle the case where the model couldn't properly serialize
     # and we hence need to copy the data to be the same shape as the batch size in order to run a stored model
@@ -101,27 +133,38 @@ def draft_log_ai(draft_log_url, model, t=None, n_cards=None, idx_to_name=None, r
         #attention = tf.squeeze(attention)
     else:
         output = model(model_input, training=False)[0]
-    if not return_df:
+    if return_style=='output':
         if return_attention:
             return output, attention
         else:
             return output
     predictions = tf.math.top_k(output, k=3).indices.numpy()
-    df = pd.DataFrame()
-    df['predicted_pick'] = [idx_to_name[pred[0]] for pred in predictions]
-    df['human_pick'] = actual_pick
-    df['second_choice'] = [idx_to_name[pred[1]] for pred in predictions]
-    df['second_choice'].loc[
-        [idx for idx in df.index if idx % n_picks_per_pack >= n_picks_per_pack - 1]
-    ] = ''
-    df['third_choice'] = [idx_to_name[pred[2]] for pred in predictions]
-    df['third_choice'].loc[
-        [idx for idx in df.index if idx % n_picks_per_pack >= n_picks_per_pack - 2]
-    ] = ''
-    df.index = [position_to_pxpy[idx] for idx in df.index]
-    if return_attention:
-        return df, attention
-    return df
+    predicted_picks = [idx_to_name[pred[0]] for pred in predictions]
+    if return_style == 'df':
+        df = pd.DataFrame()
+        df['predicted_pick'] = predicted_picks
+        df['human_pick'] = actual_pick
+        df['second_choice'] = [idx_to_name[pred[1]] for pred in predictions]
+        df['second_choice'].loc[
+            [idx for idx in df.index if idx % n_picks_per_pack >= n_picks_per_pack - 1]
+        ] = ''
+        df['third_choice'] = [idx_to_name[pred[2]] for pred in predictions]
+        df['third_choice'].loc[
+            [idx for idx in df.index if idx % n_picks_per_pack >= n_picks_per_pack - 2]
+        ] = ''
+        df.index = [position_to_pxpy[idx] for idx in df.index]
+        if return_attention:
+            return df, attention
+        return df
+    for i,js_obj in enumerate(js['picks']):
+        js_obj['pick'] = arena_id_mapping[predicted_picks[i]]
+    r = requests.post(url = "https://www.17lands.com/api/submit_draft", data = js)
+    status = r.get("status","FAILURE")
+    if status == "SUCCESS":
+        draft_id = r['id']
+        return f"https://www.17lands.com/submitted_draft/{draft_id}"
+    warnings.warn("Draft Log Upload Failed. Returning sent JSON to help debug.")
+    return js
 
 def display_draft(df, cmap=None, pack=None):
     if pack is not None:
