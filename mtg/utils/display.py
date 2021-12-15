@@ -90,13 +90,6 @@ def draft_log_ai(draft_log_url, model, t=None, n_cards=None, idx_to_name=None, r
     arena_id_mapping = None
     for pick in picks:
         arena_ids_in_pack, arena_id_mapping = names_to_arena_ids(pick['available'], mapping=arena_id_mapping, return_mapping=True)
-        pick_js = {
-            "pack_number":pick['pack_number'],
-            "pick_number":pick['pick_number'],
-            "pack_cards": arena_ids_in_pack,
-            "pick":-1
-        }
-        js['picks'].append(pick_js)
         if pick['pick_number'] in exchange_picks:
             exchange = True
         else:
@@ -115,6 +108,13 @@ def draft_log_ai(draft_log_url, model, t=None, n_cards=None, idx_to_name=None, r
         draft_info[0, position, n_cards:] = pool
         pool[pick_idx] += 1
         actual_pick.append(correct_pick)
+        pick_js = {
+            "pack_number":pick['pack_number'],
+            "pick_number":pick['pick_number'],
+            "pack_cards": arena_ids_in_pack,
+            "pick":arena_id_mapping[correct_pick]
+        }
+        js['picks'].append(pick_js)
     #insert n_cards idx to shift the picks passed into the model to prevent seeing the correct pick
     np_pick = np.tile(np.expand_dims(np.asarray([n_cards] + [name_to_idx[name] for name in actual_pick[:-1]]), 0),batch_size).reshape(batch_size,42)
     model_input = (
@@ -157,7 +157,7 @@ def draft_log_ai(draft_log_url, model, t=None, n_cards=None, idx_to_name=None, r
             return df, attention
         return df
     for i,js_obj in enumerate(js['picks']):
-        js_obj['pick'] = arena_id_mapping[predicted_picks[i]]
+        js_obj['suggested_pick'] = arena_id_mapping[predicted_picks[i]]
     r = requests.post(url = "https://www.17lands.com/api/submit_draft", json = js)
     r_js = r.json()
     try:
