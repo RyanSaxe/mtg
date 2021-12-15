@@ -107,7 +107,7 @@ class DraftBot(tf.Module):
 
 
     @tf.function
-    def __call__(self, features, training=None, return_attention=False, inference=False):
+    def __call__(self, features, training=None, return_attention=False):
         draft_info, picks, positions = features
         packs = draft_info[:, :, :self.n_cards]
         # pools = draft_info[:, :, self.n_cards:]
@@ -152,8 +152,6 @@ class DraftBot(tf.Module):
         emb_dists = tf.sqrt(tf.reduce_sum(tf.square(pack_card_embeddings - embs[:,:,None,:]), -1)) * packs
         mask_for_softmax = -1 * (emb_dists + 1e9 * (1 - packs))
         output = tf.nn.softmax(mask_for_softmax)
-        if not inference:
-            output = (output, emb_dists)
         #get rid of output with respect to initial bias vector, as that is not part of prediction
         #embs = embs[:,1:,:]
         # card_rankings = self.output_decoder(embs, training=training) # (batch_size, t, n_cards)
@@ -199,7 +197,6 @@ class DraftBot(tf.Module):
         self.pred_lambda = pred_lambda
 
     def loss(self, true, pred, sample_weight=None):
-        pred, emb_dists = pred
         self.prediction_loss = self.loss_f(true, pred, sample_weight=sample_weight)
         correct_one_hot = tf.one_hot(true, self.n_cards)
         dist_of_not_correct = pred * (1 - correct_one_hot)
@@ -210,7 +207,6 @@ class DraftBot(tf.Module):
         return self.pred_lambda * self.prediction_loss + self.emb_lambda * self.embedding_loss
 
     def compute_metrics(self, true, pred, sample_weight=None):
-        pred, _ = pred
         top1 = tf.reduce_mean(tf.keras.metrics.sparse_top_k_categorical_accuracy(true, pred, 1))
         top2 = tf.reduce_mean(tf.keras.metrics.sparse_top_k_categorical_accuracy(true, pred, 2))
         top3 = tf.reduce_mean(tf.keras.metrics.sparse_top_k_categorical_accuracy(true, pred, 3))
