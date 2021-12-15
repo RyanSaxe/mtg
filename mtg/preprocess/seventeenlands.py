@@ -39,31 +39,21 @@ def clean_bo1_games(df, cards, rename_cols=dict(), drop_cols=[]):
     df.columns = [x.lower() for x in df.columns]
     return df
 
-def get_card_rating_data(expansion, endpoint=None, join=False, start=None, end=None):
+def get_card_rating_data(expansion, endpoint=None, start=None, end=None, colors=None):
     if endpoint is None:
         endpoint = f'https://www.17lands.com/card_ratings/data?expansion={expansion.upper()}&format=PremierDraft'
         if start is not None:
             endpoint += f'&start_date={start}'
         if end is not None:
             endpoint += f'&end_date={end}'
-    full_set = CardSet(["set=" + expansion])
+        if colors is not None:
+            endpoint += f'&colors={colors}'
     card_json = requests.get(endpoint).json()
-    card_df = pd.DataFrame(card_json)
-    flip_cards = {x.name.split("//")[0].strip():x.name.split("//")[1].strip() for x in full_set.cards if "//" in x.name}
-
-    def change_flip_name(name):
-        if name in flip_cards:
-            return name + " // " + flip_cards[name]
-        else:
-            return name
-
-    card_df.loc[:,'name'] = card_df['name'].str.lower().apply(change_flip_name)
-    if join:
-        scry = full_set.to_dataframe()
-        card_df = card_df.set_index('name').join(scry.set_index('name'), how="left", rsuffix="__extra", on="name")
-        extras = [col for col in card_df.columns if col.endswith("__extra")]
-        card_df = card_df.drop(extras, axis=1)
-    return card_df.reset_index()
+    card_df = pd.DataFrame(card_json).fillna(0.0)
+    numerical_cols = card_df.columns[card_df.dtypes != object]
+    card_df['name'] = card_df['name'].str.lower()
+    card_df = card_df.set_index('name')
+    return card_df[numerical_cols]
 
 def add_archetypes(df, min_2c_basics=5, min_1c_basic=11):
     color_pairs = [

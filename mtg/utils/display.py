@@ -32,12 +32,17 @@ def print_counts(deck, cards, col="type_line"):
     for key, value in col_counts.items():
         print(key,":",value) 
 
-def get_draft_json(draft_log_url):
-    base_url = "https://www.17lands.com/data/draft?draft_id="
+def get_draft_json(draft_log_url, stream=False):
+    if not stream:
+        base_url = "https://www.17lands.com/data/draft?draft_id="
+    else:
+        base_url = "https://www.17lands.com/data/draft/stream/?draft_id="
     draft_ext = draft_log_url.split("/")[-1].strip()
     log_json_url = base_url + draft_ext
-    response = requests.get(log_json_url)
-    return response.json()
+    response = requests.get(log_json_url, stream=stream)
+    if not stream:
+        response = response.json()
+    return response
 
 def list_to_names(cards_json):
     if len(cards_json) > 0:
