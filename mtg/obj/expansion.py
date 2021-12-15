@@ -54,14 +54,14 @@ class Expansion:
         ml_data = pd.concat([ml_data, keyword_df], axis=1)
         for color in colors:
             ml_data[color + " pips"] = cards['mana_cost'].apply(lambda x: x.count(color))
-            ml_data['produces ' + color].apply(lambda x: 0 if not isinstance(x, list) else int(color in x))
+            ml_data['produces ' + color] = cards['produces'].apply(lambda x: 0 if not isinstance(x, list) else int(color in x))
         for cardtype in self.types:
             cardtype = cardtype.lower()
             ml_data[cardtype] = cards['type_line'].str.lower().apply(lambda x: 0 if not isinstance(x, str) else int(cardtype in x))
         rarities = cards['rarity'].unique()
         for rarity in rarities:
             ml_data[rarity] = cards['rarity'].apply(lambda x: int(x == rarity))
-        ml_data['produces C'].apply(lambda x: 0 if not isinstance(x, list) else int('C' in x))
+        ml_data['produces C'] = cards['produces'].apply(lambda x: 0 if not isinstance(x, list) else int('C' in x))
         return ml_data.fillna(0)
     
     def get_card_stats(self):
