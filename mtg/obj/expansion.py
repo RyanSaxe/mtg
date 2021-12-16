@@ -76,8 +76,8 @@ class Expansion:
         ml_data.loc['bias',:] = 0
         ml_data.loc['bias', 'idx'] = cards['idx'].max() + 1
         ml_data['bias'] = 1
-        ml_data = ml_data.fillna(0).sort_values('idx').reset_index()
-        return ml_data.drop(['idx','name']).values
+        ml_data = ml_data.fillna(0).sort_values('idx').reset_index(drop=True)
+        return ml_data.drop('idx', axis=1).values
     
     def get_card_stats(self):
         all_colors = [
@@ -100,7 +100,6 @@ class Expansion:
         ]
         card_df = pd.DataFrame()
         for colors in all_colors:
-            print(colors)
             card_data_df = get_card_rating_data("VOW", colors=colors)
             extension = "" if colors is None else "_" + colors
             card_data_df.columns = [col + extension for col in card_data_df.columns]
