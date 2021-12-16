@@ -1,7 +1,7 @@
 import tensorflow as tf
 from tensorflow.python.keras.engine.base_layer import Layer
 from mtg.ml import nn
-from mtg.ml.layers import ConcatEmbedding, MultiHeadAttention, Dense, LayerNormalization, Embedding
+from mtg.ml.layers import MultiHeadAttention, Dense, LayerNormalization, Embedding
 import numpy as np
 import pandas as pd
 import pdb
