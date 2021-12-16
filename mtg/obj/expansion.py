@@ -16,8 +16,11 @@ class Expansion:
         self.draft = self.process_data(draft, name="draft")
         self.replay = self.process_data(replay, name="replay")
         self.card_data_for_ML = self.get_card_data_for_ML()
-        self.types = ['instant','sorcery','creature','planeswalker','artifact','enchantment','land']
 
+    @property
+    def types(self):
+        return ['instant','sorcery','creature','planeswalker','artifact','enchantment','land']
+        
     def process_data(self, file_or_df, name=None):
         if isinstance(file_or_df,str):
             if name is None:
@@ -112,4 +115,8 @@ class MID(Expansion):
 class VOW(Expansion):
     def __init__(self, bo1=None, bo3=None, quick=None, draft=None, replay=None):
         super().__init__(expansion='vow', bo1=bo1, bo3=bo3, quick=quick, draft=draft, replay=replay)
-        self.types += ['human','zombie','wolf','werewolf', 'spirit', 'aura']
+
+    @property
+    def types(self):
+        types = super().types
+        return types + ['human','zombie','wolf','werewolf', 'spirit', 'aura']
