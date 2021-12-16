@@ -86,6 +86,7 @@ class DraftBot(tf.Module):
         memory_dropout=0.0,
         out_dropout=0.0,
         attention_decoder=True,
+        output_MLP=False,
         name=None
     ):
         super().__init__(name=name)
@@ -140,19 +141,20 @@ class DraftBot(tf.Module):
                 out_act=None,
                 style="bottleneck",
             )
-
-        # self.output_decoder = nn.MLP(
-        #     in_dim=emb_dim,
-        #     start_dim=emb_dim * 2,
-        #     out_dim=self.n_cards,
-        #     n_h_layers=1,
-        #     dropout=out_dropout,
-        #     name="output_decoder",
-        #     start_act=tf.nn.selu,
-        #     middle_act=tf.nn.selu,
-        #     out_act=tf.nn.softmax,
-        #     style="reverse_bottleneck",
-        # )
+        self.output_MLP = output_MLP
+        if self.output_MLP:
+            self.output_decoder = nn.MLP(
+                in_dim=emb_dim,
+                start_dim=emb_dim * 2,
+                out_dim=self.n_cards,
+                n_h_layers=1,
+                dropout=out_dropout,
+                name="output_decoder",
+                start_act=tf.nn.selu,
+                middle_act=tf.nn.selu,
+                out_act=tf.nn.softmax,
+                style="reverse_bottleneck",
+            )
 
         # initializer=tf.initializers.GlorotNormal()
         # self.initial_card_bias = tf.Variable(
@@ -205,12 +207,20 @@ class DraftBot(tf.Module):
         #    pack_card_embeddings
         #batch_size x t x emb_dim
         #    embs
-        emb_dists = tf.sqrt(tf.reduce_sum(tf.square(pack_card_embeddings - embs[:,:,None,:]), -1)) * packs
-        mask_for_softmax = -1 * (emb_dists + 1e9 * (1 - packs))
-        output = tf.nn.softmax(mask_for_softmax)
+        #euclidian
+        #emb_dists = tf.sqrt(tf.reduce_sum(tf.square(pack_card_embeddings - embs[:,:,None,:]), -1)) * packs
+        #cosine
+        l2_norm_pred = tf.linalg.l2_normalize(embs[:,:,None,:], axis=-1)
+        l2_norm_pack = tf.linalg.l2_normalize(pack_card_embeddings, axis=-1)
+        emb_dists = -tf.reduce_sum(l2_norm_pred * l2_norm_pack, axis=-1)
         #get rid of output with respect to initial bias vector, as that is not part of prediction
         #embs = embs[:,1:,:]
-        # card_rankings = self.output_decoder(embs, training=training) # (batch_size, t, n_cards)
+        if self.output_MLP:
+            card_rankings = self.output_decoder(embs, training=training) # (batch_size, t, n_cards)
+            output = card_rankings/tf.reduce_sum(card_rankings, axis=-1, keepdims=True)
+        else:
+            mask_for_softmax = -1 * (emb_dists + 1e9 * (1 - packs))
+            output = tf.nn.softmax(mask_for_softmax)
         # zero out the rankings for cards not in the pack
         # note1: this only works because no foils on arena means packs can never have 2x of a card
         #       if this changes, modify to clip packs at 1
@@ -225,10 +235,9 @@ class DraftBot(tf.Module):
         # note: currently this sums to one so we do from_logits=True in Categorical Cross Entropy,
         #       possible softmax is better than relu, regardless this does have numerical instability issues
         #       so that is something to look out for. But from_logits=False had terrible performance
-        # output = card_rankings/tf.reduce_sum(card_rankings, axis=-1, keepdims=True)
         if return_attention:
             return output, attention_weights
-        return output
+        return output, emb_dists
 
     def compile(
         self,
@@ -253,16 +262,18 @@ class DraftBot(tf.Module):
         self.pred_lambda = pred_lambda
 
     def loss(self, true, pred, sample_weight=None):
+        pred, emb_dists = pred
         self.prediction_loss = self.loss_f(true, pred, sample_weight=sample_weight)
         correct_one_hot = tf.one_hot(true, self.n_cards)
-        dist_of_not_correct = pred * (1 - correct_one_hot)
-        dist_of_correct = tf.reduce_sum(pred * correct_one_hot, axis=-1, keepdims=True)
+        dist_of_not_correct = emb_dists * (1 - correct_one_hot)
+        dist_of_correct = tf.reduce_sum(emb_dists * correct_one_hot, axis=-1, keepdims=True)
         dist_loss = dist_of_not_correct - dist_of_correct
         sample_weight = 1 if sample_weight is None else sample_weight
         self.embedding_loss = tf.reduce_sum(tf.maximum(dist_loss + self.margin, 0.), axis=-1) * sample_weight
         return self.pred_lambda * self.prediction_loss + self.emb_lambda * self.embedding_loss
 
     def compute_metrics(self, true, pred, sample_weight=None):
+        pred, emb_dists = pred
         top1 = tf.reduce_mean(tf.keras.metrics.sparse_top_k_categorical_accuracy(true, pred, 1))
         top2 = tf.reduce_mean(tf.keras.metrics.sparse_top_k_categorical_accuracy(true, pred, 2))
         top3 = tf.reduce_mean(tf.keras.metrics.sparse_top_k_categorical_accuracy(true, pred, 3))
