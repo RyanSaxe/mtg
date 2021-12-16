@@ -208,15 +208,15 @@ class DraftBot(tf.Module):
         #batch_size x t x emb_dim
         #    embs
         #euclidian
-        #emb_dists = tf.sqrt(tf.reduce_sum(tf.square(pack_card_embeddings - embs[:,:,None,:]), -1)) * packs
+        emb_dists = tf.sqrt(tf.reduce_sum(tf.square(pack_card_embeddings - embs[:,:,None,:]), -1)) * packs
         #cosine
-        l2_norm_pred = tf.linalg.l2_normalize(embs[:,:,None,:], axis=-1)
-        l2_norm_pack = tf.linalg.l2_normalize(pack_card_embeddings, axis=-1)
-        emb_dists = -tf.reduce_sum(l2_norm_pred * l2_norm_pack, axis=-1) * packs
+        # l2_norm_pred = tf.linalg.l2_normalize(embs[:,:,None,:], axis=-1)
+        # l2_norm_pack = tf.linalg.l2_normalize(pack_card_embeddings, axis=-1)
+        # emb_dists = -tf.reduce_sum(l2_norm_pred * l2_norm_pack, axis=-1) * packs
         #get rid of output with respect to initial bias vector, as that is not part of prediction
         #embs = embs[:,1:,:]
         if self.output_MLP:
-            card_rankings = self.output_decoder(embs, training=training) # (batch_size, t, n_cards)
+            card_rankings = self.output_decoder(embs, training=training) * packs # (batch_size, t, n_cards)
             output = card_rankings/tf.reduce_sum(card_rankings, axis=-1, keepdims=True)
         else:
             mask_for_softmax = -1 * (emb_dists + 1e9 * (1 - packs))
