@@ -64,8 +64,10 @@ class ConcatEmbedding(tf.Module):
 
     def __call__(self, x, training=None):
         item_embeddings = tf.gather(self.embedding, x)
-        item_data = tf.gather(self.item_data, x)
-        data_embeddings = self.item_MLP(item_data, training=training)
+        data_embeddings = tf.gather(
+            self.item_MLP(self.item_data, training=training),
+            x,
+        )
         embeddings = tf.concat([item_embeddings, data_embeddings], axis=-1)
         if self.activation is not None:
             embeddings = self.activation(embeddings)
