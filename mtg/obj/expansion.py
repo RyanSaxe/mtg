@@ -42,25 +42,25 @@ class Expansion:
         )
         self.cards['flip'] = self.cards['layout'].apply(lambda x: 0 if x == 'normal' else 1)
 
-    def get_card_data_for_ML(self):
+    def get_card_data_for_ML(self, return_df=False):
         ml_data = self.get_card_stats()
         colors = list('WUBRG')
         cards = self.cards.set_index('name')
         copy_from_scryfall = ['power', 'toughness', 'basic_land_search', 'flip', 'cmc']
         for column in copy_from_scryfall:
-            ml_data[column] = cards[column]
+            ml_data[column] = cards[column].astype(float)
         ml_data['toughness'] = cards
         keywords = list(set(cards['keywords'].sum()))
         keyword_df = pd.DataFrame(index=cards.index, columns=keywords).fillna(0)
         for card_idx,keys in cards['keywords'].to_dict().items():
-            keyword_df.loc[card_idx, keys] = 1
+            keyword_df.loc[card_idx, keys] = 1.0
         ml_data = pd.concat([ml_data, keyword_df], axis=1)
         for color in colors:
             ml_data[color + " pips"] = cards['mana_cost'].apply(lambda x: x.count(color))
-            ml_data['produces ' + color] = cards['produced_mana'].apply(lambda x: 0 if not isinstance(x, list) else int(color in x))
+            ml_data['produces ' + color] = cards['produced_mana'].apply(lambda x: 0.0 if not isinstance(x, list) else int(color in x))
         for cardtype in self.types:
             cardtype = cardtype.lower()
-            ml_data[cardtype] = cards['type_line'].str.lower().apply(lambda x: 0 if not isinstance(x, str) else int(cardtype in x))
+            ml_data[cardtype] = cards['type_line'].str.lower().apply(lambda x: 0.0 if not isinstance(x, str) else int(cardtype in x))
         rarities = cards['rarity'].unique()
         for rarity in rarities:
             ml_data[rarity] = cards['rarity'].apply(lambda x: int(x == rarity))
@@ -73,11 +73,14 @@ class Expansion:
         # the way our embeddings work is we always have an embedding that represents the lack of a card. This helps the model
         # represent stuff like generic format information. Hence we make this a one-hot vector that gets used in Draft when
         # the pack is empty, but have that concept "on" for every single card so it can affect the learned representations
-        ml_data.loc['bias',:] = 0
+        ml_data.loc['bias',:] = 0.0
         ml_data.loc['bias', 'idx'] = cards['idx'].max() + 1
-        ml_data['bias'] = 1
+        ml_data['bias'] = 1.0
         ml_data = ml_data.fillna(0).sort_values('idx').reset_index(drop=True)
-        return ml_data.drop('idx', axis=1).values
+        ml_data = ml_data.drop('idx', axis=1)
+        if return_df:
+            return ml_data
+        return ml_data.values
     
     def get_card_stats(self):
         all_colors = [
