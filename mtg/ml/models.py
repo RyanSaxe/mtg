@@ -48,8 +48,8 @@ class ConcatEmbedding(tf.Module):
         assert item_data.shape[0] == num_items
         self.item_data = item_data
         self.item_MLP = nn.MLP(
-            in_dim=item_data.shape[0],
-            start_dim=item_data.shape[0]//2,
+            in_dim=item_data.shape[1],
+            start_dim=item_data.shape[1]//2,
             out_dim=emb_dim//2,
             n_h_layers=n_h_layers,
             dropout=dropout,
