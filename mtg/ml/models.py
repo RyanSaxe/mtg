@@ -152,7 +152,7 @@ class DraftBot(tf.Module):
                 name="output_decoder",
                 start_act=tf.nn.selu,
                 middle_act=tf.nn.selu,
-                out_act=tf.nn.softmax,
+                out_act=None,
                 style="reverse_bottleneck",
             )
 
@@ -217,10 +217,10 @@ class DraftBot(tf.Module):
         #embs = embs[:,1:,:]
         if self.output_MLP:
             card_rankings = self.output_decoder(embs, training=training) * packs # (batch_size, t, n_cards)
-            output = card_rankings/tf.reduce_sum(card_rankings, axis=-1, keepdims=True)
         else:
-            mask_for_softmax = -1 * (emb_dists + 1e9 * (1 - packs))
-            output = tf.nn.softmax(mask_for_softmax)
+            card_rankings = -emb_dists
+        mask_for_softmax = card_rankings - 1e9 * (1 - packs)
+        output = tf.nn.softmax(mask_for_softmax)
         # zero out the rankings for cards not in the pack
         # note1: this only works because no foils on arena means packs can never have 2x of a card
         #       if this changes, modify to clip packs at 1
