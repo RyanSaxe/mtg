@@ -212,7 +212,7 @@ class DraftBot(tf.Module):
         #cosine
         l2_norm_pred = tf.linalg.l2_normalize(embs[:,:,None,:], axis=-1)
         l2_norm_pack = tf.linalg.l2_normalize(pack_card_embeddings, axis=-1)
-        emb_dists = -tf.reduce_sum(l2_norm_pred * l2_norm_pack, axis=-1)
+        emb_dists = -tf.reduce_sum(l2_norm_pred * l2_norm_pack, axis=-1) * packs
         #get rid of output with respect to initial bias vector, as that is not part of prediction
         #embs = embs[:,1:,:]
         if self.output_MLP:
