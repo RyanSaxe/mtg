@@ -40,7 +40,7 @@ class Expansion:
             lambda x: search_check(x) and basic_check(x),
             axis=1
         )
-        self.cards['flip'] = self.cards['layout'].apply(lambda x: 0 if x == 'normal' else 1)
+        self.cards['flip'] = self.cards['layout'].apply(lambda x: 0.0 if x == 'normal' else 1.0)
 
     def get_card_data_for_ML(self, return_df=False):
         ml_data = self.get_card_stats()
@@ -48,8 +48,7 @@ class Expansion:
         cards = self.cards.set_index('name')
         copy_from_scryfall = ['power', 'toughness', 'basic_land_search', 'flip', 'cmc']
         for column in copy_from_scryfall:
-            ml_data[column] = cards[column].astype(float)
-        ml_data['toughness'] = cards
+            ml_data[column] = cards[column].apply(lambda x: -1 if x == '*' else float(x))
         keywords = list(set(cards['keywords'].sum()))
         keyword_df = pd.DataFrame(index=cards.index, columns=keywords).fillna(0)
         for card_idx,keys in cards['keywords'].to_dict().items():
