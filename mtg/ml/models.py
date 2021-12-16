@@ -24,6 +24,53 @@ class CustomSchedule(tf.keras.optimizers.schedules.LearningRateSchedule):
 
     return tf.math.rsqrt(self.d_model) * tf.math.minimum(arg1, arg2)
 
+class ConcatEmbedding(tf.Module):
+    """
+    Lets say you want an embedding that is a concatenation of the abstract object and data about the object
+
+    so we learn a normal one hot embedding, and then have an MLP process the data about the object and concatenate the two.
+    """
+    def __init__(
+        self,
+        num_items,
+        emb_dim,
+        item_data,
+        dropout=0.0,
+        n_h_layers=1,
+        initializer=tf.initializers.GlorotNormal(),
+        name=None,
+        activation=None,
+        start_act=None,
+        middle_act=None,
+        out_act=None,
+    ):
+        super().__init__(name=name)
+        assert item_data.shape[0] == num_items
+        self.item_data = item_data
+        self.item_MLP = nn.MLP(
+            in_dim=item_data.shape[0],
+            start_dim=item_data.shape[0]//2,
+            out_dim=emb_dim//2,
+            n_h_layers=n_h_layers,
+            dropout=dropout,
+            name="item_data_mlp",
+            start_act=start_act,
+            middle_act=middle_act,
+            out_act=out_act,
+            style="bottleneck",
+        )
+        self.embedding = tf.Variable(initializer(shape=(num_items, emb_dim//2)), dtype=tf.float32, name=self.name + "_embedding")
+        self.activation = activation
+
+    def __call__(self, x, training=None):
+        item_embeddings = tf.gather(self.embedding, x)
+        item_data = tf.gather(self.item_data, x)
+        data_embeddings = self.item_MLP(item_data, training=training)
+        embeddings = tf.concat([item_embeddings, data_embeddings], axis=-1)
+        if self.activation is not None:
+            embeddings = self.activation(embeddings)
+        return embeddings
+
 class DraftBot(tf.Module):
     def __init__(
         self,
@@ -123,12 +170,12 @@ class DraftBot(tf.Module):
         positional_embeddings = self.positional_embedding(positions, training=training)
         #old way: pack embedding = mean of card embeddings for only cards in the pack
         #batch_size x t x n_cards x emb_dim
-        pack_card_embeddings = packs[:,:,:,None] * self.card_embedding(tf.range(self.n_cards))[None,None,:,:]
+        pack_card_embeddings = packs[:,:,:,None] * self.card_embedding(tf.range(self.n_cards), training=training)[None,None,:,:]
         if self.attention_decoder:
             n_options = tf.reduce_sum(packs, axis=-1, keepdims=True)
             pack_embeddings = tf.reduce_sum(pack_card_embeddings, axis=2)/n_options
         else:
-            pack_embeddings = self.pool_pack_embedding(draft_info)
+            pack_embeddings = self.pool_pack_embedding(draft_info, training=training)
         embs = pack_embeddings * tf.math.sqrt(self.emb_dim) + positional_embeddings
         # insert an embedding to represent bias towards cards/archetypes/concepts you have before the draft starts
         # --> this could range from "generic pick order of all cards" to "blue is the best color", etc etc
@@ -143,7 +190,7 @@ class DraftBot(tf.Module):
         for memory_layer in self.encoder_layers:
             embs, attention_weights = memory_layer(embs, positional_masks, training=training) # (batch_size, t, emb_dim)
         if self.attention_decoder:
-            dec_embs = self.card_embedding(picks)
+            dec_embs = self.card_embedding(picks, training=training)
             # dec_embs = tf.concat([
             #     batch_bias,
             #     dec_embs,

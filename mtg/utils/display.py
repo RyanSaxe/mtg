@@ -223,20 +223,20 @@ def plot_attention_head(attention, pxpy):
     ax.set_yticklabels(pxpy)
 
 def plot_attention_weights(attention_heads):
-  #pxpy = ["BIAS"]
-  pxpy = []
-  seq_l = attention_heads.shape[-1]
-  n_picks = (seq_l)/3
-  for i in range(seq_l):
-      pack = i//n_picks + 1
-      pick = (i % n_picks) + 1
-      pxpy.append("P" + str(int(pack)) + "P" + str(int(pick)))
+    #pxpy = ["BIAS"]
+    pxpy = []
+    seq_l = attention_heads.shape[-1]
+    n_picks = (seq_l)/3
+    for i in range(seq_l):
+        pack = i//n_picks + 1
+        pick = (i % n_picks) + 1
+        pxpy.append("P" + str(int(pack)) + "P" + str(int(pick)))
 
-  for h, head in enumerate(attention_heads):
-    fig = plt.figure(figsize=(10,30))
-    plot_attention_head(head, pxpy)
-    plt.scatter(range(seq_l),range(seq_l), color="red")
-    plt.grid()
-    plt.title(f'Head {h+1}')
-    plt.tight_layout()
-    plt.show()
+    for h, head in enumerate(attention_heads):
+        fig = plt.figure(figsize=(10,30))
+        plot_attention_head(head, pxpy)
+        plt.scatter(range(seq_l),range(seq_l), color="red")
+        plt.grid()
+        plt.title(f'Head {h+1}')
+        plt.tight_layout()
+        plt.show()
