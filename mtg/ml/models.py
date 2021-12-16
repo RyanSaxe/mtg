@@ -1,7 +1,7 @@
 import tensorflow as tf
 from tensorflow.python.keras.engine.base_layer import Layer
 from mtg.ml import nn
-from mtg.ml.layers import MultiHeadAttention, Dense, LayerNormalization, Embedding
+from mtg.ml.layers import ConcatEmbedding, MultiHeadAttention, Dense, LayerNormalization, Embedding
 import numpy as np
 import pandas as pd
 import pdb
@@ -32,6 +32,7 @@ class DraftBot(tf.Module):
         t,
         num_heads,
         num_memory_layers,
+        card_data=None,
         emb_dropout=0.0,
         memory_dropout=0.0,
         out_dropout=0.0,
@@ -40,6 +41,7 @@ class DraftBot(tf.Module):
     ):
         super().__init__(name=name)
         self.idx_to_name = cards.set_index('idx')['name'].to_dict()
+        self.card_data = cards
         self.n_cards = len(self.idx_to_name)
         self.t = t
         self.emb_dim = tf.Variable(emb_dim, dtype=tf.float32, trainable=False, name="emb_dim")
@@ -58,7 +60,12 @@ class DraftBot(tf.Module):
         ]
         # extra embedding as representation of bias before the draft starts. This is grabbed as the
         # representation for the "previous pick" that goes into the decoder for P1P1
-        self.card_embedding = Embedding(self.n_cards + 1, emb_dim, name="card_embedding", activation=None)
+        self.card_data = card_data
+        if self.card_data is None:
+            self.card_embedding = Embedding(self.n_cards + 1, emb_dim, name="card_embedding", activation=None)
+        else:
+            self.card_data = tf.convert_to_tensor(self.card_data, dtype=tf.float32)
+            self.card_embedding = ConcatEmbedding(self.n_cards + 1, emb_dim, self.card_data, name="card_embedding", activation=None)
         self.attention_decoder = attention_decoder
         if self.attention_decoder:
             self.decoder_layers = [
@@ -178,8 +185,8 @@ class DraftBot(tf.Module):
         self,
         optimizer=None,
         learning_rate=0.001,
-        margin=5.0,
-        emb_lambda=0.1,
+        margin=0.1,
+        emb_lambda=1.0,
         pred_lambda=1.0,
     ):
         if optimizer is None:

@@ -1,5 +1,6 @@
 import tensorflow as tf
 import numpy as np
+from mtg.ml.nn import MLP
 
 class Dense(tf.Module):
     def __init__(
@@ -194,6 +195,53 @@ class Embedding(tf.Module):
 
     def __call__(self, x, training=None):
         embeddings = tf.gather(self.embedding, x)
+        if self.activation is not None:
+            embeddings = self.activation(embeddings)
+        return embeddings
+
+class ConcatEmbedding(tf.Module):
+    """
+    Lets say you want an embedding that is a concatenation of the abstract object and data about the object
+
+    so we learn a normal one hot embedding, and then have an MLP process the data about the object and concatenate the two.
+    """
+    def __init__(
+        self,
+        num_items,
+        emb_dim,
+        item_data,
+        dropout=0.0,
+        n_h_layers=1,
+        initializer=tf.initializers.GlorotNormal(),
+        name=None,
+        activation=None,
+        start_act=None,
+        middle_act=None,
+        out_act=None,
+    ):
+        super().__init__(name=name)
+        assert item_data.shape[0] == num_items
+        self.item_data = item_data
+        self.item_MLP = MLP(
+            in_dim=item_data.shape[0],
+            start_dim=item_data.shape[0]//2,
+            out_dim=emb_dim//2,
+            n_h_layers=n_h_layers,
+            dropout=dropout,
+            name="item_data_mlp",
+            start_act=start_act,
+            middle_act=middle_act,
+            out_act=out_act,
+            style="bottleneck",
+        )
+        self.embedding = tf.Variable(initializer(shape=(num_items, emb_dim//2)), dtype=tf.float32, name=self.name + "_embedding")
+        self.activation = activation
+
+    def __call__(self, x, training=None):
+        item_embeddings = tf.gather(self.embedding, x)
+        item_data = tf.gather(self.item_data, x)
+        data_embeddings = self.item_MLP(item_data)
+        embeddings = tf.concat([item_embeddings, data_embeddings], axis=-1)
         if self.activation is not None:
             embeddings = self.activation(embeddings)
         return embeddings

@@ -65,7 +65,19 @@ class Expansion:
         for rarity in rarities:
             ml_data[rarity] = cards['rarity'].apply(lambda x: int(x == rarity))
         ml_data['produces C'] = cards['produced_mana'].apply(lambda x: 0 if not isinstance(x, list) else int('C' in x))
-        return ml_data.fillna(0)
+        ml_data.columns = [x.lower() for x in ml_data.columns]
+        count_cols = [x for x in ml_data.columns if '_count' in x]
+        # 0-1 normalize data representing counts
+        ml_data[count_cols] = ml_data[count_cols].apply(lambda x: x/x.max(), axis=0)
+        ml_data['idx'] = cards['idx']
+        # the way our embeddings work is we always have an embedding that represents the lack of a card. This helps the model
+        # represent stuff like generic format information. Hence we make this a one-hot vector that gets used in Draft when
+        # the pack is empty, but have that concept "on" for every single card so it can affect the learned representations
+        ml_data.loc['bias',:] = 0
+        ml_data.loc['bias', 'idx'] = cards['idx'].max() + 1
+        ml_data['bias'] = 1
+        ml_data = ml_data.fillna(0).sort_values('idx').reset_index()
+        return ml_data.drop(['idx','name']).values
     
     def get_card_stats(self):
         all_colors = [
