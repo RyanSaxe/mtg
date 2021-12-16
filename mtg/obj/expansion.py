@@ -45,10 +45,11 @@ class Expansion:
     def get_card_data_for_ML(self, return_df=False):
         ml_data = self.get_card_stats()
         colors = list('WUBRG')
-        cards = self.cards.set_index('name')
+        cards = self.cards.set_index('name').copy()
+        cards = cards.replace(to_replace="*", value=-1)
         copy_from_scryfall = ['power', 'toughness', 'basic_land_search', 'flip', 'cmc']
         for column in copy_from_scryfall:
-            ml_data[column] = cards[column].apply(lambda x: -1 if x == '*' else float(x))
+            ml_data[column] = cards[column].astype(float)
         keywords = list(set(cards['keywords'].sum()))
         keyword_df = pd.DataFrame(index=cards.index, columns=keywords).fillna(0)
         for card_idx,keys in cards['keywords'].to_dict().items():
