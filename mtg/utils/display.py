@@ -115,9 +115,10 @@ def draft_sim(expansion, model, t=None, idx_to_name=None, token=""):
                 #make pick
                 predictions, _ = model(data, training=False, return_attention=True)
                 bot_pick = tf.math.argmax(predictions[0,cur_pos]).numpy()
-                pack_data[idx][bot_pick] = 0
-                pick_data[idx][cur_pos + 1] = bot_pick
-                pool_data[idx][cur_pos + 1][bot_pick] += 1
+                pack_data[idx,cur_pos,bot_pick] = 0
+                if cur_pos + 1 < t:
+                    pick_data[idx][cur_pos + 1] = bot_pick
+                    pool_data[idx][cur_pos + 1][bot_pick] += 1
                 pick_js = {
                     "pack_number":pack_number,
                     "pick_number":pick_number,
