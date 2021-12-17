@@ -96,10 +96,10 @@ def draft_sim(expansion, model, t=None, idx_to_name=None, token=""):
     pack_shuffle_right = [7,0,1,2,3,4,5,6]
     pack_shuffle_left = [1,2,3,4,5,6,7,0]
     #initialize
-    pick_data = np.ones((32, t)) * n_cards
-    pack_data = np.ones((32, t, n_cards))
-    pool_data = np.ones((32, t, n_cards))
-    positions = np.tile(np.arange(n_cards), [32, 1])
+    pick_data = np.ones((seats, t)) * n_cards
+    pack_data = np.ones((seats, t, n_cards))
+    pool_data = np.ones((seats, t, n_cards))
+    positions = np.tile(np.arange(n_cards), [seats, 1])
     cur_pos = 0
     for pack_number in range(n_packs):
         #generate packs for this round
@@ -107,13 +107,11 @@ def draft_sim(expansion, model, t=None, idx_to_name=None, token=""):
         for pick_number in range(n_picks):
             pack_data[:,cur_pos,:] = np.vstack(packs)
             draft_info = np.concatenate([pack_data, pool_data], axis=-1)
-            #get data for each bot
-            data = (draft_info, pick_data, positions)
-            #make pick
-            predictions = model(data, training=False)
-            bot_picks = tf.math.argmax(predictions).numpy()[:,cur_pos]
-            #update pack and pick data for next iteration
             for idx in range(seats):
+                data = (draft_info[[idx]], pick_data[[idx]], positions[[idx]])
+                #make pick
+                predictions = model(data, training=False)
+                bot_picks = tf.math.argmax(predictions).numpy()[0,cur_pos]
                 bot_pick = bot_picks[idx]
                 pack_data[idx][bot_pick] = 0
                 pick_data[idx][cur_pos + 1] = bot_pick
