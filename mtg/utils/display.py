@@ -122,7 +122,7 @@ def draft_sim(expansion, model, t=None, idx_to_name=None, token=""):
                 pick_js = {
                     "pack_number":pack_number,
                     "pick_number":pick_number,
-                    "pack_cards": [idx_to_js[x] for x in np.where(packs[idx] == 1)],
+                    "pack_cards": [idx_to_js[x] for x in np.where(packs[idx] == 1)[0]],
                     "pick":idx_to_js[bot_pick]
                 }
                 js[idx]["picks"].append(pick_js)
