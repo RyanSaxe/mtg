@@ -140,11 +140,11 @@ class Expansion:
         p_r = 7/8
         p_m = 1/8
         if np.random.random() < 1/8:
-            rare = random.choice(cards[cards['rarity'] == 'mythic']['idx'].tolist(),1)
+            rare = random.sample(cards[cards['rarity'] == 'mythic']['idx'].tolist(),1)
         else:
-            rare = random.choice(cards[cards['rarity'] == 'rare']['idx'].tolist(),1)
-        uncommons = random.choice(cards[cards['rarity'] == 'uncommon']['idx'].tolist(),3)
-        commons = random.choice(cards[cards['rarity'] == 'common']['idx'].tolist(),10)
+            rare = random.sample(cards[cards['rarity'] == 'rare']['idx'].tolist(),1)
+        uncommons = random.sample(cards[cards['rarity'] == 'uncommon']['idx'].tolist(),3)
+        commons = random.sample(cards[cards['rarity'] == 'common']['idx'].tolist(),10)
         idxs = rare + uncommons + commons
         pack = np.zeros(len(cards))
         pack[idxs] = 1
@@ -213,14 +213,14 @@ class VOW(Expansion):
         cards = self.cards.copy()
         if exclude_basics:
             cards = cards[cards['idx'] >= 5]
-        uncommon_or_rare_flip = random.choice(
+        uncommon_or_rare_flip = random.sample(
             cards[
                 (cards['rarity'].isin(['mythic','rare','uncommon'])) &
                 cards['flip']
             ]['idx'].tolist(),
             1
         )
-        common_flip = random.choice(
+        common_flip = random.sample(
             cards[
                 (cards['rarity'] == 'common') &
                 cards['flip']
@@ -232,14 +232,14 @@ class VOW(Expansion):
             p_r = 7/8
             p_m = 1/8
             if np.random.random() < 1/8:
-                rare = random.choice(cards[cards['rarity'] == 'mythic']['idx'].tolist(),1)
+                rare = random.sample(cards[cards['rarity'] == 'mythic']['idx'].tolist(),1)
             else:
-                rare = random.choice(cards[cards['rarity'] == 'rare']['idx'].tolist(),1)
-            uncommons = random.choice(cards[cards['rarity'] == 'uncommon']['idx'].tolist(),2) + [uncommon_or_rare_flip]
+                rare = random.sample(cards[cards['rarity'] == 'rare']['idx'].tolist(),1)
+            uncommons = random.sample(cards[cards['rarity'] == 'uncommon']['idx'].tolist(),2) + [uncommon_or_rare_flip]
         else:
-            uncommons = random.choice(cards[cards['rarity'] == 'uncommon']['idx'].tolist(),3)
+            uncommons = random.sample(cards[cards['rarity'] == 'uncommon']['idx'].tolist(),3)
             rare = uncommon_or_rare_flip
-        commons = random.choice(cards[cards['rarity'] == 'common']['idx'].tolist(),9) + [common_flip]
+        commons = random.sample(cards[cards['rarity'] == 'common']['idx'].tolist(),9) + [common_flip]
         idxs = rare + uncommons + commons
         pack = np.zeros(len(cards))
         pack[idxs] = 1
