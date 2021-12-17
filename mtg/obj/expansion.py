@@ -242,7 +242,16 @@ class VOW(Expansion):
         else:
             uncommons = random.sample(cards[(cards['rarity'] == 'uncommon') & (cards['flip'] == 0)]['name'].tolist(),3)
             rare = [uncommon_or_rare_flip]
-        commons = random.sample(cards[((cards['rarity'] == 'common')) & (cards['flip'] == 0)]['name'].tolist(),9) + [common_flip]
+        commons = [common_flip]
+        # make sure at least one common of each color
+        for color in list('WUBRG'):
+            color_common = random.sample(cards[
+                (cards['rarity'] == 'common')
+                & (cards['flip'] == 0)
+                & (cards['mana_cost'].str.contains(color))
+            ]['name'].tolist(),1)
+            commons += color_common
+        commons = random.sample(cards[((cards['rarity'] == 'common')) & (cards['flip'] == 0)]['name'].tolist(),4)
         names = rare + uncommons + commons
         if return_names:
             return names
