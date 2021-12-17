@@ -96,10 +96,10 @@ def draft_sim(expansion, model, t=None, idx_to_name=None, token=""):
     pack_shuffle_right = [7,0,1,2,3,4,5,6]
     pack_shuffle_left = [1,2,3,4,5,6,7,0]
     #initialize
-    pick_data = np.ones((seats, t)) * n_cards
-    pack_data = np.ones((seats, t, n_cards))
-    pool_data = np.ones((seats, t, n_cards))
-    positions = np.tile(np.arange(n_cards), [seats, 1])
+    pick_data = np.ones((32, t)) * n_cards
+    pack_data = np.ones((32, t, n_cards))
+    pool_data = np.ones((32, t, n_cards))
+    positions = np.tile(np.arange(n_cards), [32, 1])
     cur_pos = 0
     for pack_number in range(n_packs):
         #generate packs for this round
