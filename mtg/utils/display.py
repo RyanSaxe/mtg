@@ -104,7 +104,7 @@ def draft_sim(expansion, model, t=None, idx_to_name=None, token=""):
     cur_pos = 0
     for pack_number in range(n_packs):
         #generate packs for this round
-        packs = [expansion.generate_pack(mapping=name_to_idx) for pack in range(seats)]
+        packs = [expansion.generate_pack(name_to_idx=name_to_idx) for pack in range(seats)]
         for pick_number in range(n_picks):
             pack_data[:,cur_pos,:] = np.vstack(packs)
             draft_info = np.concatenate([pack_data, pool_data], axis=-1)
@@ -116,7 +116,6 @@ def draft_sim(expansion, model, t=None, idx_to_name=None, token=""):
                 #make pick
                 predictions, _ = model(data, training=False, return_attention=True)
                 bot_pick = tf.math.argmax(predictions[0,cur_pos]).numpy()
-                pack_data[idx,cur_pos,bot_pick] = 0
                 if cur_pos + 1 < t:
                     pick_data[idx][cur_pos + 1] = bot_pick
                     pool_data[idx][cur_pos + 1][bot_pick] += 1
@@ -127,6 +126,8 @@ def draft_sim(expansion, model, t=None, idx_to_name=None, token=""):
                     "pick":idx_to_js[bot_pick]
                 }
                 js[idx]["picks"].append(pick_js)
+                # the bot picked the card, so remove it from the pack for the next person
+                packs[idx][bot_pick] = 0
             #pass the packs (left, right, left)
             if pack_number % 2 == 1:
                 packs = [packs[idx] for idx in pack_shuffle_right]
