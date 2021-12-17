@@ -249,9 +249,11 @@ class VOW(Expansion):
                 (cards['rarity'] == 'common')
                 & (cards['flip'] == 0)
                 & (cards['mana_cost'].str.contains(color))
+                & (~cards['name'].isin(commons))
             ]['name'].tolist(),1)
             commons += color_common
-        commons = random.sample(cards[((cards['rarity'] == 'common')) & (cards['flip'] == 0)]['name'].tolist(),4)
+        other_commons = random.sample(cards[((cards['rarity'] == 'common')) & (cards['flip'] == 0) & (~cards['name'].isin(commons))]['name'].tolist(),4)
+        commons += other_commons
         names = rare + uncommons + commons
         if return_names:
             return names
