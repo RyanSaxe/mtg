@@ -221,7 +221,7 @@ class VOW(Expansion):
             ]['idx'].tolist(),
             1
         )[0]
-        upper_rarity = cards[cards['idx'] == uncommon_or_rare_flip]['rarity']
+        upper_rarity = cards[cards['idx'] == uncommon_or_rare_flip]['rarity'].values[0]
         if upper_rarity == 'uncommon':
             p_r = 7/8
             p_m = 1/8
@@ -235,7 +235,7 @@ class VOW(Expansion):
             rare = uncommon_or_rare_flip
         commons = np.random.choice(cards[cards['rarity'] == 'common']['idx'].tolist(),9) + [common_flip]
         idxs = rare + uncommons + commons
-        pack = tf.zeros(len(cards))
+        pack = np.zeros(len(cards))
         pack[idxs] = 1
         return pack
 
