@@ -76,6 +76,7 @@ def names_to_arena_ids(names, expansion='VOW', mapping=None, return_mapping=Fals
     return output
 
 def draft_sim(expansion, model, t=None, idx_to_name=None, token=""):
+    name_to_idx = {v:k for k,v in idx_to_name.items()}
     seats = 8
     n_packs = 3
     n_cards = len(idx_to_name)
@@ -103,7 +104,7 @@ def draft_sim(expansion, model, t=None, idx_to_name=None, token=""):
     cur_pos = 0
     for pack_number in range(n_packs):
         #generate packs for this round
-        packs = [expansion.generate_pack() for pack in range(seats)]
+        packs = [expansion.generate_pack(mapping=name_to_idx) for pack in range(seats)]
         for pick_number in range(n_picks):
             pack_data[:,cur_pos,:] = np.vstack(packs)
             draft_info = np.concatenate([pack_data, pool_data], axis=-1)
