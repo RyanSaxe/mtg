@@ -111,7 +111,7 @@ def draft_sim(expansion, model, t=None, idx_to_name=None, token=""):
                 data = (draft_info[[idx]], pick_data[[idx]], positions[[idx]])
                 #make pick
                 predictions, _ = model(data, training=False, return_attention=True)
-                bot_picks = tf.math.argmax(predictions).numpy()[0,cur_pos]
+                bot_picks = tf.math.argmax(predictions[0,cur_pos]).numpy()
                 bot_pick = bot_picks[idx]
                 pack_data[idx][bot_pick] = 0
                 pick_data[idx][cur_pos + 1] = bot_pick
@@ -119,7 +119,7 @@ def draft_sim(expansion, model, t=None, idx_to_name=None, token=""):
                 pick_js = {
                     "pack_number":pack_number,
                     "pick_number":pick_number,
-                    "pack_cards": [idx_to_js[x] for x in np.where(packs[idx, cur_pos] == 1)],
+                    "pack_cards": [idx_to_js[x] for x in np.where(packs[idx] == 1)],
                     "pick":idx_to_js[bot_pick]
                 }
                 js[idx]["picks"].append(pick_js)
