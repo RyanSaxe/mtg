@@ -238,7 +238,7 @@ class VOW(Expansion):
             uncommons = random.sample(cards[cards['rarity'] == 'uncommon']['idx'].tolist(),2) + [uncommon_or_rare_flip]
         else:
             uncommons = random.sample(cards[cards['rarity'] == 'uncommon']['idx'].tolist(),3)
-            rare = uncommon_or_rare_flip
+            rare = [uncommon_or_rare_flip]
         commons = random.sample(cards[cards['rarity'] == 'common']['idx'].tolist(),9) + [common_flip]
         idxs = rare + uncommons + commons
         pack = np.zeros(len(cards))
