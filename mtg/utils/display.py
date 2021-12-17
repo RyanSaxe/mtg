@@ -110,7 +110,7 @@ def draft_sim(expansion, model, t=None, idx_to_name=None, token=""):
             for idx in range(seats):
                 data = (draft_info[[idx]], pick_data[[idx]], positions[[idx]])
                 #make pick
-                predictions = model(data, training=False)
+                predictions, _ = model(data, training=False, return_attention=True)
                 bot_picks = tf.math.argmax(predictions).numpy()[0,cur_pos]
                 bot_pick = bot_picks[idx]
                 pack_data[idx][bot_pick] = 0
