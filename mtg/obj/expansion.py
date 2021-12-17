@@ -213,14 +213,14 @@ class VOW(Expansion):
                 cards['flip']
             ]['idx'].tolist(),
             1
-        )
+        )[0]
         common_flip = np.random.choice(
             cards[
                 (cards['rarity'] == 'common') &
                 cards['flip']
             ]['idx'].tolist(),
             1
-        )
+        )[0]
         upper_rarity = cards[cards['idx'] == uncommon_or_rare_flip]['rarity']
         if upper_rarity == 'uncommon':
             p_r = 7/8
