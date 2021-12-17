@@ -6,10 +6,11 @@ from mtg.preprocess.seventeenlands import clean_bo1_games, get_card_rating_data
 from mtg.utils.dataloading_utils import load_data
 import numpy as np
 import re
+import time
 import random
 
 class Expansion:
-    def __init__(self, expansion, bo1=None, bo3=None, quick=None, draft=None, replay=None):
+    def __init__(self, expansion, bo1=None, bo3=None, quick=None, draft=None, replay=None, ml_data=True):
         self.expansion = expansion
         self.cards = CardSet([f'set={self.expansion}','is:booster']).to_dataframe()
         self.clean_card_df()
@@ -18,7 +19,10 @@ class Expansion:
         self.quick = self.process_data(quick, name="quick")
         self.draft = self.process_data(draft, name="draft")
         self.replay = self.process_data(replay, name="replay")
-        self.card_data_for_ML = self.get_card_data_for_ML()
+        if ml_data:
+            self.card_data_for_ML = self.get_card_data_for_ML()
+        else:
+            self.card_data_for_ML = None
 
     @property
     def types(self):
@@ -106,6 +110,7 @@ class Expansion:
         ]
         card_df = pd.DataFrame()
         for colors in all_colors:
+            time.sleep(1)
             card_data_df = get_card_rating_data("VOW", colors=colors)
             extension = "" if colors is None else "_" + colors
             card_data_df.columns = [col + extension for col in card_data_df.columns]
