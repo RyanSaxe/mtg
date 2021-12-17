@@ -75,6 +75,81 @@ def names_to_arena_ids(names, expansion='VOW', mapping=None, return_mapping=Fals
         output = (output, mapping)
     return output
 
+def data_to_json(packs, picks, card_mapping, token=""):
+    output = []
+    js = 
+    if len(packs.shape) == 3:
+        for i in range(packs.shape[0]):
+            output.append(data_to_json(packs[i], picks[i], card_mapping))
+    for i, pick in enumerate(picks):
+        pack_number = i // 14
+        pick_number = i % 14
+
+
+def draft_sim(expansion, model, t=None, idx_to_name=None, token=""):
+    seats = 8
+    n_packs = 3
+    n_cards = len(idx_to_name)
+    n_picks = t//n_packs
+
+    js = {
+        idx:{
+            "expansion":"VOW",
+            "token":f"{token}",
+            "picks":[]
+        } for idx in range(seats)
+    }
+
+    arena_mapping = load_arena_ids(expansion.expansion.upper())
+    idx_to_js = {i: arena_mapping[idx_to_name[i]] for i in range(n_cards)}
+    
+    #index circular shuffle per iteration
+    pack_shuffle_right = [7,0,1,2,3,4,5,6]
+    pack_shuffle_left = [1,2,3,4,5,6,7,0]
+    #initialize
+    pick_data = np.ones((seats, t)) * n_cards
+    pack_data = np.ones((seats, t, n_cards))
+    pool_data = np.ones((seats, t, n_cards))
+    positions = np.tile(np.arange(n_cards), [seats, 1])
+    cur_pos = 0
+    for pack_number in range(n_packs):
+        #generate packs for this round
+        packs = [expansion.generate_pack() for pack in range(seats)]
+        for pick_number in range(n_picks):
+            pack_data[:,cur_pos,:] = np.vstack(packs)
+            draft_info = np.concatenate([pack_data, pool_data], axis=-1)
+            #get data for each bot
+            data = (draft_info, pick_data, positions)
+            #make pick
+            predictions = model(data, training=False)
+            bot_picks = tf.math.argmax(predictions).numpy()[:,cur_pos]
+            #update pack and pick data for next iteration
+            for idx in range(seats):
+                bot_pick = bot_picks[idx]
+                pack_data[idx][bot_pick] = 0
+                pick_data[idx][cur_pos + 1] = bot_pick
+                pool_data[idx][cur_pos + 1][bot_pick] += 1
+                pick_js = {
+                    "pack_number":pack_number,
+                    "pick_number":pick_number,
+                    "pack_cards": [idx_to_js[x] for x in np.where(packs[idx, cur_pos] == 1)],
+                    "pick":idx_to_js[bot_pick]
+                }
+                js[idx]["picks"].append(pick_js)
+            #pass the packs (left, right, left)
+            if pack_number % 2 == 1:
+                packs = [packs[idx] for idx in pack_shuffle_right]
+            else:
+                packs = [packs[idx] for idx in pack_shuffle_left]
+            cur_pos += 1
+    draft_logs = []
+    for idx in range(seats):
+        r = requests.post(url = "https://www.17lands.com/api/submit_draft", json = js[idx])
+        r_js = r.json()
+        draft_id = r_js['id']
+        draft_logs.append(f"https://www.17lands.com/submitted_draft/{draft_id}")
+    return draft_logs
+
 def draft_log_ai(draft_log_url, model, t=None, n_cards=None, idx_to_name=None, return_attention=False, return_style='df', batch_size=1, exchange_picks=-1, exchange_packs=-1, return_model_input=False, token=""):
     exchange_picks = [exchange_picks] if isinstance(exchange_picks, int) else exchange_picks
     exchange_packs = [exchange_packs] if isinstance(exchange_packs, int) else exchange_packs

@@ -339,7 +339,7 @@ class TransformerBlock(tf.Module):
         return self.final_layer_norm(residual_emb_w_memory + process_emb, training=training), attention_weights
 
 class DeckBuilder(tf.Module):
-    def __init__(self, n_cards, dropout=0.0, embeddings=None, name=None):
+    def __init__(self, n_cards, dropout=0.0, embeddings=None, embedding_agg='mean', name=None):
         super().__init__(name=name)
         self.n_cards = n_cards
         if embeddings is None:
@@ -386,8 +386,9 @@ class DeckBuilder(tf.Module):
         )
         #self.interactions = nn.Dense(self.n_cards, self.n_cards, activation=None)
         self.add_basics_to_deck = nn.Dense(32,5, activation=lambda x: tf.nn.sigmoid(x) * 18.0)
+        self.embedding_agg = embedding_agg
 
-    def convert_pools_to_flattened_card_embeddings(self, pools):
+    def convert_pools_to_card_embeddings(self, pools):
         #expand dims of the pools so we can add dimension to use embeddings per card
         expanded_pools = tf.expand_dims(pools, axis=-1)
         #convert multiples into binary to use as multiplicative mask
@@ -397,27 +398,23 @@ class DeckBuilder(tf.Module):
         # -> expand dims such that (batch x n_cards x 1) * (1 x n_cards x emb_size) = (batch x n_cards x emb_size)
         expanded_embs = tf.expand_dims(self.embeddings, axis=0)
         pool_embs = expanded_pools * expanded_embs
-        # now, we want to add to the end of each embedding the number of the card in the pool
-        # -> dimension now is (batch x n_cards x emb_size + 1)
-        # pool_embs_w_card_count = tf.concat([
-        #         pool_embs,
-        #         expanded_pools
-        #     ],
-        #     axis=-1
-        # )
-        # by flattening out the last two dimensions, we have an input that is permutation
-        # invariant. No matter the cards in the pool, the 4th feature of the embedding for
-        # the 8th card will be located at the index 7 * (emb_size) + 4
-        # shape = pool_embs_w_card_count.shape
-        shape = pool_embs.shape
-        return tf.reshape(pool_embs, [shape[0], shape[1] * shape[2]])
+        if self.embedding_agg == 'flatten':
+            # by flattening out the last two dimensions, we have an input that is permutation
+            # invariant. No matter the cards in the pool, the 4th feature of the embedding for
+            # the 8th card will be located at the index 7 * (emb_size) + 4
+            shape = pool_embs.shape
+            return tf.reshape(pool_embs, [shape[0], shape[1] * shape[2]])
+        elif self.embedding_agg == 'mean':
+            return tf.reduce_sum(pool_embs, axis=1)/42.0
+        else:
+            raise NotImplementedError(f'This aggregation strategy ({self.embedding_agg}) has not been implemented yet')
 
     @tf.function
     def __call__(self, decks, training=None):
         basics = decks[:,:5]
         pools = decks[:,5:] 
         if self.embeddings is not None:
-            pool_embs = self.convert_pools_to_flattened_card_embeddings(pools)
+            pool_embs = self.convert_pools_to_card_embeddings(pools)
         else:
             pool_embs = pools
         #self.pool_interactions = self.interactions(pools)
