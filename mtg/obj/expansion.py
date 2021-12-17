@@ -212,7 +212,8 @@ class VOW(Expansion):
         """
         cards = self.cards.copy()
         if exclude_basics:
-            cards = cards[cards['idx'] >= 5]
+            cards = cards[cards['idx'] >= 5].copy()
+            cards['idx'] = cards['idx'] - 5
         uncommon_or_rare_flip = random.sample(
             cards[
                 (cards['rarity'].isin(['mythic','rare','uncommon'])) &
