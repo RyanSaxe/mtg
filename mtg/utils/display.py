@@ -99,7 +99,7 @@ def draft_sim(expansion, model, t=None, idx_to_name=None, token=""):
     pick_data = np.ones((seats, t)) * n_cards
     pack_data = np.ones((seats, t, n_cards))
     pool_data = np.ones((seats, t, n_cards))
-    positions = np.tile(np.arange(n_cards), [seats, 1])
+    positions = np.tile(np.arange(t), [seats, 1])
     cur_pos = 0
     for pack_number in range(n_packs):
         #generate packs for this round
