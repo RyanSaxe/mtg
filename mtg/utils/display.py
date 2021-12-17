@@ -75,17 +75,6 @@ def names_to_arena_ids(names, expansion='VOW', mapping=None, return_mapping=Fals
         output = (output, mapping)
     return output
 
-def data_to_json(packs, picks, card_mapping, token=""):
-    output = []
-    js = 
-    if len(packs.shape) == 3:
-        for i in range(packs.shape[0]):
-            output.append(data_to_json(packs[i], picks[i], card_mapping))
-    for i, pick in enumerate(picks):
-        pack_number = i // 14
-        pick_number = i % 14
-
-
 def draft_sim(expansion, model, t=None, idx_to_name=None, token=""):
     seats = 8
     n_packs = 3
