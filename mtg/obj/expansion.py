@@ -219,14 +219,14 @@ class VOW(Expansion):
         uncommon_or_rare_flip = random.sample(
             cards[
                 (cards['rarity'].isin(['mythic','rare','uncommon'])) &
-                cards['flip']
+                (cards['flip'] == 1)
             ]['name'].tolist(),
             1
         )[0]
         common_flip = random.sample(
             cards[
                 (cards['rarity'] == 'common') &
-                cards['flip']
+                (cards['flip'] == 1)
             ]['name'].tolist(),
             1
         )[0]
@@ -235,14 +235,14 @@ class VOW(Expansion):
             p_r = 7/8
             p_m = 1/8
             if np.random.random() < 1/8:
-                rare = random.sample(cards[(cards['rarity'] == 'mythic') & (~cards['flip'])]['name'].tolist(),1)
+                rare = random.sample(cards[(cards['rarity'] == 'mythic') & (cards['flip'] == 0)]['name'].tolist(),1)
             else:
-                rare = random.sample(cards[(cards['rarity'] == 'rare') & (~cards['flip'])]['name'].tolist(),1)
-            uncommons = random.sample(cards[(cards['rarity'] == 'uncommon') & (~cards['flip'])]['name'].tolist(),2) + [uncommon_or_rare_flip]
+                rare = random.sample(cards[(cards['rarity'] == 'rare') & (cards['flip'] == 0)]['name'].tolist(),1)
+            uncommons = random.sample(cards[(cards['rarity'] == 'uncommon') & (cards['flip'] == 0)]['name'].tolist(),2) + [uncommon_or_rare_flip]
         else:
-            uncommons = random.sample(cards[(cards['rarity'] == 'uncommon') & (~cards['flip'])]['name'].tolist(),3)
+            uncommons = random.sample(cards[(cards['rarity'] == 'uncommon') & (cards['flip'] == 0)]['name'].tolist(),3)
             rare = [uncommon_or_rare_flip]
-        commons = random.sample(cards[((cards['rarity'] == 'common')) & (~cards['flip'])]['name'].tolist(),9) + [common_flip]
+        commons = random.sample(cards[((cards['rarity'] == 'common')) & (cards['flip'] == 0)]['name'].tolist(),9) + [common_flip]
         names = rare + uncommons + commons
         if return_names:
             return names
