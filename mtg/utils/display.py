@@ -108,11 +108,13 @@ def draft_sim(expansion, model, t=None, idx_to_name=None, token=""):
             pack_data[:,cur_pos,:] = np.vstack(packs)
             draft_info = np.concatenate([pack_data, pool_data], axis=-1)
             for idx in range(seats):
+                # model doesnt get serialized with 8 seats as an option so 
+                # we have to do it individually --- will ensure serialization
+                # in the future
                 data = (draft_info[[idx]], pick_data[[idx]], positions[[idx]])
                 #make pick
                 predictions, _ = model(data, training=False, return_attention=True)
-                bot_picks = tf.math.argmax(predictions[0,cur_pos]).numpy()
-                bot_pick = bot_picks[idx]
+                bot_pick = tf.math.argmax(predictions[0,cur_pos]).numpy()
                 pack_data[idx][bot_pick] = 0
                 pick_data[idx][cur_pos + 1] = bot_pick
                 pool_data[idx][cur_pos + 1][bot_pick] += 1
