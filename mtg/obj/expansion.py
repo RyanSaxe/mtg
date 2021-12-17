@@ -209,7 +209,7 @@ class VOW(Expansion):
             cards = cards[cards['idx'] >= 5]
         uncommon_or_rare_flip = np.random.choice(
             cards[
-                (cards['rarity'].isin('mythic','rare','uncommon')) &
+                (cards['rarity'].isin(['mythic','rare','uncommon'])) &
                 cards['flip']
             ]['idx'].tolist(),
             1
