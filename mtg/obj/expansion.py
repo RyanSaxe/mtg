@@ -49,7 +49,7 @@ class Expansion:
         )
         self.cards['flip'] = self.cards['layout'].apply(lambda x: 0.0 if x == 'normal' else 1.0)
 
-    def get_card_data_for_ML(self, return_df=False):
+    def get_card_data_for_ML(self, return_df=True):
         ml_data = self.get_card_stats()
         colors = list('WUBRG')
         cards = self.cards.set_index('name').copy()
@@ -136,7 +136,8 @@ class Expansion:
         """
         cards = self.cards.copy()
         if exclude_basics:
-            cards = cards[cards['idx'] >= 5]
+            cards = cards[cards['idx'] >= 5].copy()
+            cards['idx'] = cards['idx'] - 5
         p_r = 7/8
         p_m = 1/8
         if np.random.random() < 1/8:
@@ -150,7 +151,7 @@ class Expansion:
         pack[idxs] = 1
         return pack
 
-    def read_mtgo(self, fname):
+    def read_mtgo(self, fname, exclude_basics=True, name_to_idx=None):
         """
         process MTGO log file and convert it into tensors so the bot
         can say what it would do
@@ -158,8 +159,12 @@ class Expansion:
         ignore_cards = ['plains','island','swamp','mountain','forest']
         with open(fname,'r') as f:
             lines = f.readlines()
-        set_lookup = self.cards[self.cards['idx'] >= 5].set_index('name')['idx'].to_dict()
-        print(set_lookup)
+        cards = self.cards[self.cards['idx'] >= 5].copy()
+        cards['idx'] = cards['idx'] - 5
+        if name_to_idx is None:
+            set_lookup = self.cards.set_index('name')['idx'].to_dict()
+        else:
+            set_lookup = name_to_idx
         packs = []
         picks = []
         pools = []
@@ -185,13 +190,13 @@ class Expansion:
                     continue
                 process = line.strip()
                 if process.startswith("-"):
-                    cardname = process.split(' ',1)[1].replace(' ','_').replace(',','')
+                    cardname = process.split(' ',1)[1].split('//')[0].strip()
                     if cardname in ignore_cards:
                         continue
                     card_idx = set_lookup[cardname]
                     cur_pick[card_idx] = 1
                 else:
-                    cardname = process.replace(' ','_').replace(',','')
+                    cardname = process.split('//')[0].strip()
                     if cardname in ignore_cards:
                         continue
                     card_idx = set_lookup[cardname]
