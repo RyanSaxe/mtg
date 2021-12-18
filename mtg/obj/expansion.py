@@ -190,13 +190,13 @@ class Expansion:
                     continue
                 process = line.strip()
                 if process.startswith("-"):
-                    cardname = process.split(' ',1)[1].split('//')[0].strip()
+                    cardname = process.split(' ',1)[1].split('//')[0].strip().lower()
                     if cardname in ignore_cards:
                         continue
                     card_idx = set_lookup[cardname]
                     cur_pick[card_idx] = 1
                 else:
-                    cardname = process.split('//')[0].strip()
+                    cardname = process.split('//')[0].strip().lower()
                     if cardname in ignore_cards:
                         continue
                     card_idx = set_lookup[cardname]
