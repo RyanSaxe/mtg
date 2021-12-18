@@ -151,58 +151,6 @@ class Expansion:
         pack[idxs] = 1
         return pack
 
-    def read_mtgo(self, fname, exclude_basics=True, name_to_idx=None):
-        """
-        process MTGO log file and convert it into tensors so the bot
-        can say what it would do
-        """
-        ignore_cards = ['plains','island','swamp','mountain','forest']
-        with open(fname,'r') as f:
-            lines = f.readlines()
-        cards = self.cards[self.cards['idx'] >= 5].copy()
-        cards['idx'] = cards['idx'] - 5
-        if name_to_idx is None:
-            set_lookup = self.cards.set_index('name')['idx'].to_dict()
-        else:
-            set_lookup = name_to_idx
-        packs = []
-        picks = []
-        pools = []
-        in_pack = False
-        cur_pack = np.zeros(len(set_lookup.keys()))
-        cur_pick = np.zeros(len(set_lookup.keys()))
-        pool = np.zeros(len(set_lookup.keys()))
-        for line in lines:
-            match = re.findall(r'Pack \d pick \d+',line)
-            if len(match) == 1:
-                in_pack = True
-                continue
-            if in_pack:
-                if len(line.strip()) == 0:
-                    in_pack = False
-                    if sum(cur_pick) != 0:
-                        packs.append(cur_pack)
-                        picks.append(cur_pick)
-                        pools.append(pool.copy())
-                        pool += cur_pick
-                    cur_pack = np.zeros(len(set_lookup.keys()))
-                    cur_pick = np.zeros(len(set_lookup.keys()))
-                    continue
-                process = line.strip()
-                if process.startswith("-"):
-                    cardname = process.split(' ',1)[1].split('//')[0].strip().lower()
-                    if cardname in ignore_cards:
-                        continue
-                    card_idx = set_lookup[cardname]
-                    cur_pick[card_idx] = 1
-                else:
-                    cardname = process.split('//')[0].strip().lower()
-                    if cardname in ignore_cards:
-                        continue
-                    card_idx = set_lookup[cardname]
-                cur_pack[card_idx] = 1
-        return pools,picks,packs
-
 class MID(Expansion):
     def __init__(self, bo1=None, bo3=None, quick=None, draft=None, replay=None, ml_data=True):
         super().__init__(expansion='mid', bo1=bo1, bo3=bo3, quick=quick, draft=draft, replay=replay, ml_data=ml_data)

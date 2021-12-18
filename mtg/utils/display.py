@@ -6,6 +6,7 @@ from matplotlib import colors
 from matplotlib.colors import LinearSegmentedColormap
 import matplotlib.pyplot as plt
 import warnings
+import re
 
 def print_deck(deck, cards, sort_by="name", return_str=False):
     cards = cards.sort_values(by=sort_by)
@@ -74,6 +75,90 @@ def names_to_arena_ids(names, expansion='VOW', mapping=None, return_mapping=Fals
     if return_mapping:
         output = (output, mapping)
     return output
+
+def read_mtgo(fname, name_to_idx=None, model=None, t=42):
+    """
+    process MTGO log file and convert it into tensors so the bot
+    can say what it would do
+    """
+    ignore_cards = ['plains','island','swamp','mountain','forest']
+    with open(fname,'r') as f:
+        lines = f.readlines()
+    n_cards = len(name_to_idx.keys())
+    packs = np.ones((t, n_cards), dtype=np.float32)
+    picks = np.ones(t, dtype=np.int32) * n_cards
+    pools = np.ones((t, n_cards), dtype=np.float32)
+    positions = np.arange(t, dtype=np.int32)
+    in_pack = False
+    cur_pack = np.zeros(n_cards)
+    cur_pick = np.zeros(n_cards)
+    pool = np.zeros(n_cards)
+    idx = 0
+    for line in lines:
+        match = re.findall(r'Pack \d pick \d+',line)
+        if len(match) == 1:
+            in_pack = True
+            continue
+        if in_pack:
+            if len(line.strip()) == 0:
+                in_pack = False
+                if sum(cur_pick) != 0:
+                    pick_idx = np.where(cur_pick != 0)[0]
+                    assert len(pick_idx) == 1
+                    packs[idx,:] = cur_pack
+                    if idx + 1 < 41:
+                        picks[idx + 1] = pick_idx[0]
+                    pools[idx,:] = pool.copy()
+                    pool[pick_idx[0]] += 1
+                    idx += 1
+                cur_pack = np.zeros(n_cards)
+                cur_pick = np.zeros(n_cards)
+                continue
+            process = line.strip()
+            if process.startswith("-"):
+                cardname = process.split(' ',1)[1].split('//')[0].strip().lower()
+                if cardname in ignore_cards:
+                    continue
+                card_idx = name_to_idx[cardname]
+                cur_pick[card_idx] = 1
+            else:
+                cardname = process.split('//')[0].strip().lower()
+                if cardname in ignore_cards:
+                    continue
+                card_idx = name_to_idx[cardname]
+            cur_pack[card_idx] = 1
+    if idx < 42:
+        packs[idx,:] = cur_pack
+        pools[idx,:] = pool.copy()
+    else:
+        idx -= 1
+    draft_info = np.concatenate([packs, pools], axis=-1)
+    model_input = (
+        np.expand_dims(draft_info,0),
+        np.expand_dims(picks,0),
+        np.expand_dims(positions, 0)
+    )
+    if model is not None:
+        predictions, att = model(model_input, training=False, return_attention=True)
+        top3 = tf.math.top_k(predictions, k=3).indices.numpy()[0]
+        idx_to_name = {v:k for k,v in name_to_idx.items()}
+        print(
+            "pick:",
+            idx_to_name[top3[idx][0]],
+            "(",predictions[0,idx,top3[idx][0]].numpy().round(3),")",
+            "--- followed by",
+            idx_to_name[top3[idx][1]],
+            "(",predictions[0,idx,top3[idx][1]].numpy().round(3),")",
+            "and",
+            idx_to_name[top3[idx][2]],
+            "(",predictions[0,idx,top3[idx][2]].numpy().round(3),")",
+        )
+        hold = input()
+        if hold == "stop":
+            return model_input
+        if idx < 41:
+            return read_mtgo(fname, name_to_idx=name_to_idx, model=model, t=t)
+    return model_input
 
 def draft_sim(expansion, model, t=None, idx_to_name=None, token=""):
     name_to_idx = {v:k for k,v in idx_to_name.items()}
@@ -188,7 +273,7 @@ def draft_log_ai(draft_log_url, model, t=None, n_cards=None, idx_to_name=None, r
         }
         js['picks'].append(pick_js)
     #insert n_cards idx to shift the picks passed into the model to prevent seeing the correct pick
-    np_pick = np.tile(np.expand_dims(np.asarray([n_cards] + [name_to_idx[name] for name in actual_pick[:-1]]), 0),batch_size).reshape(batch_size,42)
+    np_pick = np.tile(np.expand_dims(np.asarray([n_cards] + [name_to_idx[name] for name in actual_pick[:-1]]), 0),batch_size).reshape(batch_size,t)
     model_input = (
         tf.convert_to_tensor(draft_info, dtype=tf.float32),
         tf.convert_to_tensor(np_pick, dtype=tf.int32),
