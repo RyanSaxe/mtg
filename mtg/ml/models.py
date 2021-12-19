@@ -265,7 +265,7 @@ class DraftBot(tf.Module):
         self.emb_lambda = emb_lambda
         self.pred_lambda = pred_lambda
         self.bad_behavior_lambda = bad_behavior_lambda
-        self.rare_lamba = rare_lambda
+        self.rare_lambda = rare_lambda
         self.cmc_lambda = cmc_lambda
         if card_data is not None:
             self.set_card_params(card_data)
