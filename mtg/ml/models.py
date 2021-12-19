@@ -247,6 +247,8 @@ class DraftBot(tf.Module):
         emb_lambda=1.0,
         pred_lambda=1.0,
         bad_behavior_lambda=1.0,
+        rare_lambda=1.0,
+        cmc_lambda=1.0,
         card_data=None,
     ):
         if optimizer is None:
@@ -263,6 +265,8 @@ class DraftBot(tf.Module):
         self.emb_lambda = emb_lambda
         self.pred_lambda = pred_lambda
         self.bad_behavior_lambda = bad_behavior_lambda
+        self.rare_lamba = rare_lambda
+        self.cmc_lambda = cmc_lambda
         if card_data is not None:
             self.set_card_params(card_data)
     
@@ -297,12 +301,12 @@ class DraftBot(tf.Module):
         #    basically, if you're going to make a mistake, bias to low cmc cards
         true_cmc = tf.reduce_sum(true_one_hot * self.cmc, axis=-1)
         pred_cmc = tf.reduce_sum(pred * self.cmc, axis=-1)
-        cmc_loss = tf.maximum(pred_cmc - true_cmc, 0.0)
+        cmc_loss = tf.maximum(pred_cmc - true_cmc, 0.0) * self.cmc_lambda
         # penalize taking rares when the human doesn't. This helps not learn "take rares" to
         # explain raredrafting.
         human_took_rare = tf.reduce_sum(true_one_hot * self.rare_flag, axis=-1)
         pred_rare_val = tf.reduce_sum(pred * self.rare_flag, axis=-1)
-        rare_loss = (1 - human_took_rare) * pred_rare_val
+        rare_loss = (1 - human_took_rare) * pred_rare_val * self.rare_lambda
         return (cmc_loss + rare_loss) * sample_weight
 
     def compute_metrics(self, true, pred, sample_weight=None):
