@@ -132,9 +132,9 @@ def read_mtgo(fname, name_to_idx=None, model=None, t=42):
         pools[idx,:] = pool.copy()
     else:
         idx -= 1
-    draft_info = np.concatenate([packs, pools], axis=-1)
+    #draft_info = np.concatenate([packs, pools], axis=-1)
     model_input = (
-        np.expand_dims(draft_info,0),
+        np.expand_dims(packs,0),
         np.expand_dims(picks,0),
         np.expand_dims(positions, 0)
     )
@@ -192,12 +192,12 @@ def draft_sim(expansion, model, t=None, idx_to_name=None, token=""):
         packs = [expansion.generate_pack(name_to_idx=name_to_idx) for pack in range(seats)]
         for pick_number in range(n_picks):
             pack_data[:,cur_pos,:] = np.vstack(packs)
-            draft_info = np.concatenate([pack_data, pool_data], axis=-1)
+            #draft_info = np.concatenate([pack_data, pool_data], axis=-1)
             for idx in range(seats):
                 # model doesnt get serialized with 8 seats as an option so 
                 # we have to do it individually --- will ensure serialization
                 # in the future
-                data = (draft_info[[idx]], pick_data[[idx]], positions[[idx]])
+                data = (pack_data[[idx]], pick_data[[idx]], positions[[idx]])
                 #make pick
                 predictions, _ = model(data, training=False, return_attention=True)
                 bot_pick = tf.math.argmax(predictions[0,cur_pos]).numpy()
