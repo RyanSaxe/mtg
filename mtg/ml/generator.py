@@ -160,7 +160,7 @@ class DraftGenerator(MTGDataGenerator):
         positions = tf.convert_to_tensor(positions.astype(np.int32), dtype=tf.int32)
         picks = tf.convert_to_tensor(picks.astype(np.float32), dtype=tf.int32)
         shifted_picks = tf.convert_to_tensor(shifted_picks.astype(np.float32), dtype=tf.int32)
-        return (draft_info, shifted_picks, positions), picks, weights
+        return (packs, shifted_picks, positions), picks, weights
 
 class DeckGenerator(MTGDataGenerator):
     def __init__(
