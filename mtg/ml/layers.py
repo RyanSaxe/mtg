@@ -30,6 +30,7 @@ class Dense(tf.Module):
                 name=self.name + '_b',
             )
 
+    @tf.function
     def __call__(self, x, training=None):
         rank = x.shape.rank
         if rank == 2 or rank is None:
@@ -192,6 +193,7 @@ class Embedding(tf.Module):
         self.embedding = tf.Variable(initializer(shape=(num_items, emb_dim)), dtype=tf.float32, name=self.name + "_embedding")
         self.activation = activation
 
+    @tf.function
     def __call__(self, x, training=None):
         embeddings = tf.gather(self.embedding, x)
         if self.activation is not None:

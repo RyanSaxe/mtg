@@ -62,6 +62,7 @@ class ConcatEmbedding(tf.Module):
         self.embedding = tf.Variable(initializer(shape=(num_items, emb_dim//2)), dtype=tf.float32, name=self.name + "_embedding")
         self.activation = activation
 
+    @tf.function
     def __call__(self, x, training=None):
         item_embeddings = tf.gather(self.embedding, x)
         data_embeddings = tf.gather(
@@ -85,7 +86,7 @@ class DraftBot(tf.Module):
         emb_dropout=0.0,
         memory_dropout=0.0,
         out_dropout=0.0,
-        attention_decoder=True,
+        use_deckbuilder=False,
         output_MLP=False,
         name=None
     ):
@@ -116,31 +117,17 @@ class DraftBot(tf.Module):
         else:
             self.card_data = tf.convert_to_tensor(self.card_data, dtype=tf.float32)
             self.card_embedding = ConcatEmbedding(self.n_cards + 1, emb_dim, self.card_data, name="card_embedding", activation=None)
-        self.attention_decoder = attention_decoder
-        if self.attention_decoder:
-            self.decoder_layers = [
-                TransformerBlock(
-                    self.n_cards,
-                    emb_dim,
-                    num_heads,
-                    dropout=memory_dropout,
-                    name=f"memory_decoder_{i}",
-                    decode=True,
-                )
-                for i in range(num_memory_layers)
-            ]
-        else:
-            self.pool_pack_embedding = nn.MLP(
-                in_dim=self.n_cards * 2,
-                start_dim=self.n_cards,
-                out_dim=emb_dim,
-                n_h_layers=1,
-                name="pack_embedding",
-                start_act=None,
-                middle_act=None,
-                out_act=None,
-                style="bottleneck",
+        self.decoder_layers = [
+            TransformerBlock(
+                self.n_cards,
+                emb_dim,
+                num_heads,
+                dropout=memory_dropout,
+                name=f"memory_decoder_{i}",
+                decode=True,
             )
+            for i in range(num_memory_layers)
+        ]
         self.output_MLP = output_MLP
         if self.output_MLP:
             self.output_decoder = nn.MLP(
@@ -155,7 +142,10 @@ class DraftBot(tf.Module):
                 out_act=None,
                 style="reverse_bottleneck",
             )
-
+        if use_deckbuilder:
+            self.deckbuilder = DeckBuilder()
+        else:
+            self.deckbuilder = None
         # initializer=tf.initializers.GlorotNormal()
         # self.initial_card_bias = tf.Variable(
         #     initializer(shape=(1, emb_dim)),
@@ -163,23 +153,25 @@ class DraftBot(tf.Module):
         #     name=self.name + "_initial_card_bias",
         # )
 
-
     @tf.function
-    def __call__(self, features, training=None, return_attention=False):
-        draft_info, picks, positions = features
-        packs = draft_info[:, :, :self.n_cards]
+    def __call__(self, features, training=None, return_attention=False, return_build=True):
+        if self.deckbuilder is not None and return_build:
+            packs, picks, positions, final_pools = features
+        else:
+            packs, picks, positions = features
         # pools = draft_info[:, :, self.n_cards:]
         # draft_info is of shape (batch_size, t, n_cards * 2)
         positional_masks = tf.gather(self.positional_mask, positions)
         positional_embeddings = self.positional_embedding(positions, training=training)
         #old way: pack embedding = mean of card embeddings for only cards in the pack
         #batch_size x t x n_cards x emb_dim
-        pack_card_embeddings = packs[:,:,:,None] * self.card_embedding(tf.range(self.n_cards), training=training)[None,None,:,:]
-        if self.attention_decoder:
-            n_options = tf.reduce_sum(packs, axis=-1, keepdims=True)
-            pack_embeddings = tf.reduce_sum(pack_card_embeddings, axis=2)/n_options
-        else:
-            pack_embeddings = self.pool_pack_embedding(draft_info, training=training)
+        all_card_embeddings = self.card_embedding(tf.range(self.n_cards), training=training)
+        if self.deckbuilder is not None and return_build:
+            final_pool_embeddings = final_pools[:,:,None] * all_card_embeddings[None,:,:]
+            built_decks = self.deckbuilder(final_pool_embeddings, training=training)
+        pack_card_embeddings = packs[:,:,:,None] * all_card_embeddings[None,None,:,:]
+        n_options = tf.reduce_sum(packs, axis=-1, keepdims=True)
+        pack_embeddings = tf.reduce_sum(pack_card_embeddings, axis=2)/n_options
         embs = pack_embeddings * tf.math.sqrt(self.emb_dim) + positional_embeddings
         # insert an embedding to represent bias towards cards/archetypes/concepts you have before the draft starts
         # --> this could range from "generic pick order of all cards" to "blue is the best color", etc etc
@@ -193,22 +185,15 @@ class DraftBot(tf.Module):
             embs = tf.nn.dropout(embs, rate=self.dropout)
         for memory_layer in self.encoder_layers:
             embs, attention_weights = memory_layer(embs, positional_masks, training=training) # (batch_size, t, emb_dim)
-        if self.attention_decoder:
-            dec_embs = self.card_embedding(picks, training=training)
-            # dec_embs = tf.concat([
-            #     batch_bias,
-            #     dec_embs,
-            # ], axis=1)
-            for memory_layer in self.decoder_layers:
-                dec_embs, attention_weights = memory_layer(dec_embs, positional_masks, encoder_output=embs, training=training) # (batch_size, t, emb_dim)
-            embs = dec_embs
-
+        dec_embs = self.card_embedding(picks, training=training)
+        for memory_layer in self.decoder_layers:
+            dec_embs, attention_weights = memory_layer(dec_embs, positional_masks, encoder_output=embs, training=training) # (batch_size, t, emb_dim)
         #batch_size x t x n_cards x emb_dim
         #    pack_card_embeddings
         #batch_size x t x emb_dim
         #    embs
         #euclidian
-        emb_dists = tf.sqrt(tf.reduce_sum(tf.square(pack_card_embeddings - embs[:,:,None,:]), -1)) * packs
+        emb_dists = tf.sqrt(tf.reduce_sum(tf.square(pack_card_embeddings - dec_embs[:,:,None,:]), -1)) * packs
         #cosine
         # l2_norm_pred = tf.linalg.l2_normalize(embs[:,:,None,:], axis=-1)
         # l2_norm_pack = tf.linalg.l2_normalize(pack_card_embeddings, axis=-1)
@@ -216,7 +201,7 @@ class DraftBot(tf.Module):
         #get rid of output with respect to initial bias vector, as that is not part of prediction
         #embs = embs[:,1:,:]
         if self.output_MLP:
-            card_rankings = self.output_decoder(embs, training=training) * packs # (batch_size, t, n_cards)
+            card_rankings = self.output_decoder(embs, training=training) # (batch_size, t, n_cards)
         else:
             card_rankings = -emb_dists
         mask_for_softmax = card_rankings - 1e9 * (1 - packs)
@@ -235,9 +220,11 @@ class DraftBot(tf.Module):
         # note: currently this sums to one so we do from_logits=True in Categorical Cross Entropy,
         #       possible softmax is better than relu, regardless this does have numerical instability issues
         #       so that is something to look out for. But from_logits=False had terrible performance
+        if self.deckbuilder is not None and return_build:
+            output = (output, built_decks)
         if return_attention:
             return output, attention_weights
-        return output, emb_dists
+        return output, pack_card_embeddings
 
     def compile(
         self,
@@ -274,11 +261,19 @@ class DraftBot(tf.Module):
         self.rare_flag = (card_data['mythic'] + card_data['rare']).values[None, None, :]
         self.cmc = card_data['cmc'].values[None, None, :]
 
-    def loss(self, true, pred, sample_weight=None):
-        pred, emb_dists = pred
-
+    def loss(self, true, pred, sample_weight=None, training=None):
+        pred, pack_card_embeddings = pred
+        if isinstance(pred, tuple):
+            pred, built_decks_pred = pred
+            true, built_decks_true = true
+        else:
+            self.deck_loss = 0
         self.prediction_loss = self.loss_f(true, pred, sample_weight=sample_weight)
 
+        correct_emb = self.card_embedding(true, training=training)
+        emb_dists = tf.sqrt(
+            tf.reduce_sum(tf.square(pack_card_embeddings - correct_emb[:,:,None,:]), -1)
+        ) * tf.cast(tf.math.count_nonzero(pack_card_embeddings, axis=-1) > 0, tf.float32)
         correct_one_hot = tf.one_hot(true, self.n_cards)
         dist_of_not_correct = emb_dists * (1 - correct_one_hot)
         dist_of_correct = tf.reduce_sum(emb_dists * correct_one_hot, axis=-1, keepdims=True)
@@ -311,6 +306,8 @@ class DraftBot(tf.Module):
 
     def compute_metrics(self, true, pred, sample_weight=None):
         pred, emb_dists = pred
+        if isinstance(pred, tuple):
+            pred, built_decks = pred
         top1 = tf.reduce_mean(tf.keras.metrics.sparse_top_k_categorical_accuracy(true, pred, 1))
         top2 = tf.reduce_mean(tf.keras.metrics.sparse_top_k_categorical_accuracy(true, pred, 2))
         top3 = tf.reduce_mean(tf.keras.metrics.sparse_top_k_categorical_accuracy(true, pred, 3))
@@ -325,7 +322,8 @@ class DraftBot(tf.Module):
             attrs = {
                 't': self.t,
                 'idx_to_name': self.idx_to_name,
-                'n_cards': self.n_cards
+                'n_cards': self.n_cards,
+                'embeddings': self.card_embedding(tf.range(self.n_cards), training=False)
             }
             pickle.dump(attrs,f) 
 
@@ -382,6 +380,9 @@ class DeckBuilder(tf.Module):
         if embeddings is None:
             self.embeddings = None
             encoder_in_dim = self.n_cards
+        elif isinstance(embeddings, tuple):
+            self.embeddings = embeddings
+            ecoder_in_dim, _ = embeddings
         else:
             #if embeddings is an integer, learn embeddings of that dimension,
             #if embeddings is None, don't use embeddings
@@ -394,7 +395,10 @@ class DeckBuilder(tf.Module):
                 emb_trainable = False
                 emb_init = embeddings
             self.embeddings = tf.Variable(emb_init, trainable=emb_trainable)
-            encoder_in_dim = self.embeddings.shape[0] * (self.embeddings.shape[1])
+            if embedding_agg == "flatten":
+                encoder_in_dim = self.embeddings.shape[0] * (self.embeddings.shape[1])
+            else:
+                ecoder_in_dim = self.embeddings.shape[0]
         self.encoder = nn.MLP(
             in_dim=encoder_in_dim,
             start_dim=256,
@@ -423,7 +427,7 @@ class DeckBuilder(tf.Module):
         )
         #self.interactions = nn.Dense(self.n_cards, self.n_cards, activation=None)
         self.add_basics_to_deck = nn.Dense(32,5, activation=lambda x: tf.nn.sigmoid(x) * 18.0)
-        self.embedding_agg = embedding_agg
+        self.embedding_agg = embedding_agg 
 
     def convert_pools_to_card_embeddings(self, pools):
         #expand dims of the pools so we can add dimension to use embeddings per card
