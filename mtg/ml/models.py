@@ -188,21 +188,22 @@ class DraftBot(tf.Module):
         dec_embs = self.card_embedding(picks, training=training)
         for memory_layer in self.decoder_layers:
             dec_embs, attention_weights = memory_layer(dec_embs, positional_masks, encoder_output=embs, training=training) # (batch_size, t, emb_dim)
-        #batch_size x t x n_cards x emb_dim
-        #    pack_card_embeddings
-        #batch_size x t x emb_dim
-        #    embs
-        #euclidian
-        emb_dists = tf.sqrt(tf.reduce_sum(tf.square(pack_card_embeddings - dec_embs[:,:,None,:]), -1)) * packs
-        #cosine
-        # l2_norm_pred = tf.linalg.l2_normalize(embs[:,:,None,:], axis=-1)
-        # l2_norm_pack = tf.linalg.l2_normalize(pack_card_embeddings, axis=-1)
-        # emb_dists = -tf.reduce_sum(l2_norm_pred * l2_norm_pack, axis=-1) * packs
+        
         #get rid of output with respect to initial bias vector, as that is not part of prediction
         #embs = embs[:,1:,:]
         if self.output_MLP:
             card_rankings = self.output_decoder(embs, training=training) # (batch_size, t, n_cards)
         else:
+            #batch_size x t x n_cards x emb_dim
+            #    pack_card_embeddings
+            #batch_size x t x emb_dim
+            #    embs
+            #euclidian
+            #cosine
+            # l2_norm_pred = tf.linalg.l2_normalize(embs[:,:,None,:], axis=-1)
+            # l2_norm_pack = tf.linalg.l2_normalize(pack_card_embeddings, axis=-1)
+            # emb_dists = -tf.reduce_sum(l2_norm_pred * l2_norm_pack, axis=-1) * packs
+            emb_dists = tf.sqrt(tf.reduce_sum(tf.square(pack_card_embeddings - dec_embs[:,:,None,:]), -1)) * packs
             card_rankings = -emb_dists
         mask_for_softmax = card_rankings - 1e9 * (1 - packs)
         output = tf.nn.softmax(mask_for_softmax)
@@ -296,13 +297,13 @@ class DraftBot(tf.Module):
         #    basically, if you're going to make a mistake, bias to low cmc cards
         true_cmc = tf.reduce_sum(true_one_hot * self.cmc, axis=-1)
         pred_cmc = tf.reduce_sum(pred * self.cmc, axis=-1)
-        cmc_loss = tf.maximum(pred_cmc - true_cmc, 0.0) * self.cmc_lambda
+        self.cmc_loss = tf.maximum(pred_cmc - true_cmc, 0.0) * self.cmc_lambda
         # penalize taking rares when the human doesn't. This helps not learn "take rares" to
         # explain raredrafting.
         human_took_rare = tf.reduce_sum(true_one_hot * self.rare_flag, axis=-1)
         pred_rare_val = tf.reduce_sum(pred * self.rare_flag, axis=-1)
-        rare_loss = (1 - human_took_rare) * pred_rare_val * self.rare_lambda
-        return (cmc_loss + rare_loss) * sample_weight
+        self.rare_loss = (1 - human_took_rare) * pred_rare_val * self.rare_lambda
+        return (self.cmc_loss + self.rare_loss) * sample_weight
 
     def compute_metrics(self, true, pred, sample_weight=None):
         pred, emb_dists = pred
