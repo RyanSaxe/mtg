@@ -193,15 +193,15 @@ class DraftBot(tf.Module):
         #dec_embs = dec_embs
         #get rid of output with respect to initial bias vector, as that is not part of prediction
         #embs = embs[:,1:,:]
+        mask_for_softmax = (1e9 * (1 - packs))
         if self.output_MLP:
-            card_rankings = self.output_decoder(dec_embs, training=training) # (batch_size, t, n_cards)
-            emb_dists = tf.sqrt(tf.reduce_sum(tf.square(pack_card_embeddings - dec_embs[:,:,None,:]), -1)) * packs
+            card_rankings = self.output_decoder(dec_embs, training=training) * packs - mask_for_softmax # (batch_size, t, n_cards)
+            emb_dists = tf.sqrt(tf.reduce_sum(tf.square(pack_card_embeddings - dec_embs[:,:,None,:]), -1)) * packs + (1e9 * (1 - packs))
         else:
             approx_pick_embs = self.output_decoder(dec_embs, training=training)
-            emb_dists = tf.sqrt(tf.reduce_sum(tf.square(pack_card_embeddings - approx_pick_embs[:,:,None,:]), -1)) * packs
+            emb_dists = tf.sqrt(tf.reduce_sum(tf.square(pack_card_embeddings - approx_pick_embs[:,:,None,:]), -1)) * packs + mask_for_softmax
             card_rankings = -emb_dists
-        mask_for_softmax = card_rankings - 1e9 * (1 - packs)
-        output = tf.nn.softmax(mask_for_softmax)
+        output = tf.nn.softmax(card_rankings)
         # zero out the rankings for cards not in the pack
         # note1: this only works because no foils on arena means packs can never have 2x of a card
         #       if this changes, modify to clip packs at 1
@@ -270,7 +270,7 @@ class DraftBot(tf.Module):
         correct_one_hot = tf.one_hot(true, self.n_cards)
         dist_of_not_correct = emb_dists * (1 - correct_one_hot)
         dist_of_correct = tf.reduce_sum(emb_dists * correct_one_hot, axis=-1, keepdims=True)
-        dist_loss = dist_of_not_correct - dist_of_correct
+        dist_loss = dist_of_correct - dist_of_not_correct
         sample_weight = 1 if sample_weight is None else sample_weight
         self.embedding_loss = tf.reduce_sum(tf.maximum(dist_loss + self.margin, 0.), axis=-1) * sample_weight
 
