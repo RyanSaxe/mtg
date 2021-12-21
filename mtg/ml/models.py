@@ -116,7 +116,7 @@ class DraftBot(tf.Module):
             self.card_embedding = Embedding(self.n_cards + 1, emb_dim, name="card_embedding", activation=None)
         else:
             self.card_data = tf.convert_to_tensor(self.card_data, dtype=tf.float32)
-            self.card_embedding = ConcatEmbedding(self.n_cards + 1, emb_dim, self.card_data, name="card_embedding", activation=None)
+            self.card_embedding = ConcatEmbedding(self.n_cards + 1, emb_dim, self.card_data, name="card_embedding", activation=tf.nn.tanh)
         self.decoder_layers = [
             TransformerBlock(
                 self.n_cards,
@@ -188,7 +188,7 @@ class DraftBot(tf.Module):
         dec_embs = self.card_embedding(picks, training=training)
         for memory_layer in self.decoder_layers:
             dec_embs, attention_weights = memory_layer(dec_embs, positional_masks, encoder_output=embs, training=training) # (batch_size, t, emb_dim)
-        
+        dec_embs = tf.nn.tanh(dec_embs)
         #get rid of output with respect to initial bias vector, as that is not part of prediction
         #embs = embs[:,1:,:]
         emb_dists = tf.sqrt(tf.reduce_sum(tf.square(pack_card_embeddings - dec_embs[:,:,None,:]), -1)) * packs
@@ -276,7 +276,7 @@ class DraftBot(tf.Module):
         dist_of_correct = tf.reduce_sum(emb_dists * correct_one_hot, axis=-1, keepdims=True)
         dist_loss = dist_of_correct - dist_of_not_correct
         sample_weight = 1 if sample_weight is None else sample_weight
-        self.embedding_loss = tf.reduce_sum(tf.maximum(dist_loss + self.margin, 0.), axis=-1) * sample_weight
+        self.embedding_loss = tf.reduce_mean(tf.maximum(dist_loss + self.margin, 0.), axis=-1)/ * sample_weight
         #purposeful error
         self.bad_behavior_loss = self.determine_bad_behavior(true, pred, sample_weight=sample_weight)
 
