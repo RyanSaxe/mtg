@@ -285,7 +285,7 @@ class DraftBot(tf.Module):
         self.bad_behavior_loss = self.determine_bad_behavior(true, pred, sample_weight=sample_weight)
 
         return (self.pred_lambda * self.prediction_loss + 
-                #self.emb_lambda * self.embedding_loss +
+                self.emb_lambda * self.embedding_loss +
                 self.bad_behavior_lambda * self.bad_behavior_loss
         )
 
