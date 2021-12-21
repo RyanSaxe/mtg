@@ -62,7 +62,7 @@ class ConcatEmbedding(tf.Module):
         self.embedding = tf.Variable(initializer(shape=(num_items, emb_dim//2)), dtype=tf.float32, name=self.name + "_embedding")
         self.activation = activation
 
-    @tf.function
+    #@tf.function
     def __call__(self, x, training=None):
         item_embeddings = tf.gather(self.embedding, x)
         data_embeddings = tf.gather(
@@ -153,7 +153,7 @@ class DraftBot(tf.Module):
         #     name=self.name + "_initial_card_bias",
         # )
 
-    @tf.function
+    #@tf.function
     def __call__(self, features, training=None, return_attention=False, return_build=True):
         if self.deckbuilder is not None and return_build:
             packs, picks, positions, final_pools = features
@@ -271,21 +271,21 @@ class DraftBot(tf.Module):
             self.deck_loss = 0
         self.prediction_loss = self.loss_f(true, pred, sample_weight=sample_weight)
 
-        correct_emb = self.card_embedding(true, training=training)
-        emb_dists = tf.sqrt(
-            tf.reduce_sum(tf.square(pack_card_embeddings - correct_emb[:,:,None,:]), -1)
-        ) * tf.cast(tf.math.count_nonzero(pack_card_embeddings, axis=-1) > 0, tf.float32)
-        correct_one_hot = tf.one_hot(true, self.n_cards)
-        dist_of_not_correct = emb_dists * (1 - correct_one_hot)
-        dist_of_correct = tf.reduce_sum(emb_dists * correct_one_hot, axis=-1, keepdims=True)
-        dist_loss = dist_of_not_correct - dist_of_correct
-        sample_weight = 1 if sample_weight is None else sample_weight
-        self.embedding_loss = tf.reduce_sum(tf.maximum(dist_loss + self.margin, 0.), axis=-1) * sample_weight
+        # correct_emb = self.card_embedding(true, training=training)
+        # emb_dists = tf.sqrt(
+        #     tf.reduce_sum(tf.square(pack_card_embeddings - correct_emb[:,:,None,:]), -1)
+        # ) * tf.cast(tf.math.count_nonzero(pack_card_embeddings, axis=-1) > 0, tf.float32)
+        # correct_one_hot = tf.one_hot(true, self.n_cards)
+        # dist_of_not_correct = emb_dists * (1 - correct_one_hot)
+        # dist_of_correct = tf.reduce_sum(emb_dists * correct_one_hot, axis=-1, keepdims=True)
+        # dist_loss = dist_of_not_correct - dist_of_correct
+        # sample_weight = 1 if sample_weight is None else sample_weight
+        # self.embedding_loss = tf.reduce_sum(tf.maximum(dist_loss + self.margin, 0.), axis=-1) * sample_weight
 
         self.bad_behavior_loss = self.determine_bad_behavior(true, pred, sample_weight=sample_weight)
 
         return (self.pred_lambda * self.prediction_loss + 
-                self.emb_lambda * self.embedding_loss +
+                #self.emb_lambda * self.embedding_loss +
                 self.bad_behavior_lambda * self.bad_behavior_loss
         )
 
@@ -451,7 +451,7 @@ class DeckBuilder(tf.Module):
         else:
             raise NotImplementedError(f'This aggregation strategy ({self.embedding_agg}) has not been implemented yet')
 
-    @tf.function
+    #@tf.function
     def __call__(self, decks, training=None):
         basics = decks[:,:5]
         pools = decks[:,5:] 

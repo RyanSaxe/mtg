@@ -35,7 +35,7 @@ class MLP(tf.Module):
             last_dim = dim
         self.layers.append(Dense(last_dim, out_dim, activation=out_act, name=self.name + "_out"))
 
-    @tf.function
+    #@tf.function
     def __call__(self, x, training=None):
         if self.noise > 0.0 and training is not None:
             x = tf.nn.dropout(x, rate=self.noise)

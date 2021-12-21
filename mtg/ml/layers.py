@@ -30,7 +30,7 @@ class Dense(tf.Module):
                 name=self.name + '_b',
             )
 
-    @tf.function
+    #@tf.function
     def __call__(self, x, training=None):
         rank = x.shape.rank
         if rank == 2 or rank is None:
@@ -124,7 +124,7 @@ class MultiHeadAttention(tf.Module):
         x = tf.reshape(x, (batch_size, -1, self.num_heads, self.depth))
         return tf.transpose(x, perm=[0, 2, 1, 3])
 
-    @tf.function
+    #@tf.function
     def __call__(self, v, k, q, mask, training=None):
         batch_size = tf.shape(q)[0]
 
@@ -193,7 +193,7 @@ class Embedding(tf.Module):
         self.embedding = tf.Variable(initializer(shape=(num_items, emb_dim)), dtype=tf.float32, name=self.name + "_embedding")
         self.activation = activation
 
-    @tf.function
+    #@tf.function
     def __call__(self, x, training=None):
         embeddings = tf.gather(self.embedding, x)
         if self.activation is not None:
