@@ -192,7 +192,7 @@ class DraftBot(tf.Module):
         #get rid of output with respect to initial bias vector, as that is not part of prediction
         #embs = embs[:,1:,:]
         if self.output_MLP:
-            card_rankings = self.output_decoder(embs, training=training) # (batch_size, t, n_cards)
+            card_rankings = self.output_decoder(dec_embs, training=training) # (batch_size, t, n_cards)
         else:
             #batch_size x t x n_cards x emb_dim
             #    pack_card_embeddings
