@@ -172,6 +172,7 @@ class DeckGenerator(MTGDataGenerator):
         to_fit=True,
         exclude_basics=True,
         store_basics=False,
+        pos_neg_sample=False,
     ):
         super().__init__(
             data,
@@ -183,6 +184,7 @@ class DeckGenerator(MTGDataGenerator):
             exclude_basics=exclude_basics,
             store_basics=store_basics,
         )
+        self.pos_neg_sample = pos_neg_sample
 
     def generate_data(self, indices):
         decks = self.deck[indices,:]
@@ -193,8 +195,10 @@ class DeckGenerator(MTGDataGenerator):
             weights = self.weights[indices]/self.weights[indices].sum()
         else:
             weights = None
-        anchor, pos, neg = self.sample_card_pairs(decks, sideboards)
-        return (pools, anchor, pos, neg), (basics, decks), weights
+        if self.pos_neg_sample:
+            anchor, pos, neg = self.sample_card_pairs(decks, sideboards)
+            return (pools, anchor, pos, neg), (basics, decks), weights
+        return pools, (basics, decks), weights
 
     def get_vectorized_sample(self, mtx):
         probabilities = mtx/mtx.sum(1, keepdims=True)

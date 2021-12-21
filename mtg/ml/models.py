@@ -251,12 +251,12 @@ class DraftBot(tf.Module):
         self.cmc = card_data['cmc'].values[None, None, :]
 
     def loss(self, true, pred, sample_weight=None, training=None):
-        pred = pred
-        if isinstance(pred, tuple):
-            pred, built_decks_pred = pred
-            true, built_decks_true = true
-        else:
-            self.deck_loss = 0
+        # pred = pred
+        # if isinstance(pred, tuple):
+        #     pred, built_decks_pred = pred
+        #     true, built_decks_true = true
+        # else:
+        #     self.deck_loss = 0
         self.prediction_loss = self.loss_f(true, pred, sample_weight=sample_weight)
         # correct_one_hot = tf.one_hot(true, self.n_cards)
         # #1 x 1x n_cards x emb_dim
@@ -311,9 +311,9 @@ class DraftBot(tf.Module):
         return (self.cmc_loss + self.rare_loss) * sample_weight
 
     def compute_metrics(self, true, pred, sample_weight=None):
-        pred = pred
-        if isinstance(pred, tuple):
-            pred, built_decks = pred
+        # pred = pred
+        # if isinstance(pred, tuple):
+        #     pred, built_decks = pred
         top1 = tf.reduce_mean(tf.keras.metrics.sparse_top_k_categorical_accuracy(true, pred, 1))
         top2 = tf.reduce_mean(tf.keras.metrics.sparse_top_k_categorical_accuracy(true, pred, 2))
         top3 = tf.reduce_mean(tf.keras.metrics.sparse_top_k_categorical_accuracy(true, pred, 3))
