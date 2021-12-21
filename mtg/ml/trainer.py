@@ -97,7 +97,7 @@ class Trainer:
                     batch_features, batch_target, batch_weights = self.generator[i]
                 loss, metrics = self._step(batch_features, batch_target, batch_weights)
                 for m_key, m_val in metrics.items():
-                    extra_metrics[m_key].append(metrics[m_val])
+                    extra_metrics[m_key].append(m_val)
                 losses.append(np.average(loss))
                 for attr_name in extras.keys():
                     attr = getattr(self.model, attr_name, None)
@@ -113,7 +113,7 @@ class Trainer:
                     else:
                         val_metrics = dict()
                     for m_key, m_val in val_metrics.items():
-                        extra_metrics['val_' + m_key].append(metrics[m_val])
+                        extra_metrics['val_' + m_key].append(m_val)
                     val_losses.append(np.average(val_loss))
                 if verbose:
                     extra_to_show = {
