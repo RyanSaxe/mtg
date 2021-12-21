@@ -194,7 +194,7 @@ class DraftBot(tf.Module):
         card_rankings = self.output_decoder(dec_embs, training=training) # (batch_size, t, n_cards)
         #mask_for_softmax = card_rankings - 1e9 * (1 - packs)
         output = tf.nn.softmax(card_rankings) * packs
-        output = output/tf.reduce_sum(output, axis=-1)
+        output = output/tf.reduce_sum(output, axis=-1, keepdims=True)
         # zero out the rankings for cards not in the pack
         # note1: this only works because no foils on arena means packs can never have 2x of a card
         #       if this changes, modify to clip packs at 1
