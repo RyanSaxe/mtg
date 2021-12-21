@@ -50,7 +50,7 @@ class Trainer:
     def _step(self, batch_features, batch_target, batch_weights):
         with tf.GradientTape() as tape:
             output = self.model(batch_features, training=True)
-            loss = self.model.loss(batch_target, output, sample_weight=batch_weights, trining=True)
+            loss = self.model.loss(batch_target, output, sample_weight=batch_weights, training=True)
             metrics = self.model.compute_metrics(batch_target, output, sample_weight=batch_weights)
             #put regularization here if necessary
         grads = tape.gradient(loss, self.model.trainable_variables)
