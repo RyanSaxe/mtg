@@ -191,6 +191,7 @@ class DraftBot(tf.Module):
         
         #get rid of output with respect to initial bias vector, as that is not part of prediction
         #embs = embs[:,1:,:]
+        emb_dists = tf.sqrt(tf.reduce_sum(tf.square(pack_card_embeddings - dec_embs[:,:,None,:]), -1)) * packs
         if self.output_MLP:
             card_rankings = self.output_decoder(dec_embs, training=training) # (batch_size, t, n_cards)
         else:
@@ -203,7 +204,6 @@ class DraftBot(tf.Module):
             # l2_norm_pred = tf.linalg.l2_normalize(embs[:,:,None,:], axis=-1)
             # l2_norm_pack = tf.linalg.l2_normalize(pack_card_embeddings, axis=-1)
             # emb_dists = -tf.reduce_sum(l2_norm_pred * l2_norm_pack, axis=-1) * packs
-            emb_dists = tf.sqrt(tf.reduce_sum(tf.square(pack_card_embeddings - dec_embs[:,:,None,:]), -1)) * packs
             card_rankings = -emb_dists
         mask_for_softmax = card_rankings - 1e9 * (1 - packs)
         output = tf.nn.softmax(mask_for_softmax)
@@ -225,7 +225,7 @@ class DraftBot(tf.Module):
             output = (output, built_decks)
         if return_attention:
             return output, attention_weights
-        return output, (pack_card_embeddings, packs)
+        return output, emb_dists
 
     def compile(
         self,
@@ -263,7 +263,7 @@ class DraftBot(tf.Module):
         self.cmc = card_data['cmc'].values[None, None, :]
 
     def loss(self, true, pred, sample_weight=None, training=None):
-        pred, (pack_card_embeddings, packs) = pred
+        pred, emb_dists = pred
         if isinstance(pred, tuple):
             pred, built_decks_pred = pred
             true, built_decks_true = true
@@ -271,10 +271,6 @@ class DraftBot(tf.Module):
             self.deck_loss = 0
         self.prediction_loss = self.loss_f(true, pred, sample_weight=sample_weight)
 
-        correct_emb = self.card_embedding(true, training=training)
-        emb_dists = tf.sqrt(
-            tf.reduce_sum(tf.square(pack_card_embeddings - correct_emb[:,:,None,:]), -1)
-        ) * packs
         correct_one_hot = tf.one_hot(true, self.n_cards)
         dist_of_not_correct = emb_dists * (1 - correct_one_hot)
         dist_of_correct = tf.reduce_sum(emb_dists * correct_one_hot, axis=-1, keepdims=True)
@@ -282,7 +278,6 @@ class DraftBot(tf.Module):
         sample_weight = 1 if sample_weight is None else sample_weight
         self.embedding_loss = tf.reduce_sum(tf.maximum(dist_loss + self.margin, 0.), axis=-1) * sample_weight
         #purposeful error
-        true[400]
         self.bad_behavior_loss = self.determine_bad_behavior(true, pred, sample_weight=sample_weight)
 
         return (self.pred_lambda * self.prediction_loss + 
