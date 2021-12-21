@@ -270,7 +270,7 @@ class DraftBot(tf.Module):
         correct_one_hot = tf.one_hot(true, self.n_cards)
         dist_of_not_correct = emb_dists * (1 - correct_one_hot)
         dist_of_correct = tf.reduce_sum(emb_dists * correct_one_hot, axis=-1, keepdims=True)
-        dist_loss = dist_of_correct - dist_of_not_correct
+        dist_loss = dist_of_not_correct - dist_of_correct
         sample_weight = 1 if sample_weight is None else sample_weight
         self.embedding_loss = tf.reduce_sum(tf.maximum(dist_loss + self.margin, 0.), axis=-1) * sample_weight
 
