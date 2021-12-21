@@ -142,6 +142,8 @@ class DraftBot(tf.Module):
                 out_act=None,
                 style="reverse_bottleneck",
             )
+        else:
+            self.output_decoder = Dense(emb_dim, emb_dim, name="output_decoder", activation=None)
         if use_deckbuilder:
             self.deckbuilder = DeckBuilder()
         else:
@@ -191,10 +193,14 @@ class DraftBot(tf.Module):
         #dec_embs = dec_embs
         #get rid of output with respect to initial bias vector, as that is not part of prediction
         #embs = embs[:,1:,:]
-        card_rankings = self.output_decoder(dec_embs, training=training) # (batch_size, t, n_cards)
-        #mask_for_softmax = card_rankings - 1e9 * (1 - packs)
-        output = tf.nn.softmax(card_rankings) * packs
-        output = output/tf.reduce_sum(output, axis=-1, keepdims=True)
+        if self.output_MLP:
+            card_rankings = self.output_decoder(dec_embs, training=training) # (batch_size, t, n_cards)
+        else:
+            approx_pick_embs = self.output_decoder(dec_embs, training=training)
+            emb_dists = tf.sqrt(tf.reduce_sum(tf.square(pack_card_embeddings - approx_pick_embs[:,:,None,:]), -1))
+            card_rankings = -emb_dists
+        mask_for_softmax = card_rankings - 1e9 * (1 - packs)
+        output = tf.nn.softmax(mask_for_softmax) * packs
         # zero out the rankings for cards not in the pack
         # note1: this only works because no foils on arena means packs can never have 2x of a card
         #       if this changes, modify to clip packs at 1
