@@ -276,7 +276,7 @@ class DraftBot(tf.Module):
         dist_of_correct = tf.reduce_sum(emb_dists * correct_one_hot, axis=-1, keepdims=True)
         dist_loss = dist_of_correct - dist_of_not_correct
         sample_weight = 1 if sample_weight is None else sample_weight
-        self.embedding_loss = tf.reduce_mean(tf.maximum(dist_loss + self.margin, 0.), axis=-1)/ * sample_weight
+        self.embedding_loss = tf.reduce_mean(tf.maximum(dist_loss + self.margin, 0.), axis=-1) * sample_weight
         #purposeful error
         self.bad_behavior_loss = self.determine_bad_behavior(true, pred, sample_weight=sample_weight)
 
