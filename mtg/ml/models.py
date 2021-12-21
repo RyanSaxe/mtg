@@ -116,7 +116,7 @@ class DraftBot(tf.Module):
             self.card_embedding = Embedding(self.n_cards + 1, emb_dim, name="card_embedding", activation=None)
         else:
             self.card_data = tf.convert_to_tensor(self.card_data, dtype=tf.float32)
-            self.card_embedding = ConcatEmbedding(self.n_cards + 1, emb_dim, self.card_data, name="card_embedding", activation=tf.nn.tanh)
+            self.card_embedding = ConcatEmbedding(self.n_cards + 1, emb_dim, self.card_data, name="card_embedding", activation=None)
         self.decoder_layers = [
             TransformerBlock(
                 self.n_cards,
@@ -188,23 +188,10 @@ class DraftBot(tf.Module):
         dec_embs = self.card_embedding(picks, training=training)
         for memory_layer in self.decoder_layers:
             dec_embs, attention_weights = memory_layer(dec_embs, positional_masks, encoder_output=embs, training=training) # (batch_size, t, emb_dim)
-        dec_embs = tf.nn.tanh(dec_embs)
+        dec_embs = dec_embs
         #get rid of output with respect to initial bias vector, as that is not part of prediction
         #embs = embs[:,1:,:]
-        emb_dists = tf.sqrt(tf.reduce_sum(tf.square(pack_card_embeddings - dec_embs[:,:,None,:]), -1)) * packs
-        if self.output_MLP:
-            card_rankings = self.output_decoder(dec_embs, training=training) # (batch_size, t, n_cards)
-        else:
-            #batch_size x t x n_cards x emb_dim
-            #    pack_card_embeddings
-            #batch_size x t x emb_dim
-            #    embs
-            #euclidian
-            #cosine
-            # l2_norm_pred = tf.linalg.l2_normalize(embs[:,:,None,:], axis=-1)
-            # l2_norm_pack = tf.linalg.l2_normalize(pack_card_embeddings, axis=-1)
-            # emb_dists = -tf.reduce_sum(l2_norm_pred * l2_norm_pack, axis=-1) * packs
-            card_rankings = -emb_dists
+        card_rankings = self.output_decoder(dec_embs, training=training) # (batch_size, t, n_cards)
         mask_for_softmax = card_rankings - 1e9 * (1 - packs)
         output = tf.nn.softmax(mask_for_softmax)
         # zero out the rankings for cards not in the pack
@@ -225,7 +212,7 @@ class DraftBot(tf.Module):
             output = (output, built_decks)
         if return_attention:
             return output, attention_weights
-        return output, emb_dists
+        return output, packs
 
     def compile(
         self,
@@ -263,20 +250,42 @@ class DraftBot(tf.Module):
         self.cmc = card_data['cmc'].values[None, None, :]
 
     def loss(self, true, pred, sample_weight=None, training=None):
-        pred, emb_dists = pred
+        pred, packs = pred
         if isinstance(pred, tuple):
             pred, built_decks_pred = pred
             true, built_decks_true = true
         else:
             self.deck_loss = 0
         self.prediction_loss = self.loss_f(true, pred, sample_weight=sample_weight)
-
         correct_one_hot = tf.one_hot(true, self.n_cards)
-        dist_of_not_correct = emb_dists * (1 - correct_one_hot)
-        dist_of_correct = tf.reduce_sum(emb_dists * correct_one_hot, axis=-1, keepdims=True)
-        dist_loss = dist_of_correct - dist_of_not_correct
+        #1 x 1x n_cards x emb_dim
+        card_embs = self.card_embedding(tf.range(self.n_cards), training=training)[None,None,:,:]
+        #batch x t x n_cards x 1
+        pools_without_picks = tf.math.cumsum(correct_one_hot, axis=1) - correct_one_hot
+        pool_t = tf.reduce_sum(pools_without_picks, -1)
+        pools_without_picks = tf.clip_by_value(pools_without_picks[:,:,:,None], 0, 1)
+        #batch x t x n_cards x n_dim
+        pool_embs = card_embs * pools_without_picks
+        #empty pool represented by bias embeddings
+        pool_embs[:,0,:,:] = self.card_embedding(self.n_cards, training=training)[None,None,:,:]
+        pool_t[:,0] = 1
+        #batch x t x n_dim
+        correct_embs = self.card_embedding(true, training=training)
+        #batch x t x n_cards
+        positive_distance = tf.reduce_sum(
+            tf.sqrt(tf.reduce_sum(tf.square(pool_embs - correct_embs[:,:,None,:]), axis=-1)) * pools_without_picks,
+            axis=-1
+        ) / pool_t
+        pack_without_picks = packs - correct_one_hot
+        pack_embs = card_embs * pack_without_picks
+        pack_t = tf.reduce_sum(pack_without_picks, axis=-1)
+        negative_distance = tf.reduce_sum(
+            tf.sqrt(tf.reduce_sum(tf.square(pack_embs - correct_embs[:,:,None,:]), -1)) * pack_without_picks,
+            -1
+        ) / (pack_t + 1e-9)
+        dist_loss = positive_distance - negative_distance
         sample_weight = 1 if sample_weight is None else sample_weight
-        self.embedding_loss = tf.reduce_mean(tf.maximum(dist_loss + self.margin, 0.), axis=-1) * sample_weight
+        self.embedding_loss = tf.reduce_sum(tf.maximum(dist_loss + self.margin, 0.), axis=-1) * sample_weight
         #purposeful error
         self.bad_behavior_loss = self.determine_bad_behavior(true, pred, sample_weight=sample_weight)
 
