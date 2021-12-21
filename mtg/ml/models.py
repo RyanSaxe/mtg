@@ -213,7 +213,7 @@ class DraftBot(tf.Module):
             output = (output, built_decks)
         if return_attention:
             return output, attention_weights
-        return output, packs
+        return output
 
     def compile(
         self,
@@ -245,6 +245,7 @@ class DraftBot(tf.Module):
         self.cmc_lambda = cmc_lambda
         if card_data is not None:
             self.set_card_params(card_data)
+        self.metric_names = ['top1','top2','top3']
     
     def set_card_params(self, card_data):
         self.rare_flag = (card_data['mythic'] + card_data['rare']).values[None, None, :]
@@ -317,7 +318,11 @@ class DraftBot(tf.Module):
         top1 = tf.reduce_mean(tf.keras.metrics.sparse_top_k_categorical_accuracy(true, pred, 1))
         top2 = tf.reduce_mean(tf.keras.metrics.sparse_top_k_categorical_accuracy(true, pred, 2))
         top3 = tf.reduce_mean(tf.keras.metrics.sparse_top_k_categorical_accuracy(true, pred, 3))
-        return top1, top2, top3
+        return {
+            'top1': top1,
+            'top2': top2,
+            'top3': top3
+        }
 
     def save(self, location):
         pathlib.Path(location).mkdir(parents=True, exist_ok=True)
@@ -494,6 +499,7 @@ class DeckBuilder(tf.Module):
         # self.interaction_lambda = interaction_lambda
         if cards is not None:
             self.set_card_params(cards)
+        self.metric_names = []
 
     def set_card_params(self, cards):
         self.cmc_map = cards.sort_values(by='idx')['cmc'].to_numpy(dtype=np.float32)

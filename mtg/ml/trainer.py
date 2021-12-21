@@ -51,7 +51,10 @@ class Trainer:
         with tf.GradientTape() as tape:
             output = self.model(batch_features, training=True)
             loss = self.model.loss(batch_target, output, sample_weight=batch_weights, training=True)
-            metrics = self.model.compute_metrics(batch_target, output, sample_weight=batch_weights)
+            if len(self.model.metric_names) > 0:
+                metrics = self.model.compute_metrics(batch_target, output, sample_weight=batch_weights)
+            else:
+                metrics = dict()
             #put regularization here if necessary
         grads = tape.gradient(loss, self.model.trainable_variables)
         if self.clip:
@@ -61,6 +64,10 @@ class Trainer:
     def train(self, n_epochs, batch_size=32, verbose=True, print_keys=[]):
         n_batches = len(self.batch_ids) // batch_size if self.generator is None else len(self.generator)
         end_at = self.epoch_n + n_epochs
+        has_val = self.val_generator is not None or self.val_features is not None
+        extra_metric_keys = self.model.metric_names[:]
+        if has_val:
+            extra_metric_keys += ['val_' + metric_key for metric_key in extra_metric_keys]
         for _ in range(n_epochs):
             self.epoch_n += 1
             if self.batch_ids is not None:
@@ -74,10 +81,6 @@ class Trainer:
             extras = {k:[] for k in print_keys}
             losses = []
             val_losses = []
-            has_val = self.val_generator is not None or self.val_features is not None
-            extra_metric_keys = ['top1','top2','top3']
-            if has_val:
-                extra_metric_keys += ['val_top1', 'val_top2', 'val_top3']
             extra_metrics = {k:[] for k in extra_metric_keys}
             for i in range(n_batches):
                 val_loss = None
@@ -93,9 +96,8 @@ class Trainer:
                 else:
                     batch_features, batch_target, batch_weights = self.generator[i]
                 loss, metrics = self._step(batch_features, batch_target, batch_weights)
-                extra_metrics['top1'].append(metrics[0])
-                extra_metrics['top2'].append(metrics[1])
-                extra_metrics['top3'].append(metrics[2])
+                for m_key, m_val in metrics.items():
+                    extra_metrics[m_key].append(metrics[m_val])
                 losses.append(np.average(loss))
                 for attr_name in extras.keys():
                     attr = getattr(self.model, attr_name, None)
@@ -106,10 +108,12 @@ class Trainer:
                     # must get attention here to serialize the input for saving
                     val_output = self.model(val_features, training=False)
                     val_loss = self.model.loss(val_target, val_output, sample_weight=val_weights, training=False)
-                    val_metrics = self.model.compute_metrics(val_target, val_output, sample_weight=val_weights)
-                    extra_metrics['val_top1'].append(val_metrics[0])
-                    extra_metrics['val_top2'].append(val_metrics[1])
-                    extra_metrics['val_top3'].append(val_metrics[2])
+                    if len(self.model.metric_names) > 0:
+                        val_metrics = self.model.compute_metrics(val_target, val_output, sample_weight=val_weights)
+                    else:
+                        val_metrics = dict()
+                    for m_key, m_val in val_metrics.items():
+                        extra_metrics['val_' + m_key].append(metrics[m_val])
                     val_losses.append(np.average(val_loss))
                 if verbose:
                     extra_to_show = {
