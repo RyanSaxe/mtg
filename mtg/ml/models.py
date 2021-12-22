@@ -196,7 +196,7 @@ class DraftBot(tf.Module):
         mask_for_softmax = (1e9 * (1 - packs))
         if self.output_MLP:
             card_rankings = self.output_decoder(dec_embs, training=training) * packs - mask_for_softmax # (batch_size, t, n_cards)
-            emb_dists = tf.sqrt(tf.reduce_sum(tf.square(pack_card_embeddings - dec_embs[:,:,None,:]), -1)) * packs + (1e9 * (1 - packs))
+            emb_dists = tf.sqrt(tf.reduce_sum(tf.square(pack_card_embeddings - dec_embs[:,:,None,:]), -1)) * packs + mask_for_softmax
         else:
             approx_pick_embs = self.output_decoder(dec_embs, training=training)
             emb_dists = tf.sqrt(tf.reduce_sum(tf.square(pack_card_embeddings - approx_pick_embs[:,:,None,:]), -1)) * packs + mask_for_softmax
@@ -371,16 +371,11 @@ class TransformerBlock(tf.Module):
         return self.final_layer_norm(residual_emb_w_memory + process_emb, training=training), attention_weights
 
 class DeckBuilder(tf.Module):
-    def __init__(self, n_cards, dropout=0.0, embeddings=None, embedding_agg='mean', name=None):
+    def __init__(self, n_cards, dropout=0.0, latent_dim=32, embeddings=None, embedding_agg='mean', name=None):
         super().__init__(name=name)
         self.n_cards = n_cards
-        if embeddings is None:
-            self.embeddings = None
-            encoder_in_dim = self.n_cards
-        elif isinstance(embeddings, tuple):
-            self.embeddings = embeddings
-            ecoder_in_dim, _ = embeddings
-        else:
+        self.card_embeddings = embeddings
+        if self.card_embeddings is not None:
             #if embeddings is an integer, learn embeddings of that dimension,
             #if embeddings is None, don't use embeddings
             #otherwise, assume embeddings are pretrained and use them
@@ -391,78 +386,91 @@ class DeckBuilder(tf.Module):
             else:
                 emb_trainable = False
                 emb_init = embeddings
-            self.embeddings = tf.Variable(emb_init, trainable=emb_trainable)
-            if embedding_agg == "flatten":
-                encoder_in_dim = self.embeddings.shape[0] * (self.embeddings.shape[1])
-            else:
-                ecoder_in_dim = self.embeddings.shape[0]
-        self.encoder = nn.MLP(
-            in_dim=encoder_in_dim,
-            start_dim=256,
-            out_dim=32,
-            n_h_layers=2,
-            dropout=dropout,
-            name="encoder",
-            noise=0.0,
-            start_act=tf.nn.selu,
-            middle_act=tf.nn.selu,
-            out_act=tf.nn.selu,
-            style="bottleneck"
-        )
+            self.card_embeddings = tf.Variable(emb_init, trainable=emb_trainable)
+            encoder_in_dim = self.card_embeddings.shape[0]
+        else:
+            encoder_in_dim = self.n_cards
+        if self.card_embeddings is None:
+            self.deck_encoder = nn.MLP(
+                in_dim=encoder_in_dim,
+                start_dim=encoder_in_dim,
+                out_dim=latent_dim,
+                n_h_layers=2,
+                dropout=dropout,
+                name="deck_encoder",
+                noise=0.0,
+                start_act=None,
+                middle_act=None,
+                out_act=None,
+                style="bottleneck"
+            )
+            self.pool_encoder = nn.MLP(
+                in_dim=encoder_in_dim,
+                start_dim=encoder_in_dim,
+                out_dim=latent_dim,
+                n_h_layers=2,
+                dropout=dropout,
+                name="pool_encoder",
+                noise=0.0,
+                start_act=None,
+                middle_act=None,
+                out_act=None,
+                style="bottleneck"
+            )
+            self.layer_norm = LayerNormalization(latent_dim, name=self.name + "_pool_basic_deck_agg")
+        else:
+            self.embedding_compressor = nn.MLP(
+                in_dim=encoder_in_dim,
+                start_dim=encoder_in_dim//2,
+                out_dim=latent_dim,
+                n_h_layers=2,
+                dropout=dropout,
+                name="pool_encoder",
+                noise=0.0,
+                start_act=None,
+                middle_act=None,
+                out_act=None,
+                style="bottleneck"
+            )
+            self.layer_norm = LayerNormalization(encoder_in_dim, name=self.name + "_pool_basic_deck_agg")
         self.decoder = nn.MLP(
-            in_dim=32,
-            start_dim=64,
+            in_dim=latent_dim,
+            start_dim=latent_dim * 2,
             out_dim=self.n_cards,
             n_h_layers=2,
             dropout=0.0,
             name="decoder",
             noise=0.0,
-            start_act=tf.nn.selu,
-            middle_act=tf.nn.selu,
+            start_act=None,
+            middle_act=None,
             out_act=tf.nn.sigmoid,
             style="reverse_bottleneck"
         )
         #self.interactions = nn.Dense(self.n_cards, self.n_cards, activation=None)
-        self.add_basics_to_deck = nn.Dense(32,5, activation=lambda x: tf.nn.sigmoid(x) * 18.0)
-        self.embedding_agg = embedding_agg 
-
-    def convert_pools_to_card_embeddings(self, pools):
-        #expand dims of the pools so we can add dimension to use embeddings per card
-        expanded_pools = tf.expand_dims(pools, axis=-1)
-        #convert multiples into binary to use as multiplicative mask
-        #in_pool_mask = tf.clip_by_value(expanded_pools,0,1)
-        #pools = batch x n_cards 
-        #embs = n_cards x emb_size
-        # -> expand dims such that (batch x n_cards x 1) * (1 x n_cards x emb_size) = (batch x n_cards x emb_size)
-        expanded_embs = tf.expand_dims(self.embeddings, axis=0)
-        pool_embs = expanded_pools * expanded_embs
-        if self.embedding_agg == 'flatten':
-            # by flattening out the last two dimensions, we have an input that is permutation
-            # invariant. No matter the cards in the pool, the 4th feature of the embedding for
-            # the 8th card will be located at the index 7 * (emb_size) + 4
-            shape = pool_embs.shape
-            return tf.reshape(pool_embs, [shape[0], shape[1] * shape[2]])
-        elif self.embedding_agg == 'mean':
-            return tf.reduce_sum(pool_embs, axis=1)/42.0
-        else:
-            raise NotImplementedError(f'This aggregation strategy ({self.embedding_agg}) has not been implemented yet')
-
+        self.add_basics_to_deck = nn.Dense(latent_dim,5, activation=lambda x: tf.nn.sigmoid(x) * 18.0, name="add_basics_to_deck")
+        self.basic_encoder = nn.Dense(5,latent_dim, activation=None, name="basic_encoder")
     #@tf.function
-    def __call__(self, decks, training=None):
+    def __call__(self, features, training=None):
+        pools, decks = features
         basics = decks[:,:5]
-        pools = decks[:,5:] 
-        if self.embeddings is not None:
-            pool_embs = self.convert_pools_to_card_embeddings(pools)
+        nonbasics = decks[:,5:]
+        
+        basic_embs = self.basic_encoder(basics, training=training)
+        if self.card_embeddings is not None:
+            card_embeddings = self.card_embeddings(tf.range(self.n_cards), training=training)[None,:,:]
+            pool_embs = tf.reduce_sum(pools[:,:,None] * card_embeddings, axis=1)
+            deck_embs = tf.reduce_sum(nonbasics[:,:,None] * card_embeddings, axis=1)
+            latent_rep = self.layer_norm(pool_embs + deck_embs + basic_embs, training=training)
+            self.latent_rep = self.embedding_compressor(latent_rep)
         else:
-            pool_embs = pools
-        #self.pool_interactions = self.interactions(pools)
-        # project the deck to a lower dimensional represnetation
-        self.latent_rep = self.encoder(pool_embs, training=training)
-        # project the latent representation to a potential output
+            pool_embs = self.pool_encoder(pools, training=training)
+            deck_embs = self.deck_encoder(nonbasics, training=training)
+            self.latent_rep = self.layer_norm(pool_embs + deck_embs + basic_embs, training=training)
+
         reconstruction = self.decoder(self.latent_rep, training=training)
-        basics = self.add_basics_to_deck(self.latent_rep,  training=training)
-        built_deck = tf.concat([basics, reconstruction * pools], axis=1)
-        return built_deck
+        basics_to_add = self.add_basics_to_deck(self.latent_rep,  training=training)
+        cards_to_add = tf.concat([basics_to_add, reconstruction * pools], axis=1)
+        return cards_to_add
 
     def compile(
         self,

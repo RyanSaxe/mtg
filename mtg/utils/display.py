@@ -275,7 +275,7 @@ def draft_log_ai(draft_log_url, model, t=None, n_cards=None, idx_to_name=None, r
     #insert n_cards idx to shift the picks passed into the model to prevent seeing the correct pick
     np_pick = np.tile(np.expand_dims(np.asarray([n_cards] + [name_to_idx[name] for name in actual_pick[:-1]]), 0),batch_size).reshape(batch_size,t)
     model_input = (
-        tf.convert_to_tensor(draft_info, dtype=tf.float32),
+        tf.convert_to_tensor(draft_info[:, :, :n_cards], dtype=tf.float32),
         tf.convert_to_tensor(np_pick, dtype=tf.int32),
         tf.convert_to_tensor(positions, dtype=tf.int32)
     )
