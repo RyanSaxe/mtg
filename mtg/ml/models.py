@@ -244,7 +244,7 @@ class DraftBot(tf.Module):
             self.optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.9, beta_2=0.98,epsilon=1e-9)
         else:
             self.optimizer = optimizer
-        self.loss_f = tf.keras.losses.SparseCategoricalCrossentropy(reduction=tf.keras.losses.Reduction.None)
+        self.loss_f = tf.keras.losses.SparseCategoricalCrossentropy(reduction=tf.keras.losses.Reduction.NONE)
         self.margin = margin
         self.emb_lambda = emb_lambda
         self.pred_lambda = pred_lambda
