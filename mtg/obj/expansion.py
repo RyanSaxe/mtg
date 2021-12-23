@@ -128,7 +128,12 @@ class Expansion:
                 "opp_num_mulligans": "mean",
                 "num_turns": "mean",
         })
-        return self.bo1.groupby('draft_id').agg(d)
+        decks = self.bo1.groupby('draft_id').agg(d)
+        deck_cols = [x for x in decks.columns if x.startswith("deck_")]
+        print('num decks total:',decks.shape[0])
+        decks = decks[decks[deck_cols].sum(1) == 40]
+        print('num decks 40 cards:',decks.shape[0])
+        return decks
 
     def generate_pack(self, exclude_basics=True):
         """
