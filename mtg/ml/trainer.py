@@ -16,7 +16,7 @@ class Trainer:
         val_target = None,
         val_weights = None,
         clip = 5.0,
-        loss_agg_f=lambda x: np.average(x)
+        loss_agg_f=lambda x: np.sum(x)
     ):
         self.generator=generator
         self.val_generator=val_generator
@@ -119,20 +119,20 @@ class Trainer:
                     val_losses.append(self.loss_agg_f(val_loss))
                 if verbose:
                     extra_to_show = {
-                        **{k:self.loss_agg_f(v) for k,v in extras.items()},
-                        **{k:self.loss_agg_f(v) for k,v in extra_metrics.items()}
+                        **{k:np.average(v) for k,v in extras.items()},
+                        **{k:np.average(v) for k,v in extra_metrics.items()}
                     }                        
                     if len(val_losses) > 0:
-                        progress.set_postfix(loss=self.loss_agg_f(losses), val_loss=self.loss_agg_f(val_losses), **extra_to_show)
+                        progress.set_postfix(loss=np.average(losses), val_loss=np.average(val_losses), **extra_to_show)
                     else:
-                        progress.set_postfix(loss=self.loss_agg_f(losses), **extra_to_show)
+                        progress.set_postfix(loss=np.average(losses), **extra_to_show)
                     progress.update(1)
             if verbose:
                 #run model as if not training on validation data to get out of sample performance
                 if self.val_features is not None:
                     val_out = self.model(self.val_features, training=False)
                     val_loss = self.model.loss(self.val_target, val_out, sample_weight=self.val_weights, training=False)
-                    progress.set_postfix(loss=self.loss_agg_f(losses), val_loss=self.loss_agg_f(val_loss), **extra_to_show)
+                    progress.set_postfix(loss=np.average(losses), val_loss=self.loss_agg_f(val_loss), **extra_to_show)
                 progress.close()
             if self.generator is not None:
                 self.generator.on_epoch_end()

@@ -244,7 +244,7 @@ class DraftBot(tf.Module):
             self.optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.9, beta_2=0.98,epsilon=1e-9)
         else:
             self.optimizer = optimizer
-        self.loss_f = tf.keras.losses.SparseCategoricalCrossentropy(reduction=tf.keras.losses.Reduction.NONE)
+        self.loss_f = tf.keras.losses.SparseCategoricalCrossentropy(reduction=tf.keras.losses.Reduction.SUM)
         self.margin = margin
         self.emb_lambda = emb_lambda
         self.pred_lambda = pred_lambda
@@ -274,29 +274,29 @@ class DraftBot(tf.Module):
         dist_of_correct = tf.reduce_sum(emb_dists * correct_one_hot, axis=-1, keepdims=True)
         dist_loss = dist_of_correct - dist_of_not_correct
         sample_weight = 1 if sample_weight is None else sample_weight
-        self.embedding_loss = tf.reduce_sum(tf.maximum(dist_loss + self.margin, 0.), axis=-1) * sample_weight
+        self.embedding_loss = tf.reduce_sum(tf.reduce_sum(tf.maximum(dist_loss + self.margin, 0.), axis=-1) * sample_weight)
         self.bad_behavior_loss = self.determine_bad_behavior(true, pred, sample_weight=sample_weight)
-        
+
         return (self.pred_lambda * self.prediction_loss + 
                 self.emb_lambda * self.embedding_loss +
                 self.bad_behavior_lambda * self.bad_behavior_loss
         )
 
     def determine_bad_behavior(self, true, pred, sample_weight=None):
-        if sample_weight is None:
-            sample_weight = 1.0
         true_one_hot = tf.one_hot(true, self.n_cards) 
         # penalize for taking more expensive cards than what the human took
         #    basically, if you're going to make a mistake, bias to low cmc cards
         true_cmc = tf.reduce_sum(true_one_hot * self.cmc, axis=-1)
         pred_cmc = tf.reduce_sum(pred * self.cmc, axis=-1)
-        self.cmc_loss = tf.maximum(pred_cmc - true_cmc + self.cmc_margin, 0.0) * self.cmc_lambda
+        cmc_loss = tf.maximum(pred_cmc - true_cmc + self.cmc_margin, 0.0) * self.cmc_lambda
+        self.cmc_loss = tf.reduce_sum(cmc_loss * sample_weight)
         # penalize taking rares when the human doesn't. This helps not learn "take rares" to
         # explain raredrafting.
         human_took_rare = tf.reduce_sum(true_one_hot * self.rare_flag, axis=-1)
         pred_rare_val = tf.reduce_sum(pred * self.rare_flag, axis=-1)
-        self.rare_loss = (1 - human_took_rare) * pred_rare_val * self.rare_lambda
-        return (self.cmc_loss + self.rare_loss) * sample_weight
+        rare_loss = (1 - human_took_rare) * pred_rare_val * self.rare_lambda
+        self.rare_loss = tf.reduce_sum(rare_loss * sample_weight)
+        return self.cmc_loss + self.rare_loss
 
     def compute_metrics(self, true, pred, sample_weight=None):
         if sample_weight is None:

@@ -71,10 +71,7 @@ def load_bo1_data(filename, cards):
     )
     rename_cols = {'draft_time':'date'}
     df.columns = [x.lower() if x not in rename_cols else rename_cols[x] for x in df.columns]
-    df = clean_bo1_games(
-        df,
-        cards,
-    )
+    df['won'] = df['won'].astype(float)
     df['date'] = pd.to_datetime(df['date'])
     card_col_prefixes = ['deck','opening_hand','drawn','sideboard']
     df = sort_cols_by_card_idxs(df, card_col_prefixes, cards)
