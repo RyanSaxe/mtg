@@ -222,7 +222,7 @@ class DeckGenerator(MTGDataGenerator):
                 masked_basics[:,i,:] = masked_deck_w_basics[:,:5]
         return masked_decks, masked_basics
 
-    def get_vectorized_sample(mtx, n=1, uniform=True, return_mtx=True, modify_mtx=True):
+    def get_vectorized_sample(self, mtx, n=1, uniform=True, return_mtx=True, modify_mtx=True):
         if uniform:
             clip_mtx = np.clip(mtx, 0, 1)
             probabilities = clip_mtx/clip_mtx.sum(1, keepdims=True)
