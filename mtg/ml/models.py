@@ -550,7 +550,7 @@ class DeckBuilder(tf.Module):
         true_basics = true[0][:,0,:]
         true_decks = true[1][:,0,:]
         if sample_weight is None:
-            sample_weight = 1.0/decks.shape[0]
+            sample_weight = 1.0/true_decks.shape[0]
         else:
             sample_weight = sample_weight[:,0]
         pred_basics, pred_decks = self.build_decks(pools)
@@ -567,9 +567,9 @@ class DeckBuilder(tf.Module):
             pools = np.expand_dims(pools, axis=0)
         deck = np.zeros_like(pools, dtype=np.float32)
         basics = np.zeros((pools.shape[0], 5), dtype=np.float32)
-        for i in range(40):
+        for i in range(0,40):
             cards_to_add = self.__call__((pools, deck, basics), training=False).numpy()
-            if i <= 18:
+            if i < 20:
                 cards_to_add = cards_to_add[:,5:]
                 card_to_add = np.argmax(cards_to_add)
                 deck[:,card_to_add] += 1

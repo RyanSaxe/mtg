@@ -193,9 +193,9 @@ class DeckGenerator(MTGDataGenerator):
         sideboards = self.sideboard[indices,:]
         basics = self.deck_basics[indices,:]
         masked_decks, masked_basics = self.create_masked_objects(decks, basics)
-        cards_to_add = decks - masked_decks
-        basics_to_add = basics - masked_basics
-        modified_sideboards = sideboards + cards_to_add
+        cards_to_add = decks[:,None,:] - masked_decks
+        basics_to_add = basics[:,None,:] - masked_basics
+        modified_sideboards = sideboards[:,None,:] + cards_to_add
         if self.weights is not None:
             weights = self.weights[indices]/self.weights[indices].sum()
         else:
@@ -217,12 +217,14 @@ class DeckGenerator(MTGDataGenerator):
                 #      before basics, so I can't just try and go the other direction when i > 20
                 masked_deck_wo_basics = self.get_vectorized_sample(decks.copy(), n=20, uniform=True)
                 what_is_left = np.concatenate([basics, masked_deck_wo_basics], axis=-1)
-                masked_deck_w_basics = self.get_vectorized_sample(what_is_left.copy(), n=i-20, uniform=False)
+                masked_deck_w_basics = self.get_vectorized_sample(what_is_left.copy(), n=i-20, uniform=True)
                 masked_decks[:,i,:] = masked_deck_w_basics[:,5:]
                 masked_basics[:,i,:] = masked_deck_w_basics[:,:5]
         return masked_decks, masked_basics
 
     def get_vectorized_sample(self, mtx, n=1, uniform=True, return_mtx=True, modify_mtx=True):
+        if return_mtx:
+            orig_mtx = mtx.copy()
         if uniform:
             clip_mtx = np.clip(mtx, 0, 1)
             probabilities = clip_mtx/clip_mtx.sum(1, keepdims=True)
@@ -239,7 +241,7 @@ class DeckGenerator(MTGDataGenerator):
                 cts_sample = np.expand_dims(cts_sample, 1)
             sample = np.concatenate([sample[:,None], cts_sample], axis=1)
         if return_mtx:
-            return mtx
+            return orig_mtx - mtx
         return sample
 
     def sample_card_pairs(self, decks, sideboards):
