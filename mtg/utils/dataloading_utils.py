@@ -25,26 +25,46 @@ def sort_cols_by_card_idxs(df, card_col_prefixes, cards):
     return df
 
 def load_bo1_data(filename, cards):
+    COLUMN_REGEXES = {
+        re.compile(r'user_win_rate_bucket'): 'float16',
+        re.compile(r'rank'): 'str',
+        re.compile(r'draft_id'): 'str',
+        re.compile(r'draft_time'): 'str',
+        re.compile(r'expansion'): 'str',
+        re.compile(r'event_type'): 'str',
+        re.compile(r'deck_.*'): 'int8',
+        re.compile(r'sideboard_.*'): 'int8',
+        re.compile(r'drawn_.*'): 'int8',
+        re.compile(r'sideboard_.*'): 'int8',
+        re.compile(r'opening_hand_.*'): 'int8',
+    }
+    col_names = pd.read_csv(filename, nrows=0).columns
+    data_types = {}
+    draft_cols = []
+    for c in col_names:
+        if any([c.startswith(prefix) for prefix in ['sideboard_', 'deck_', 'drawn_', 'opening_hand_']]):
+            draft_cols.append(c)
+        for (r, t) in COLUMN_REGEXES.items():
+            if r.match(c):
+                data_types[c] = t
+
     df = pd.read_csv(
         filename,
-        usecols=lambda x: x not in ["opp_rank"],
-        dtype={
-        'draft_id':str,
-        'rank':str,
-        'opp_rank':str,
-        'main_colors':str,
-        'splash_colors':str,
-        'opp_colors':str,
-        },
-        na_filter=False,
+        dtype=data_types,
+        usecols=[
+            'draft_id',
+            'draft_time',
+            'won',
+            'user_win_rate_bucket',
+            'rank'
+            # ...
+        ] + draft_cols
     )
-    #lower case makes our life easier
-    df.columns = [x.lower() for x in df.columns]
+    rename_cols = {'draft_time':'date'}
+    df.columns = [x.lower() if x not in rename_cols else rename_cols[x] for x in df.columns]
     df = clean_bo1_games(
         df,
         cards,
-        drop_cols=['expansion','event_type','game_number'],
-        rename_cols={'draft_time':'date'}
     )
     df['date'] = pd.to_datetime(df['date'])
     card_col_prefixes = ['deck','opening_hand','drawn','sideboard']
@@ -67,7 +87,6 @@ def load_draft_data(filename, cards):
         re.compile(r'pick$'): 'str',
         re.compile(r'pick_maindeck_rate'): 'float16',
         re.compile(r'pick_sideboard_in_rate'): 'float16',
-
         re.compile(r'pool_.*'): 'int8',
         re.compile(r'pack_card_.*'): 'int8',
     }
