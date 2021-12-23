@@ -154,7 +154,7 @@ class DraftGenerator(MTGDataGenerator):
         if self.weights is not None:
             #comment below is if weights sum to 1 for each draft rather than for each batch
             #weights = (self.weights.loc[draft_ids]/self.weights.loc[draft_ids].groupby(level=0).sum()).values.reshape(len(indices), self.t)
-            weights = self.weights.loc[draft_ids]/self.weights.loc[draft_ids].sum()
+            weights = (self.weights.loc[draft_ids]/self.weights.loc[draft_ids].sum()).values.reshape(len(indices), self.t)
         else:
             weights = None
         # convert to tensor needed for tf.function
@@ -206,8 +206,9 @@ class DeckGenerator(MTGDataGenerator):
         return (modified_sideboards, masked_decks), (basics_to_add, cards_to_add), weights
 
     def create_masked_objects(self, decks, basics):
-        deck_idxs = np.where(decks > 0)
-        basic_idxs = np.where(basics > 0)
+        for i in range(41):
+            deck_idxs = np.where(decks > 0)
+            basic_idxs = np.where(basics > 0)
 
     def get_vectorized_sample(self, mtx):
         probabilities = mtx/mtx.sum(1, keepdims=True)
