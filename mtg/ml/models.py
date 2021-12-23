@@ -300,6 +300,7 @@ class DraftBot(tf.Module):
     def compute_metrics(self, true, pred, sample_weight=None):
         if sample_weight is None:
             sample_weight = tf.ones_like(true.shape)/(true.shape[0] * true.shape[1])
+        sample_weight = sample_weight.flatten()
         pred, _ = pred
         # if isinstance(pred, tuple):
         #     pred, built_decks = pred

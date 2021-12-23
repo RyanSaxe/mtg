@@ -207,7 +207,8 @@ class DeckGenerator(MTGDataGenerator):
 
     def create_masked_objects(self, decks, basics):
         for i in range(41):
-            deck_idxs = np.where(decks > 0)
+            if i <= 18:
+                deck_idxs = np.where(decks > 0)
             basic_idxs = np.where(basics > 0)
 
     def get_vectorized_sample(self, mtx):
