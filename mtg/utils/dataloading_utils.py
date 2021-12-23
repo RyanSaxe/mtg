@@ -37,6 +37,11 @@ def load_bo1_data(filename, cards):
         re.compile(r'drawn_.*'): 'int8',
         re.compile(r'sideboard_.*'): 'int8',
         re.compile(r'opening_hand_.*'): 'int8',
+        re.compile(r'on_play'): 'int8',
+        re.compile(r'won'): 'int8',
+        re.compile(r'num_turns'): 'int8',
+        re.compile(r'num_mulligans'): 'int8',
+        re.compile(r'opp_num_mulligans'): 'int8',
     }
     col_names = pd.read_csv(filename, nrows=0).columns
     data_types = {}
@@ -56,7 +61,11 @@ def load_bo1_data(filename, cards):
             'draft_time',
             'won',
             'user_win_rate_bucket',
-            'rank'
+            'rank',
+            'on_play',
+            'num_turns',
+            'num_mulligans',
+            'opp_num_mulligans'
             # ...
         ] + draft_cols
     )
