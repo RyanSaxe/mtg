@@ -26,7 +26,7 @@ def sort_cols_by_card_idxs(df, card_col_prefixes, cards):
 
 def load_bo1_data(filename, cards):
     df = pd.read_csv(
-        data_file,
+        filename,
         usecols=lambda x: x not in ["opp_rank"],
         dtype={
         'draft_id':str,

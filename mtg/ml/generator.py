@@ -190,15 +190,22 @@ class DeckGenerator(MTGDataGenerator):
         decks = self.deck[indices,:]
         sideboards = self.sideboard[indices,:]
         basics = self.deck_basics[indices,:]
-        pools = decks + sideboards
+        masked_decks, masked_basics = self.create_masked_objects(decks, basics)
+        cards_to_add = decks - masked_decks
+        basics_to_add = basics - masked_basics
+        modified_sideboards = sideboards + cards_to_add
         if self.weights is not None:
             weights = self.weights[indices]/self.weights[indices].sum()
         else:
             weights = None
         if self.pos_neg_sample:
             anchor, pos, neg = self.sample_card_pairs(decks, sideboards)
-            return (pools, anchor, pos, neg), (basics, decks), weights
-        return pools, (basics, decks), weights
+            return (modified_sideboards, masked_decks, anchor, pos, neg), (basics_to_add, cards_to_add), weights
+        return (modified_sideboards, masked_decks), (basics_to_add, cards_to_add), weights
+
+    def create_masked_objects(self, decks, basics):
+        deck_idxs = np.where(decks > 0)
+        basic_idxs = np.where(basics > 0)
 
     def get_vectorized_sample(self, mtx):
         probabilities = mtx/mtx.sum(1, keepdims=True)

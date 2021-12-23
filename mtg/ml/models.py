@@ -298,12 +298,14 @@ class DraftBot(tf.Module):
         return (self.cmc_loss + self.rare_loss) * sample_weight
 
     def compute_metrics(self, true, pred, sample_weight=None):
+        if sample_weight is None:
+            sample_weight = tf.ones_like(true.shape)/(true.shape[0] * true.shape[1])
         pred, _ = pred
         # if isinstance(pred, tuple):
         #     pred, built_decks = pred
-        top1 = tf.reduce_mean(tf.keras.metrics.sparse_top_k_categorical_accuracy(true, pred, 1))
-        top2 = tf.reduce_mean(tf.keras.metrics.sparse_top_k_categorical_accuracy(true, pred, 2))
-        top3 = tf.reduce_mean(tf.keras.metrics.sparse_top_k_categorical_accuracy(true, pred, 3))
+        top1 = tf.reduce_sum(tf.keras.metrics.sparse_top_k_categorical_accuracy(true, pred, 1) * sample_weight)
+        top2 = tf.reduce_sum(tf.keras.metrics.sparse_top_k_categorical_accuracy(true, pred, 2) * sample_weight)
+        top3 = tf.reduce_sum(tf.keras.metrics.sparse_top_k_categorical_accuracy(true, pred, 3) * sample_weight)
         return {
             'top1': top1,
             'top2': top2,
@@ -493,7 +495,7 @@ class DeckBuilder(tf.Module):
         # self.interaction_lambda = interaction_lambda
         if cards is not None:
             self.set_card_params(cards)
-        self.metric_names = []
+        self.metric_names = ['accuracy']
 
     def set_card_params(self, cards):
         self.cmc_map = cards.sort_values(by='idx')['cmc'].to_numpy(dtype=np.float32)
@@ -522,6 +524,15 @@ class DeckBuilder(tf.Module):
             self.built_lambda * self.built_loss +
             self.cmc_lambda * self.curve_incentive
             # self.interaction_lambda * self.interaction_reg
+        )
+
+    def compute_metrics(self, true, pred, sample_weight=None):
+        if sample_weight is None:
+            sample_weight = tf.ones_like(true.shape[-1])/true.shape[-1]
+        most_likely = tf.math.argmax(pred)
+        pred_in_true = tf.reduce_sum(
+            tf.one_hot(most_likely, self.n_cards) * true * sample_weight,
+            axis=-1
         )
 
     def save(self, cards, location):
