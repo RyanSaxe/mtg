@@ -202,23 +202,48 @@ class DeckGenerator(MTGDataGenerator):
             weights = None
         if self.pos_neg_sample:
             anchor, pos, neg = self.sample_card_pairs(decks, sideboards)
-            return (modified_sideboards, masked_decks, anchor, pos, neg), (basics_to_add, cards_to_add), weights
-        return (modified_sideboards, masked_decks), (basics_to_add, cards_to_add), weights
+            return (modified_sideboards, masked_decks, masked_basics, anchor, pos, neg), (basics_to_add, cards_to_add), weights
+        return (modified_sideboards, masked_decks, masked_basics), (basics_to_add, cards_to_add), weights
 
     def create_masked_objects(self, decks, basics):
-        for i in range(41):
-            if i <= 18:
-                deck_idxs = np.where(decks > 0)
-            basic_idxs = np.where(basics > 0)
+        masked_decks = np.zeros((decks.shape[0], 40, decks.shape[1]))
+        masked_basics = np.zeros((basics.shape[0], 40, basics.shape[1]))
+        for i in range(1,40):
+            if i <= 20:
+                masked_decks[:,i,:] = self.get_vectorized_sample(decks.copy(), n=i, uniform=True)
+            else:
+                #note: this is very inefficient. We should be selecting 1 card rather than masking
+                #      39, however this is slightly complicated because we are trying to add spells
+                #      before basics, so I can't just try and go the other direction when i > 20
+                masked_deck_wo_basics = self.get_vectorized_sample(decks.copy(), n=20, uniform=True)
+                what_is_left = np.concatenate([basics, masked_deck_wo_basics], axis=-1)
+                masked_deck_w_basics = self.get_vectorized_sample(what_is_left.copy(), n=i-20, uniform=False)
+                masked_decks[:,i,:] = masked_deck_w_basics[:,5:]
+                masked_basics[:,i,:] = masked_deck_w_basics[:,:5]
+        return masked_decks, masked_basics
 
-    def get_vectorized_sample(self, mtx):
-        probabilities = mtx/mtx.sum(1, keepdims=True)
+    def get_vectorized_sample(mtx, n=1, uniform=True, return_mtx=True, modify_mtx=True):
+        if uniform:
+            clip_mtx = np.clip(mtx, 0, 1)
+            probabilities = clip_mtx/clip_mtx.sum(1, keepdims=True)
+        else:
+            probabilities = mtx/mtx.sum(1, keepdims=True)
         cumulative_dist = probabilities.cumsum(axis=1)
         random_bin = np.random.rand(len(cumulative_dist), 1)
-        return (random_bin < cumulative_dist).argmax(axis=1)
+        sample = (random_bin < cumulative_dist).argmax(axis=1)
+        if modify_mtx:
+            mtx[(np.arange(mtx.shape[0]), sample)] -= 1
+        if n > 1:
+            cts_sample = self.get_vectorized_sample(mtx, n=n-1, uniform=uniform, return_mtx=False)
+            if len(cts_sample.shape) == 1:
+                cts_sample = np.expand_dims(cts_sample, 1)
+            sample = np.concatenate([sample[:,None], cts_sample], axis=1)
+        if return_mtx:
+            return mtx
+        return sample
 
     def sample_card_pairs(self, decks, sideboards):
-        anchors = self.get_vectorized_sample(decks)
+        anchors = self.get_vectorized_sample(decks, uniform=False, return_mtx=False, modify_mtx=False)
 
         # never sample the same card as the anchor as the positive or negative axample
         decks_without_anchors = decks.copy()
@@ -226,8 +251,8 @@ class DeckGenerator(MTGDataGenerator):
         sideboards_without_anchors = sideboards.copy()
         sideboards_without_anchors[np.arange(decks.shape[0]),anchors] = 0
 
-        positive_samples = self.get_vectorized_sample(decks_without_anchors)
-        negative_samples = self.get_vectorized_sample(sideboards_without_anchors)
+        positive_samples = self.get_vectorized_sample(decks_without_anchors, uniform=False, return_mtx=False, modify_mtx=False)
+        negative_samples = self.get_vectorized_sample(sideboards_without_anchors, uniform=False, return_mtx=False, modify_mtx=False)
 
         return anchors, positive_samples, negative_samples
 
