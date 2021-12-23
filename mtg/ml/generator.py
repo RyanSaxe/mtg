@@ -173,7 +173,7 @@ class DeckGenerator(MTGDataGenerator):
         shuffle=True,
         to_fit=True,
         exclude_basics=True,
-        store_basics=False,
+        store_basics=True,
         pos_neg_sample=False,
     ):
         super().__init__(

@@ -99,10 +99,14 @@ class Trainer:
                     batch_features, batch_target, batch_weights = self.generator[i]
                 loss, metrics = self._step(batch_features, batch_target, batch_weights)
                 for m_key, m_val in metrics.items():
+                    if len(m_val.shape) > 1:
+                        m_val = self.loss_agg_f(m_val)
                     extra_metrics[m_key].append(m_val)
                 losses.append(self.loss_agg_f(loss))
                 for attr_name in extras.keys():
                     attr = getattr(self.model, attr_name, None)
+                    if len(attr.shape) > 1:
+                        attr = self.loss_agg_f(attr)
                     extras[attr_name].append(attr)
                 
                 if self.val_generator is not None:
@@ -115,6 +119,8 @@ class Trainer:
                     else:
                         val_metrics = dict()
                     for m_key, m_val in val_metrics.items():
+                        if len(m_val.shape) > 1:
+                            m_val = self.loss_agg_f(m_val)
                         extra_metrics['val_' + m_key].append(m_val)
                     val_losses.append(self.loss_agg_f(val_loss))
                 if verbose:
