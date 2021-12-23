@@ -16,7 +16,7 @@ class Trainer:
         val_target = None,
         val_weights = None,
         clip = 5.0,
-        loss_agg_f=lambda x: self.np.average(x)
+        loss_agg_f=lambda x: np.average(x)
     ):
         self.generator=generator
         self.val_generator=val_generator
