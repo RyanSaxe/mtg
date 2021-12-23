@@ -186,10 +186,10 @@ class DraftBot(tf.Module):
         if training and self.dropout > 0.0:
             embs = tf.nn.dropout(embs, rate=self.dropout)
         for memory_layer in self.encoder_layers:
-            embs, attention_weights = memory_layer(embs, positional_masks, training=training) # (batch_size, t, emb_dim)
+            embs, attention_weights_pack = memory_layer(embs, positional_masks, training=training) # (batch_size, t, emb_dim)
         dec_embs = self.card_embedding(picks, training=training)
         for memory_layer in self.decoder_layers:
-            dec_embs, attention_weights = memory_layer(dec_embs, positional_masks, encoder_output=embs, training=training) # (batch_size, t, emb_dim)
+            dec_embs, attention_weights_pick = memory_layer(dec_embs, positional_masks, encoder_output=embs, training=training) # (batch_size, t, emb_dim)
         #dec_embs = dec_embs
         #get rid of output with respect to initial bias vector, as that is not part of prediction
         #embs = embs[:,1:,:]
@@ -219,7 +219,7 @@ class DraftBot(tf.Module):
         if self.deckbuilder is not None and return_build:
             output = (output, built_decks)
         if return_attention:
-            return output, attention_weights
+            return output, (attention_weights_pack, attention_weights_pick)
         return output, emb_dists
 
     def compile(
@@ -232,6 +232,7 @@ class DraftBot(tf.Module):
         bad_behavior_lambda=1.0,
         rare_lambda=1.0,
         cmc_lambda=1.0,
+        cmc_margin=1.0,
         card_data=None,
     ):
         if optimizer is None:
@@ -243,13 +244,14 @@ class DraftBot(tf.Module):
             self.optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.9, beta_2=0.98,epsilon=1e-9)
         else:
             self.optimizer = optimizer
-        self.loss_f = tf.keras.losses.SparseCategoricalCrossentropy(reduction=tf.keras.losses.Reduction.NONE)
+        self.loss_f = tf.keras.losses.SparseCategoricalCrossentropy(reduction=tf.keras.losses.Reduction.SUM)
         self.margin = margin
         self.emb_lambda = emb_lambda
         self.pred_lambda = pred_lambda
         self.bad_behavior_lambda = bad_behavior_lambda
         self.rare_lambda = rare_lambda
         self.cmc_lambda = cmc_lambda
+        self.cmc_margin = cmc_margin
         if card_data is not None:
             self.set_card_params(card_data)
         self.metric_names = ['top1','top2','top3']
@@ -289,7 +291,7 @@ class DraftBot(tf.Module):
         #    basically, if you're going to make a mistake, bias to low cmc cards
         true_cmc = tf.reduce_sum(true_one_hot * self.cmc, axis=-1)
         pred_cmc = tf.reduce_sum(pred * self.cmc, axis=-1)
-        self.cmc_loss = tf.maximum(pred_cmc - true_cmc, 0.0) * self.cmc_lambda
+        self.cmc_loss = tf.maximum(pred_cmc - true_cmc + self.cmc_margin, 0.0) * self.cmc_lambda
         # penalize taking rares when the human doesn't. This helps not learn "take rares" to
         # explain raredrafting.
         human_took_rare = tf.reduce_sum(true_one_hot * self.rare_flag, axis=-1)
@@ -422,7 +424,20 @@ class DeckBuilder(tf.Module):
             )
             self.layer_norm = LayerNormalization(latent_dim, name=self.name + "_pool_basic_deck_agg")
         else:
-            self.embedding_compressor = nn.MLP(
+            self.embedding_compressor_deck = nn.MLP(
+                in_dim=encoder_in_dim,
+                start_dim=encoder_in_dim//2,
+                out_dim=latent_dim,
+                n_h_layers=2,
+                dropout=dropout,
+                name="deck_encoder",
+                noise=0.0,
+                start_act=None,
+                middle_act=None,
+                out_act=None,
+                style="bottleneck"
+            )
+            self.embedding_compressor_pool = nn.MLP(
                 in_dim=encoder_in_dim,
                 start_dim=encoder_in_dim//2,
                 out_dim=latent_dim,
@@ -452,24 +467,28 @@ class DeckBuilder(tf.Module):
         #self.interactions = nn.Dense(self.n_cards, self.n_cards, activation=None)
         self.add_basics_to_deck = nn.Dense(latent_dim,5, activation=lambda x: tf.nn.sigmoid(x) * 18.0, name="add_basics_to_deck")
         self.basic_encoder = nn.Dense(5,latent_dim, activation=None, name="basic_encoder")
+        self.merge_deck_and_pool = nn.Dense(latent_dim * 2, latent_dim, activation=None, name="merge_deck_and_pool")
     @tf.function
     def __call__(self, features, training=None):
-        pools, decks = features
-        basics = decks[:,:5]
-        nonbasics = decks[:,5:]
+        #batch x sample x n_cards
+        pools, decks, basics = features
+        #store full pools to access in metrics
+        self.full_pools = pools[:,0,:]
         
         basic_embs = self.basic_encoder(basics, training=training)
         if self.card_embeddings is not None:
-            card_embeddings = self.card_embeddings(tf.range(self.n_cards), training=training)[None,:,:]
-            pool_embs = tf.reduce_sum(pools[:,:,None] * card_embeddings, axis=1)
-            deck_embs = tf.reduce_sum(nonbasics[:,:,None] * card_embeddings, axis=1)
-            latent_rep = self.layer_norm(pool_embs + deck_embs + basic_embs, training=training)
-            self.latent_rep = self.embedding_compressor(latent_rep)
+            card_embeddings = self.card_embeddings(tf.range(self.n_cards), training=training)[None,None,:,:]
+            pool_embs = tf.reduce_sum(pools[:,:,:,None] * card_embeddings, axis=2)
+            deck_embs = tf.reduce_sum(decks[:,:,:,None] * card_embeddings, axis=2)
+            latent_rep_deck = self.layer_norm(deck_embs + basic_embs, training=training)
+            self.latent_rep_deck = self.embedding_compressor_deck(latent_rep_deck, training=training)
+            self.latent_rep_pool = self.embedding_compressor_pool(pool_embs, training=training)
         else:
-            pool_embs = self.pool_encoder(pools, training=training)
-            deck_embs = self.deck_encoder(nonbasics, training=training)
-            self.latent_rep = self.layer_norm(pool_embs + deck_embs + basic_embs, training=training)
-
+            self.latent_rep_pool = self.pool_encoder(pools, training=training)
+            deck_embs = self.deck_encoder(decks, training=training)
+            self.latent_rep_deck = self.layer_norm(deck_embs + basic_embs, training=training)
+        latent_rep = tf.concat([self.latent_rep_deck, self.latent_rep_pool], axis=-1)
+        self.latent_rep = self.merge_deck_and_pool(latent_rep)
         reconstruction = self.decoder(self.latent_rep, training=training)
         basics_to_add = self.add_basics_to_deck(self.latent_rep,  training=training)
         cards_to_add = tf.concat([basics_to_add, reconstruction * pools], axis=1)
@@ -496,7 +515,7 @@ class DeckBuilder(tf.Module):
         # self.interaction_lambda = interaction_lambda
         if cards is not None:
             self.set_card_params(cards)
-        self.metric_names = ['accuracy']
+        self.metric_names = ['basics_off', 'spells_off']
 
     def set_card_params(self, cards):
         self.cmc_map = cards.sort_values(by='idx')['cmc'].to_numpy(dtype=np.float32)
@@ -528,13 +547,42 @@ class DeckBuilder(tf.Module):
         )
 
     def compute_metrics(self, true, pred, sample_weight=None):
+        pools = self.full_pools.numpy()
+        true_basics = true[0][:,0,:]
+        true_decks = true[1][:,0,:]
         if sample_weight is None:
-            sample_weight = tf.ones_like(true.shape[-1])/true.shape[-1]
-        most_likely = tf.math.argmax(pred)
-        pred_in_true = tf.reduce_sum(
-            tf.one_hot(most_likely, self.n_cards) * true * sample_weight,
-            axis=-1
-        )
+            sample_weight = 1.0/decks.shape[0]
+        else:
+            sample_weight = sample_weight[:,0]
+        pred_basics, pred_decks = self.build_decks(pools)
+        basic_diff = abs(pred_basics - true_basics).sum(axis=1).mean()
+        deck_diff = abs(pred_decks - true_decks).sum(axis=1).mean()
+        return {
+            'basics_off': basic_diff,
+            'spells_off':  deck_diff
+        }
+
+    @tf.function
+    def build_decks(self,pools):
+        if len(pools.shape) == 1:
+            pools = np.expand_dims(pools, axis=0)
+        deck = np.zeros_like(pools, dtype=np.float32)
+        basics = np.zeros((pools.shape[0], 5), dtype=np.float32)
+        for i in range(40):
+            cards_to_add = self.__call__((pools, deck, basics), training=False).numpy()
+            if i <= 18:
+                cards_to_add = cards_to_add[:,5:]
+                card_to_add = np.argmax(cards_to_add)
+                deck[:,card_to_add] += 1
+                pools[:,card_to_add] -= 1
+            else:
+                card_to_add = np.argmax(cards_to_add)
+                if card_to_add < 5:
+                    basics[:,card_to_add] += 1
+                else:
+                    deck[:,card_to_add - 5] += 1
+                    pools[:,card_to_add - 5] -= 1
+        return basics, deck
 
     def save(self, cards, location):
         pathlib.Path(location).mkdir(parents=True, exist_ok=True)
