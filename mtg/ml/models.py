@@ -566,8 +566,6 @@ class DeckBuilder(tf.Module):
         true_basics, true_decks = true
         if sample_weight is None:
             sample_weight = 1.0/true_decks.shape[0]
-        else:
-            sample_weight = sample_weight[:,0]
         pred_basics, pred_decks = self.build_decks(pred_total.numpy())
         basic_diff = np.average(abs(pred_basics - true_basics).sum(axis=-1), weights=sample_weight)
         deck_diff = np.average(abs(pred_decks - true_decks).sum(axis=-1), weights=sample_weight)
