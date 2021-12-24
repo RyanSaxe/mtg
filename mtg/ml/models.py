@@ -561,7 +561,7 @@ class DeckBuilder(tf.Module):
         }
 
     #we only wrap in tf.function for this to be serialized
-    @tf.function
+    #@tf.function
     def build_decks(self,pools):
         if len(pools.shape) == 2:
             pools = tf.expand_dims(pools, axis=1)
