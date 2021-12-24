@@ -475,7 +475,6 @@ class DeckBuilder(tf.Module):
         #batch x sample x n_cards
         pools, decks, basics = features
         #store full pools to access in metrics
-        self.full_pools = pools[:,0,:]
         
         basic_embs = self.basic_encoder(basics, training=training)
         if self.card_embeddings is not None:
@@ -548,7 +547,8 @@ class DeckBuilder(tf.Module):
         )
 
     def compute_metrics(self, true, pred, sample_weight=None, **kwargs):
-        pools = self.full_pools
+        pools, decks, basics = features
+        pools = pools[:,0,:]
         true_basics = true[0][:,0,:]
         true_decks = true[1][:,0,:]
         if sample_weight is None:

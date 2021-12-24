@@ -49,11 +49,11 @@ class Trainer:
             assert self.val_target is None
             assert self.val_weights is None
     
-    def _step(self, batch_features, batch_target, batch_weights):
+    def _step(self, batch_features, batch_target, batch_weights, only_val_metrics=False):
         with tf.GradientTape() as tape:
             output = self.model(batch_features, training=True)
             loss = self.model.loss(batch_target, output, sample_weight=batch_weights, training=True)
-        if len(self.model.metric_names) > 0:
+        if len(self.model.metric_names) > 0 and not only_val_metrics:
             metrics = self.model.compute_metrics(batch_target, output, sample_weight=batch_weights)
         else:
             metrics = dict()
@@ -63,8 +63,8 @@ class Trainer:
             grads, _ = tf.clip_by_global_norm(grads, self.clip)
         self.model.optimizer.apply_gradients(zip(grads, self.model.trainable_variables))
         return loss, metrics
-        
-    def train(self, n_epochs, batch_size=32, verbose=True, print_keys=[]):
+
+    def train(self, n_epochs, batch_size=32, verbose=True, print_keys=[], only_val_metrics=False):
         n_batches = len(self.batch_ids) // batch_size if self.generator is None else len(self.generator)
         end_at = self.epoch_n + n_epochs
         has_val = self.val_generator is not None or self.val_features is not None
@@ -98,7 +98,7 @@ class Trainer:
                         batch_weights = None
                 else:
                     batch_features, batch_target, batch_weights = self.generator[i]
-                loss, metrics = self._step(batch_features, batch_target, batch_weights)
+                loss, metrics = self._step(batch_features, batch_target, batch_weights, only_val_metrics=only_val_metrics)
                 for m_key, m_val in metrics.items():
                     if len(m_val.shape) > 1:
                         m_val = self.loss_agg_f(m_val)
@@ -116,7 +116,7 @@ class Trainer:
                     val_output = self.model(val_features, training=False)
                     val_loss = self.model.loss(val_target, val_output, sample_weight=val_weights, training=False)
                     if len(self.model.metric_names) > 0:
-                        val_metrics = self.model.compute_metrics(val_target, val_output, sample_weight=val_weights)
+                        val_metrics = self.model.compute_metrics(val_target, val_output, sample_weight=val_weights, features=val_features)
                     else:
                         val_metrics = dict()
                     for m_key, m_val in val_metrics.items():
