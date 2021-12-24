@@ -519,7 +519,7 @@ class DeckBuilder(tf.Module):
     def set_card_params(self, cards):
         self.cmc_map = cards.sort_values(by='idx')['cmc'].to_numpy(dtype=np.float32)
 
-    def loss(self, true, pred, sample_weight=None):
+    def loss(self, true, pred, sample_weight=None, **kwargs):
         true_basics,true_built = tf.split(true,[5,self.n_cards],1)
         pred_basics,pred_built = tf.split(pred,[5,self.n_cards],1)
         self.basic_loss = self.basic_loss_f(true_basics, pred_basics, sample_weight=sample_weight)
@@ -545,7 +545,7 @@ class DeckBuilder(tf.Module):
             # self.interaction_lambda * self.interaction_reg
         )
 
-    def compute_metrics(self, true, pred, sample_weight=None):
+    def compute_metrics(self, true, pred, sample_weight=None, **kwargs):
         pools = self.full_pools.numpy()
         true_basics = true[0][:,0,:]
         true_decks = true[1][:,0,:]
