@@ -546,7 +546,7 @@ class DeckBuilder(tf.Module):
             # self.interaction_lambda * self.interaction_reg
         )
 
-    def compute_metrics(self, true, pred, sample_weight=None, **kwargs):
+    def compute_metrics(self, true, pred, sample_weight=None, features=None, **kwargs):
         pools, decks, basics = features
         pools = pools[:,0,:]
         true_basics = true[0][:,0,:]
