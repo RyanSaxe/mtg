@@ -175,7 +175,7 @@ class DeckGenerator(MTGDataGenerator):
         exclude_basics=True,
         store_basics=True,
         pos_neg_sample=False,
-        mask_decks=True
+        mask_decks=False,
     ):
         super().__init__(
             data,
