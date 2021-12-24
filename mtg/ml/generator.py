@@ -193,9 +193,11 @@ class DeckGenerator(MTGDataGenerator):
         sideboards = self.sideboard[indices,:]
         basics = self.deck_basics[indices,:]
         masked_decks, masked_basics = self.create_masked_objects(decks, basics)
-        cards_to_add = decks[:,None,:] - masked_decks
-        basics_to_add = basics[:,None,:] - masked_basics
-        modified_sideboards = sideboards[:,None,:] + cards_to_add
+        masked_decks = masked_decks.astype(np.float32)
+        masked_basics = masked_basics.astype(np.float32)
+        cards_to_add = (decks[:,None,:] - masked_decks).astype(np.float32)
+        basics_to_add = (basics[:,None,:] - masked_basics).astype(np.float32)
+        modified_sideboards = (sideboards[:,None,:] + cards_to_add).astype(np.float32)
         if self.weights is not None:
             weights = self.weights[indices]/self.weights[indices].sum()
         else:
