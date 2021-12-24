@@ -572,11 +572,11 @@ class DeckBuilder(tf.Module):
             cards_to_add = tf.concat([basics_to_add, cards_to_add], axis=-1)
             if i < 20:
                 cards_to_add = cards_to_add[:,:,5:]
-                card_to_add = tf.math.argmax(cards_to_add)
+                card_to_add = tf.squeeze(tf.math.argmax(cards_to_add))
                 deck[:,:,card_to_add] += 1
                 pools[:,:,card_to_add] -= 1
             else:
-                card_to_add = tf.math.argmax(cards_to_add)
+                card_to_add = tf.squeeze(tf.math.argmax(cards_to_add))
                 if card_to_add < 5:
                     basics[:,:,card_to_add] += 1
                 else:
