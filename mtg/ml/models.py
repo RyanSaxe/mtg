@@ -490,7 +490,7 @@ class DeckBuilder(tf.Module):
         self.latent_rep = self.merge_deck_and_pool(latent_rep)
         reconstruction = self.decoder(self.latent_rep, training=training)
         basics_to_add = self.add_basics_to_deck(self.latent_rep,  training=training)
-        cards_to_add = tf.concat([basics_to_add, reconstruction * pools], axis=1)
+        cards_to_add = tf.concat([basics_to_add, reconstruction * pools], axis=-1)
         return cards_to_add
 
     def compile(
