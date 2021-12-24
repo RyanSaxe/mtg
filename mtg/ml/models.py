@@ -62,7 +62,7 @@ class ConcatEmbedding(tf.Module):
         self.embedding = tf.Variable(initializer(shape=(num_items, emb_dim//2)), dtype=tf.float32, name=self.name + "_embedding")
         self.activation = activation
 
-    @tf.function
+    #@tf.function
     def __call__(self, x, training=None):
         item_embeddings = tf.gather(self.embedding, x)
         data_embeddings = tf.gather(
@@ -155,7 +155,7 @@ class DraftBot(tf.Module):
         #     name=self.name + "_initial_card_bias",
         # )
 
-    @tf.function
+    #@tf.function
     def __call__(self, features, training=None, return_attention=False, return_build=True):
         if self.deckbuilder is not None and return_build:
             packs, picks, positions, final_pools = features
@@ -467,7 +467,7 @@ class DeckBuilder(tf.Module):
         self.add_basics_to_deck = nn.Dense(latent_dim,5, activation=lambda x: tf.nn.sigmoid(x) * 18.0, name="add_basics_to_deck")
         self.basic_encoder = nn.Dense(5,latent_dim, activation=None, name="basic_encoder")
         self.merge_deck_and_pool = nn.Dense(latent_dim * 2, latent_dim, activation=None, name="merge_deck_and_pool")
-    @tf.function
+    #@tf.function
     def __call__(self, features, training=None):
         #batch x sample x n_cards
         pools, decks, basics = features
@@ -561,7 +561,7 @@ class DeckBuilder(tf.Module):
         }
 
     #we only wrap in tf.function for this to be serialized
-    #@tf.function
+    ##@tf.function
     def build_decks(self,pools):
         if len(pools.shape) == 2:
             pools = tf.expand_dims(pools, axis=1)
