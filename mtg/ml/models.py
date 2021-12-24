@@ -393,7 +393,7 @@ class DeckBuilder(tf.Module):
                 emb_trainable = False
                 emb_init = embeddings
             self.card_embeddings = tf.Variable(emb_init, trainable=emb_trainable)
-            encoder_in_dim = self.card_embeddings.shape[0]
+            encoder_in_dim = self.card_embeddings.shape[1]
         else:
             encoder_in_dim = self.n_cards
         if self.card_embeddings is None:
@@ -451,7 +451,7 @@ class DeckBuilder(tf.Module):
                 out_act=None,
                 style="bottleneck"
             )
-            self.basic_encoder = nn.Dense(5,self.card_embeddings.shape[1], activation=None, name="basic_encoder")
+            self.basic_encoder = nn.Dense(5,encoder_in_dim, activation=None, name="basic_encoder")
 
         self.decoder = nn.MLP(
             in_dim=latent_dim,
