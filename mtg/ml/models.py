@@ -490,8 +490,7 @@ class DeckBuilder(tf.Module):
         self.latent_rep = self.merge_deck_and_pool(latent_rep)
         reconstruction = self.decoder(self.latent_rep, training=training)
         basics_to_add = self.add_basics_to_deck(self.latent_rep,  training=training)
-        cards_to_add = tf.concat([basics_to_add, reconstruction * pools], axis=-1)
-        return cards_to_add
+        return basics_to_add, reconstruction * pools
 
     def compile(
         self,
@@ -520,8 +519,8 @@ class DeckBuilder(tf.Module):
         self.cmc_map = cards.sort_values(by='idx')['cmc'].to_numpy(dtype=np.float32)
 
     def loss(self, true, pred, sample_weight=None, **kwargs):
-        true_basics,true_built = tf.split(true,[5,self.n_cards],1)
-        pred_basics,pred_built = tf.split(pred,[5,self.n_cards],1)
+        true_basics,true_built = true
+        pred_basics,pred_built = pred
         self.basic_loss = self.basic_loss_f(true_basics, pred_basics, sample_weight=sample_weight)
         self.built_loss = self.built_loss_f(true_built, pred_built, sample_weight=sample_weight)
         if self.cmc_lambda > 0:

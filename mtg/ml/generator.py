@@ -198,6 +198,7 @@ class DeckGenerator(MTGDataGenerator):
         cards_to_add = (decks[:,None,:] - masked_decks).astype(np.float32)
         basics_to_add = (basics[:,None,:] - masked_basics).astype(np.float32)
         modified_sideboards = (sideboards[:,None,:] + cards_to_add).astype(np.float32)
+        
         if self.weights is not None:
             weights = self.weights[indices][:,None] * np.ones((len(indices), 40))
             weights = weights/weights.sum()
