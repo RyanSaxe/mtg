@@ -212,19 +212,11 @@ class DeckGenerator(MTGDataGenerator):
     def create_masked_objects(self, decks, basics):
         masked_decks = np.zeros((decks.shape[0], 40, decks.shape[1]))
         masked_basics = np.zeros((basics.shape[0], 40, basics.shape[1]))
+        full_decks = np.concatenate([decks, basics], axis=-1)
         for i in range(1,40):
-            if i <= 20:
-                sample = self.get_vectorized_sample(decks.copy(), n=i, uniform=True)
-                masked_decks[:,i,:] = decks - sample
-            else:
-                #note: this is very inefficient. We should be selecting 1 card rather than masking
-                #      39, however this is slightly complicated because we are trying to add spells
-                #      before basics, so I can't just try and go the other direction when i > 20
-                masked_deck_wo_basics = self.get_vectorized_sample(decks.copy(), n=20, uniform=True)
-                what_is_left = np.concatenate([basics, masked_deck_wo_basics], axis=-1)
-                masked_deck_w_basics = self.get_vectorized_sample(what_is_left.copy(), n=i-20, uniform=True)
-                masked_decks[:,i,:] = decks - masked_deck_w_basics[:,5:]
-                masked_basics[:,i,:] = basics - masked_deck_w_basics[:,:5]
+            sample = self.get_vectorized_sample(full_decks.copy(), n=i, uniform=True)
+            masked_decks[:,i,:] = decks - sample[:,5:]
+            masked_basics[:,i,:] = basics - sample[:,:5]
         return masked_decks, masked_basics
 
     def get_vectorized_sample(self, mtx, n=1, uniform=True, return_mtx=True, modify_mtx=True):

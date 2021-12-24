@@ -53,16 +53,17 @@ class Trainer:
         with tf.GradientTape() as tape:
             output = self.model(batch_features, training=True)
             loss = self.model.loss(batch_target, output, sample_weight=batch_weights, training=True)
-            if len(self.model.metric_names) > 0:
-                metrics = self.model.compute_metrics(batch_target, output, sample_weight=batch_weights)
-            else:
-                metrics = dict()
+        if len(self.model.metric_names) > 0:
+            metrics = self.model.compute_metrics(batch_target, output, sample_weight=batch_weights)
+        else:
+            metrics = dict()
             #put regularization here if necessary
         grads = tape.gradient(loss, self.model.trainable_variables)
         if self.clip:
             grads, _ = tf.clip_by_global_norm(grads, self.clip)
         self.model.optimizer.apply_gradients(zip(grads, self.model.trainable_variables))
         return loss, metrics
+        
     def train(self, n_epochs, batch_size=32, verbose=True, print_keys=[]):
         n_batches = len(self.batch_ids) // batch_size if self.generator is None else len(self.generator)
         end_at = self.epoch_n + n_epochs
