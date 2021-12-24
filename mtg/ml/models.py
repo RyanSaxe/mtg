@@ -234,6 +234,7 @@ class DraftBot(tf.Module):
         cmc_lambda=1.0,
         cmc_margin=1.0,
         card_data=None,
+        metric_names = ['top1','top2','top3']
     ):
         if optimizer is None:
             if isinstance(learning_rate, dict):
@@ -254,7 +255,7 @@ class DraftBot(tf.Module):
         self.cmc_margin = cmc_margin
         if card_data is not None:
             self.set_card_params(card_data)
-        self.metric_names = ['top1','top2','top3']
+        self.metric_names = metric_names
     
     def set_card_params(self, card_data):
         self.rare_flag = (card_data['mythic'] + card_data['rare']).values[None, None, :]
@@ -351,6 +352,7 @@ class TransformerBlock(tf.Module):
         x = self.expand_attention(x, training=training)
         return self.compress_expansion(x, training=training)
 
+    @tf.function
     def __call__(self, x, mask, encoder_output=None, training=None):
         attention_emb, attention_weights = self.attention(x, x, x, mask, training=training)
         if training and self.dropout > 0:
@@ -467,6 +469,7 @@ class DeckBuilder(tf.Module):
         self.add_basics_to_deck = nn.Dense(latent_dim,5, activation=lambda x: tf.nn.sigmoid(x) * 18.0, name="add_basics_to_deck")
         self.basic_encoder = nn.Dense(5,latent_dim, activation=None, name="basic_encoder")
         self.merge_deck_and_pool = nn.Dense(latent_dim * 2, latent_dim, activation=None, name="merge_deck_and_pool")
+
     @tf.function
     def __call__(self, features, training=None):
         #batch x sample x n_cards
@@ -500,6 +503,7 @@ class DeckBuilder(tf.Module):
         cmc_lambda=0.01,
         # interaction_lambda=0.01,
         optimizer=None,
+        metric_names=['basics_off', 'spells_off']
     ):
         self.optimizer = tf.optimizers.Adam() if optimizer is None else optimizer
 
@@ -513,7 +517,7 @@ class DeckBuilder(tf.Module):
         # self.interaction_lambda = interaction_lambda
         if cards is not None:
             self.set_card_params(cards)
-        self.metric_names = ['basics_off', 'spells_off']
+        self.metric_names = metric_names
 
     def set_card_params(self, cards):
         self.cmc_map = cards.sort_values(by='idx')['cmc'].to_numpy(dtype=np.float32)
