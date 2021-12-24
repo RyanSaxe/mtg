@@ -423,7 +423,7 @@ class DeckBuilder(tf.Module):
                 out_act=None,
                 style="bottleneck"
             )
-            self.layer_norm = LayerNormalization(latent_dim, name=self.name + "_pool_basic_deck_agg")
+            self.basic_encoder = nn.Dense(5,latent_dim, activation=None, name="basic_encoder")
         else:
             self.embedding_compressor_deck = nn.MLP(
                 in_dim=encoder_in_dim,
@@ -451,7 +451,8 @@ class DeckBuilder(tf.Module):
                 out_act=None,
                 style="bottleneck"
             )
-            self.layer_norm = LayerNormalization(encoder_in_dim, name=self.name + "_pool_basic_deck_agg")
+            self.basic_encoder = nn.Dense(5,encoder_in_dim, activation=None, name="basic_encoder")
+
         self.decoder = nn.MLP(
             in_dim=latent_dim,
             start_dim=latent_dim * 2,
@@ -467,7 +468,6 @@ class DeckBuilder(tf.Module):
         )
         #self.interactions = nn.Dense(self.n_cards, self.n_cards, activation=None)
         self.add_basics_to_deck = nn.Dense(latent_dim,5, activation=lambda x: tf.nn.sigmoid(x) * 18.0, name="add_basics_to_deck")
-        self.basic_encoder = nn.Dense(5,latent_dim, activation=None, name="basic_encoder")
         self.merge_deck_and_pool = nn.Dense(latent_dim * 2, latent_dim, activation=None, name="merge_deck_and_pool")
 
     @tf.function
