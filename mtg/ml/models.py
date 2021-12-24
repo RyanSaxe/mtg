@@ -482,13 +482,13 @@ class DeckBuilder(tf.Module):
             card_embeddings = self.card_embeddings(tf.range(self.n_cards), training=training)[None,None,:,:]
             pool_embs = tf.reduce_sum(pools[:,:,:,None] * card_embeddings, axis=2)
             deck_embs = tf.reduce_sum(decks[:,:,:,None] * card_embeddings, axis=2)
-            latent_rep_deck = self.layer_norm(deck_embs + basic_embs, training=training)
+            latent_rep_deck = deck_embs + basic_embs
             self.latent_rep_deck = self.embedding_compressor_deck(latent_rep_deck, training=training)
             self.latent_rep_pool = self.embedding_compressor_pool(pool_embs, training=training)
         else:
             self.latent_rep_pool = self.pool_encoder(pools, training=training)
             deck_embs = self.deck_encoder(decks, training=training)
-            self.latent_rep_deck = self.layer_norm(deck_embs + basic_embs, training=training)
+            self.latent_rep_deck = deck_embs + basic_embs
         latent_rep = tf.concat([self.latent_rep_deck, self.latent_rep_pool], axis=-1)
         self.latent_rep = self.merge_deck_and_pool(latent_rep)
         reconstruction = self.decoder(self.latent_rep, training=training)

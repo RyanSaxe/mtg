@@ -164,13 +164,9 @@ class Expansion:
         pack[idxs] = 1
         return pack
 
-class MID(Expansion):
-    def __init__(self, bo1=None, bo3=None, quick=None, draft=None, replay=None, ml_data=True):
-        super().__init__(expansion='mid', bo1=bo1, bo3=bo3, quick=quick, draft=draft, replay=replay, ml_data=ml_data)
-
 class VOW(Expansion):
-    def __init__(self, bo1=None, bo3=None, quick=None, draft=None, replay=None, ml_data=True):
-        super().__init__(expansion='vow', bo1=bo1, bo3=bo3, quick=quick, draft=draft, replay=replay, ml_data=ml_data)
+    def __init__(self, bo1=None, bo3=None, quick=None, draft=None, replay=None, ml_data=True, idx_to_name=None):
+        super().__init__(expansion='vow', bo1=bo1, bo3=bo3, quick=quick, draft=draft, replay=replay, ml_data=ml_data, idx_to_name=idx_to_name)
 
     def generate_pack(self, exclude_basics=True, name_to_idx=None, return_names=False):
         """
