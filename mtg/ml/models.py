@@ -451,7 +451,7 @@ class DeckBuilder(tf.Module):
                 out_act=None,
                 style="bottleneck"
             )
-            self.basic_encoder = nn.Dense(5,encoder_in_dim, activation=None, name="basic_encoder")
+            self.basic_encoder = nn.Dense(5,self.card_embeddings.shape[1], activation=None, name="basic_encoder")
 
         self.decoder = nn.MLP(
             in_dim=latent_dim,
