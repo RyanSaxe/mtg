@@ -573,7 +573,6 @@ class DeckBuilder(tf.Module):
             'spells_off': deck_diff
         }
 
-    @tf.function
     def build_decks(self, basics, spells):
         deck = np.concatenate([basics, spells], axis=-1)
         final_deck = np.zeros_like(deck)
