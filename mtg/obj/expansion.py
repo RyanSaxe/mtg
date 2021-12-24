@@ -10,10 +10,10 @@ import time
 import random
 
 class Expansion:
-    def __init__(self, expansion, bo1=None, bo3=None, quick=None, draft=None, replay=None, ml_data=True):
+    def __init__(self, expansion, bo1=None, bo3=None, quick=None, draft=None, replay=None, ml_data=True, idx_to_name=None):
         self.expansion = expansion
         self.cards = CardSet([f'set={self.expansion}','is:booster']).to_dataframe()
-        self.clean_card_df()
+        self.clean_card_df(idx_to_name)
         self.bo1 = self.process_data(bo1, name="bo1")
         self.bo3 = self.process_data(bo3, name="bo3")
         self.quick = self.process_data(quick, name="quick")
@@ -38,7 +38,15 @@ class Expansion:
             df = file_or_df
         return df
     
-    def clean_card_df(self):
+    def clean_card_df(self, idx_to_name=None):
+        if idx_to_name is not None:
+            if "plains" not in idx_to_name.keys():
+                idx_to_name = {k + 5:v for k,v in idx_to_name.items()}
+                basics = ["plains","island","swamp","mountain","forest"]
+                for basic_idx, basic in basics:
+                    idx_to_name[basic_idx] = basic
+            name_to_idx = {v:k for k,v in idx_to_name.items()}
+            self.cards['idx'] = self.cards['name'].apply(name_to_idx)
         #set it so ramp spells that search for basics are seen as rainbow producers
         # logic to subset by basic implemented where needed
         search_check = lambda x: 'search your library' in x['oracle_text']
