@@ -418,8 +418,8 @@ class DeckBuilder(tf.Module):
                 dropout=dropout,
                 name="pool_encoder",
                 noise=0.0,
-                start_act=None,
-                middle_act=None,
+                start_act=tf.nn.selu,
+                middle_act=tf.nn.selu,
                 out_act=None,
                 style="bottleneck"
             )
@@ -446,8 +446,8 @@ class DeckBuilder(tf.Module):
                 dropout=dropout,
                 name="pool_encoder",
                 noise=0.0,
-                start_act=None,
-                middle_act=None,
+                start_act=tf.nn.selu,
+                middle_act=tf.nn.selu,
                 out_act=None,
                 style="bottleneck"
             )
@@ -461,8 +461,8 @@ class DeckBuilder(tf.Module):
             dropout=0.0,
             name="decoder",
             noise=0.0,
-            start_act=None,
-            middle_act=None,
+            start_act=tf.nn.selu,
+            middle_act=tf.nn.selu,
             out_act=tf.nn.sigmoid,
             style="reverse_bottleneck"
         )
