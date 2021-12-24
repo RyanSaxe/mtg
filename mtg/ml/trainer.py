@@ -68,7 +68,10 @@ class Trainer:
         n_batches = len(self.batch_ids) // batch_size if self.generator is None else len(self.generator)
         end_at = self.epoch_n + n_epochs
         has_val = self.val_generator is not None or self.val_features is not None
-        extra_metric_keys = self.model.metric_names[:]
+        if only_val_metrics:
+            extra_metric_keys = []
+        else:
+            extra_metric_keys = self.model.metric_names[:]
         if has_val:
             extra_metric_keys += ['val_' + metric_key for metric_key in extra_metric_keys]
         for _ in range(n_epochs):

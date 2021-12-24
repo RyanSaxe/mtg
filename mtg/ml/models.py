@@ -569,13 +569,22 @@ class DeckBuilder(tf.Module):
         if len(pools.shape) == 2:
             pools = np.expand_dims(pools, axis=1)
         output = np.zeros((pools.shape[0], 1, 5 + self.n_cards), dtype=np.float32)
+        pool_holder = np.concatenate([
+            np.zeros((pools.shape[0],1,5)),
+            pools
+        ], axis=-1)
         for i in range(0,40):
             deck = output[:,:,5:]
             basics = output[:,:,:5]
-            basics_to_add, cards_to_add = self.__call__((pools, deck, basics), training=False)
+            pool = pool_holder[:,:,5:]
+            basics_to_add, cards_to_add = self.__call__((pool, deck, basics), training=False)
             cards_to_add = np.concatenate([basics_to_add, cards_to_add], axis=-1)
             card_to_add = np.squeeze(np.argmax(cards_to_add, axis=-1))
-            output[np.arange(pools.shape[0]),np.zeros_like(card_to_add),card_to_add] += 1
+            idx = np.arange(pools.shape[0]),np.zeros_like(card_to_add),card_to_add
+            output[idx] += 1
+            pool_holder[idx] -= 1
+        deck = output[:,:,5:]
+        basics = output[:,:,:5]
         return basics, deck
 
     def save(self, cards, location):
