@@ -556,11 +556,11 @@ class DeckBuilder(tf.Module):
         else:
             sample_weight = sample_weight[:,0]
         pred_basics, pred_decks = self.build_decks(pools)
-        basic_diff = abs(pred_basics - true_basics).sum(axis=1).mean()
-        deck_diff = abs(pred_decks - true_decks).sum(axis=1).mean()
+        basic_diff = np.average(abs(pred_basics - true_basics).sum(axis=1), weights=sample_weight)
+        deck_diff = np.average(abs(pred_decks - true_decks).sum(axis=1), weights=sample_weight)
         return {
             'basics_off': basic_diff,
-            'spells_off':  deck_diff
+            'spells_off': deck_diff
         }
 
     #we only wrap in tf.function for this to be serialized
@@ -570,7 +570,7 @@ class DeckBuilder(tf.Module):
             pools = np.expand_dims(pools, axis=1)
         output = np.zeros((pools.shape[0], 1, 5 + self.n_cards), dtype=np.float32)
         pool_holder = np.concatenate([
-            np.zeros((pools.shape[0],1,5)),
+            np.zeros((pools.shape[0],1,5), dtype=np.float32),
             pools
         ], axis=-1)
         for i in range(0,40):
@@ -583,8 +583,8 @@ class DeckBuilder(tf.Module):
             idx = np.arange(pools.shape[0]),np.zeros_like(card_to_add),card_to_add
             output[idx] += 1
             pool_holder[idx] -= 1
-        deck = output[:,:,5:]
-        basics = output[:,:,:5]
+        deck = np.squeeze(output[:,:,5:])
+        basics = np.squeeze(output[:,:,:5])
         return basics, deck
 
     def save(self, cards, location):
