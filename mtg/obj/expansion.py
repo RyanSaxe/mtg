@@ -43,7 +43,7 @@ class Expansion:
             if "plains" not in idx_to_name.keys():
                 idx_to_name = {k + 5:v for k,v in idx_to_name.items()}
                 basics = ["plains","island","swamp","mountain","forest"]
-                for basic_idx, basic in basics:
+                for basic_idx, basic in enumerate(basics):
                     idx_to_name[basic_idx] = basic
             name_to_idx = {v:k for k,v in idx_to_name.items()}
             self.cards['idx'] = self.cards['name'].apply(name_to_idx)
