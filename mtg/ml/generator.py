@@ -210,7 +210,8 @@ class DeckGenerator(MTGDataGenerator):
         masked_basics = np.zeros((basics.shape[0], 40, basics.shape[1]))
         for i in range(1,40):
             if i <= 20:
-                masked_decks[:,i,:] = self.get_vectorized_sample(decks.copy(), n=i, uniform=True)
+                sample = self.get_vectorized_sample(decks.copy(), n=i, uniform=True)
+                masked_decks[:,i,:] = decks - sample
             else:
                 #note: this is very inefficient. We should be selecting 1 card rather than masking
                 #      39, however this is slightly complicated because we are trying to add spells
@@ -218,13 +219,11 @@ class DeckGenerator(MTGDataGenerator):
                 masked_deck_wo_basics = self.get_vectorized_sample(decks.copy(), n=20, uniform=True)
                 what_is_left = np.concatenate([basics, masked_deck_wo_basics], axis=-1)
                 masked_deck_w_basics = self.get_vectorized_sample(what_is_left.copy(), n=i-20, uniform=True)
-                masked_decks[:,i,:] = masked_deck_w_basics[:,5:]
-                masked_basics[:,i,:] = masked_deck_w_basics[:,:5]
+                masked_decks[:,i,:] = decks - masked_deck_w_basics[:,5:]
+                masked_basics[:,i,:] = basics - masked_deck_w_basics[:,:5]
         return masked_decks, masked_basics
 
     def get_vectorized_sample(self, mtx, n=1, uniform=True, return_mtx=True, modify_mtx=True):
-        if return_mtx:
-            orig_mtx = mtx.copy()
         if uniform:
             clip_mtx = np.clip(mtx, 0, 1)
             probabilities = clip_mtx/clip_mtx.sum(1, keepdims=True)
@@ -241,7 +240,7 @@ class DeckGenerator(MTGDataGenerator):
                 cts_sample = np.expand_dims(cts_sample, 1)
             sample = np.concatenate([sample[:,None], cts_sample], axis=1)
         if return_mtx:
-            return orig_mtx - mtx
+            return mtx
         return sample
 
     def sample_card_pairs(self, decks, sideboards):
