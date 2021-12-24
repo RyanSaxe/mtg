@@ -286,7 +286,6 @@ def draft_log_ai(draft_log_url, model, t=None, n_cards=None, idx_to_name=None, r
     if return_attention:
         output, attention = model(model_input, training=False, return_attention=True)
         output = output[0]
-        attention = (attention[0][0], attention[1][0])
         #attention = tf.squeeze(attention)
     else:
         output = model(model_input, training=False)[0]
