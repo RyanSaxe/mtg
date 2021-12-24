@@ -397,19 +397,19 @@ class DeckBuilder(tf.Module):
         else:
             encoder_in_dim = self.n_cards
         if self.card_embeddings is None:
-            self.deck_encoder = nn.MLP(
-                in_dim=encoder_in_dim,
-                start_dim=encoder_in_dim,
-                out_dim=latent_dim,
-                n_h_layers=2,
-                dropout=dropout,
-                name="deck_encoder",
-                noise=0.0,
-                start_act=None,
-                middle_act=None,
-                out_act=None,
-                style="bottleneck"
-            )
+            # self.deck_encoder = nn.MLP(
+            #     in_dim=encoder_in_dim,
+            #     start_dim=encoder_in_dim,
+            #     out_dim=latent_dim,
+            #     n_h_layers=2,
+            #     dropout=dropout,
+            #     name="deck_encoder",
+            #     noise=0.0,
+            #     start_act=None,
+            #     middle_act=None,
+            #     out_act=None,
+            #     style="bottleneck"
+            # )
             self.pool_encoder = nn.MLP(
                 in_dim=encoder_in_dim,
                 start_dim=encoder_in_dim,
@@ -423,21 +423,21 @@ class DeckBuilder(tf.Module):
                 out_act=None,
                 style="bottleneck"
             )
-            self.basic_encoder = nn.Dense(5,latent_dim, activation=None, name="basic_encoder")
+            #self.basic_encoder = nn.Dense(5,latent_dim, activation=None, name="basic_encoder")
         else:
-            self.embedding_compressor_deck = nn.MLP(
-                in_dim=encoder_in_dim,
-                start_dim=encoder_in_dim//2,
-                out_dim=latent_dim,
-                n_h_layers=2,
-                dropout=dropout,
-                name="deck_encoder",
-                noise=0.0,
-                start_act=None,
-                middle_act=None,
-                out_act=None,
-                style="bottleneck"
-            )
+            # self.embedding_compressor_deck = nn.MLP(
+            #     in_dim=encoder_in_dim,
+            #     start_dim=encoder_in_dim//2,
+            #     out_dim=latent_dim,
+            #     n_h_layers=2,
+            #     dropout=dropout,
+            #     name="deck_encoder",
+            #     noise=0.0,
+            #     start_act=None,
+            #     middle_act=None,
+            #     out_act=None,
+            #     style="bottleneck"
+            # )
             self.embedding_compressor_pool = nn.MLP(
                 in_dim=encoder_in_dim,
                 start_dim=encoder_in_dim//2,
@@ -451,7 +451,7 @@ class DeckBuilder(tf.Module):
                 out_act=None,
                 style="bottleneck"
             )
-            self.basic_encoder = nn.Dense(5,encoder_in_dim, activation=None, name="basic_encoder")
+            #self.basic_encoder = nn.Dense(5,encoder_in_dim, activation=None, name="basic_encoder")
 
         self.decoder = nn.MLP(
             in_dim=latent_dim,
@@ -467,31 +467,45 @@ class DeckBuilder(tf.Module):
             style="reverse_bottleneck"
         )
         #self.interactions = nn.Dense(self.n_cards, self.n_cards, activation=None)
-        self.add_basics_to_deck = nn.Dense(latent_dim,5, activation=lambda x: tf.nn.sigmoid(x) * 18.0, name="add_basics_to_deck")
-        self.merge_deck_and_pool = nn.Dense(latent_dim * 2, latent_dim, activation=None, name="merge_deck_and_pool")
+        self.add_basics_to_deck = nn.Dense(latent_dim,5, activation=tf.nn.softmax, name="add_basics_to_deck")
+        self.determine_n_basics = nn.Dense(latent_dim,1, activation=lambda x: tf.nn.sigmoid(x/4.0) * 4.0 + 15.0, name="add_basics_to_deck")
+        #self.merge_deck_and_pool = nn.Dense(latent_dim * 2, latent_dim, activation=None, name="merge_deck_and_pool")
 
     @tf.function
-    def __call__(self, features, training=None):
-        #batch x sample x n_cards
-        pools, decks, basics = features
-        #store full pools to access in metrics
-        
-        basic_embs = self.basic_encoder(basics, training=training)
+    def __call__(self, pools, training=None):
         if self.card_embeddings is not None:
-            pool_embs = tf.reduce_sum(pools[:,:,:,None] * self.card_embeddings[None,None,:,:], axis=2)
-            deck_embs = tf.reduce_sum(decks[:,:,:,None] * self.card_embeddings[None,None,:,:], axis=2)
-            latent_rep_deck = deck_embs + basic_embs
-            self.latent_rep_deck = self.embedding_compressor_deck(latent_rep_deck, training=training)
-            self.latent_rep_pool = self.embedding_compressor_pool(pool_embs, training=training)
+            pool_embs = tf.reduce_sum(pools[:,:,None] * self.card_embeddings[None,:,:], axis=1)
+            self.latent_rep = self.embedding_compressor_pool(pool_embs, training=training)
         else:
-            self.latent_rep_pool = self.pool_encoder(pools, training=training)
-            deck_embs = self.deck_encoder(decks, training=training)
-            self.latent_rep_deck = deck_embs + basic_embs
-        latent_rep = tf.concat([self.latent_rep_deck, self.latent_rep_pool], axis=-1)
-        self.latent_rep = self.merge_deck_and_pool(latent_rep)
+            self.latent_rep = self.pool_encoder(pools, training=training)
         reconstruction = self.decoder(self.latent_rep, training=training)
-        basics_to_add = self.add_basics_to_deck(self.latent_rep,  training=training)
+        n_basics = self.determine_n_basics(self.latent_rep, training=training)
+        basics_to_add = self.add_basics_to_deck(self.latent_rep,  training=training) * n_basics
         return basics_to_add, reconstruction * pools
+
+    # @tf.function
+    # def __call__(self, features, training=None):
+    #     #batch x sample x n_cards
+    #     pools, decks, basics = features
+    #     #store full pools to access in metrics
+        
+    #     basic_embs = self.basic_encoder(basics, training=training)
+    #     if self.card_embeddings is not None:
+    #         pool_embs = tf.reduce_sum(pools[:,:,:,None] * self.card_embeddings[None,None,:,:], axis=2)
+    #         deck_embs = tf.reduce_sum(decks[:,:,:,None] * self.card_embeddings[None,None,:,:], axis=2)
+    #         latent_rep_deck = deck_embs + basic_embs
+    #         self.latent_rep_deck = self.embedding_compressor_deck(latent_rep_deck, training=training)
+    #         self.latent_rep_pool = self.embedding_compressor_pool(pool_embs, training=training)
+    #     else:
+    #         self.latent_rep_pool = self.pool_encoder(pools, training=training)
+    #         deck_embs = self.deck_encoder(decks, training=training)
+    #         self.latent_rep_deck = deck_embs + basic_embs
+    #     latent_rep = tf.concat([self.latent_rep_deck, self.latent_rep_pool], axis=-1)
+    #     self.latent_rep = self.merge_deck_and_pool(latent_rep)
+    #     reconstruction = self.decoder(self.latent_rep, training=training)
+    #     n_basics = self.determine_n_basics(self.latent_rep, training=training)
+    #     basics_to_add = self.add_basics_to_deck(self.latent_rep,  training=training) * n_basics
+    #     return basics_to_add, reconstruction * pools
 
     def compile(
         self,
@@ -546,46 +560,38 @@ class DeckBuilder(tf.Module):
             # self.interaction_lambda * self.interaction_reg
         )
 
-    def compute_metrics(self, true, pred, sample_weight=None, features=None, **kwargs):
-        pools, decks, basics = features
-        pools = pools[:,0,:]
-        true_basics = true[0][:,0,:]
-        true_decks = true[1][:,0,:]
-        if sample_weight is None:
-            sample_weight = 1.0/true_decks.shape[0]
-        else:
-            sample_weight = sample_weight[:,0]
-        pred_basics, pred_decks = self.build_decks(pools)
-        basic_diff = np.average(abs(pred_basics - true_basics).sum(axis=1), weights=sample_weight)
-        deck_diff = np.average(abs(pred_decks - true_decks).sum(axis=1), weights=sample_weight)
-        return {
-            'basics_off': basic_diff,
-            'spells_off': deck_diff
-        }
+    # def compute_metrics(self, true, pred, sample_weight=None, features=None, **kwargs):
+    #     pred_basics, pred_decks = pred
+    #     pred_total = tf.concatenate([pred_basics, pred_decks], axis=-1)
+    #     true_basics, true_decks = true
+    #     if sample_weight is None:
+    #         sample_weight = 1.0/true_decks.shape[0]
+    #     else:
+    #         sample_weight = sample_weight[:,0]
+    #     pred_basics, pred_decks = self.build_decks(pred_total)
+    #     basic_diff = np.average(abs(pred_basics - true_basics).sum(axis=-1), weights=sample_weight)
+    #     deck_diff = np.average(abs(pred_decks - true_decks).sum(axis=-1), weights=sample_weight)
+    #     return {
+    #         'basics_off': basic_diff,
+    #         'spells_off': deck_diff
+    #     }
 
-    #we only wrap in tf.function for this to be serialized
-    #@tf.function
-    def build_decks(self,pools):
-        if len(pools.shape) == 2:
-            pools = np.expand_dims(pools, axis=1)
-        output = np.zeros((pools.shape[0], 1, 5 + self.n_cards), dtype=np.float32)
-        pool_holder = np.concatenate([
-            np.zeros((pools.shape[0],1,5), dtype=np.float32),
-            pools
-        ], axis=-1)
-        for i in range(0,40):
-            deck = output[:,:,5:]
-            basics = output[:,:,:5]
-            pool = pool_holder[:,:,5:]
-            basics_to_add, cards_to_add = self.__call__((pool, deck, basics), training=False)
-            cards_to_add = np.concatenate([basics_to_add, cards_to_add], axis=-1)
-            card_to_add = np.squeeze(np.argmax(cards_to_add, axis=-1))
-            idx = np.arange(pools.shape[0]),np.zeros_like(card_to_add),card_to_add
-            output[idx] += 1
-            pool_holder[idx] -= 1
-        deck = np.squeeze(output[:,:,5:])
-        basics = np.squeeze(output[:,:,:5])
-        return basics, deck
+    # #we only wrap in tf.function for this to be serialized
+    # #@tf.function
+    # def build_decks(self,pred):
+    #     for i in range(0,40):
+    #         deck = output[:,5:]
+    #         basics = output[:,:5]
+    #         pool = pool_holder[:,5:]
+            
+    #         cards_to_add = np.concatenate([basics_to_add, cards_to_add], axis=-1)
+    #         card_to_add = np.squeeze(np.argmax(cards_to_add, axis=-1))
+    #         idx = np.arange(pools.shape[0]),np.zeros_like(card_to_add),card_to_add
+    #         output[idx] += 1
+    #         pool_holder[idx] -= 1
+    #     deck = np.squeeze(output[:,5:])
+    #     basics = np.squeeze(output[:,:5])
+    #     return basics, deck
 
     def save(self, cards, location):
         pathlib.Path(location).mkdir(parents=True, exist_ok=True)

@@ -175,6 +175,7 @@ class DeckGenerator(MTGDataGenerator):
         exclude_basics=True,
         store_basics=True,
         pos_neg_sample=False,
+        mask_decks=True
     ):
         super().__init__(
             data,
@@ -187,18 +188,24 @@ class DeckGenerator(MTGDataGenerator):
             store_basics=store_basics,
         )
         self.pos_neg_sample = pos_neg_sample
+        self.mask_decks = mask_decks
 
     def generate_data(self, indices):
         decks = self.deck[indices,:]
         sideboards = self.sideboard[indices,:]
         basics = self.deck_basics[indices,:]
-        masked_decks, masked_basics = self.create_masked_objects(decks, basics)
-        masked_decks = masked_decks.astype(np.float32)
-        masked_basics = masked_basics.astype(np.float32)
-        cards_to_add = (decks[:,None,:] - masked_decks).astype(np.float32)
-        basics_to_add = (basics[:,None,:] - masked_basics).astype(np.float32)
-        modified_sideboards = (sideboards[:,None,:] + cards_to_add).astype(np.float32)
-        
+        if self.mask_decks:
+            masked_decks, masked_basics = self.create_masked_objects(decks, basics)
+            masked_decks = masked_decks.astype(np.float32)
+            masked_basics = masked_basics.astype(np.float32)
+            cards_to_add = (decks[:,None,:] - masked_decks).astype(np.float32)
+            basics_to_add = (basics[:,None,:] - masked_basics).astype(np.float32)
+            modified_sideboards = (sideboards[:,None,:] + cards_to_add).astype(np.float32)
+            X = (modified_sideboards, masked_decks, masked_basics)
+            Y = (basics_to_add, cards_to_add)
+        else:
+            X = (decks + sideboards).astype(np.float32)
+            Y = (basics.astype(np.float32), decks.astype(np.float32))
         if self.weights is not None:
             weights = self.weights[indices][:,None] * np.ones((len(indices), 40))
             weights = weights/weights.sum()
@@ -206,8 +213,8 @@ class DeckGenerator(MTGDataGenerator):
             weights = None
         if self.pos_neg_sample:
             anchor, pos, neg = self.sample_card_pairs(decks, sideboards)
-            return (modified_sideboards, masked_decks, masked_basics, anchor, pos, neg), (basics_to_add, cards_to_add), weights
-        return (modified_sideboards, masked_decks, masked_basics), (basics_to_add, cards_to_add), weights
+            return (*X, anchor, pos, neg), Y, weights
+        return X, Y, weights
 
     def create_masked_objects(self, decks, basics):
         masked_decks = np.zeros((decks.shape[0], 40, decks.shape[1]))
