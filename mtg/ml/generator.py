@@ -207,7 +207,10 @@ class DeckGenerator(MTGDataGenerator):
             X = (decks + sideboards).astype(np.float32)
             Y = (basics.astype(np.float32), decks.astype(np.float32))
         if self.weights is not None:
-            weights = self.weights[indices][:,None] * np.ones((len(indices), 40))
+            if self.mask_decks:
+                weights = self.weights[indices][:,None] * np.ones((len(indices), 40))
+            else:
+                weights = self.weights[indices]
             weights = weights/weights.sum()
         else:
             weights = None
