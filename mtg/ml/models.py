@@ -562,13 +562,13 @@ class DeckBuilder(tf.Module):
 
     def compute_metrics(self, true, pred, sample_weight=None, features=None, **kwargs):
         pred_basics, pred_decks = pred
-        pred_total = tf.concatenate([pred_basics, pred_decks], axis=-1)
+        pred_total = tf.concat([pred_basics, pred_decks], axis=-1)
         true_basics, true_decks = true
         if sample_weight is None:
             sample_weight = 1.0/true_decks.shape[0]
         else:
             sample_weight = sample_weight[:,0]
-        pred_basics, pred_decks = self.build_decks(pred_total)
+        pred_basics, pred_decks = self.build_decks(pred_total.numpy())
         basic_diff = np.average(abs(pred_basics - true_basics).sum(axis=-1), weights=sample_weight)
         deck_diff = np.average(abs(pred_decks - true_decks).sum(axis=-1), weights=sample_weight)
         return {
