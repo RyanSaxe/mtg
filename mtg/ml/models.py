@@ -522,8 +522,8 @@ class DeckBuilder(tf.Module):
         self.basic_lambda = basic_lambda
         self.built_lambda = built_lambda
 
-        self.built_loss_f = tf.keras.losses.MeanSquaredError(reduction=tf.keras.losses.Reduction.NONE)
-        self.basic_loss_f = tf.keras.losses.MeanSquaredError(reduction=tf.keras.losses.Reduction.NONE)
+        self.built_loss_f = tf.keras.losses.MeanAbsoluteError(reduction=tf.keras.losses.Reduction.NONE)
+        self.basic_loss_f = tf.keras.losses.MeanAbsoluteError(reduction=tf.keras.losses.Reduction.NONE)
 
         self.cmc_lambda = cmc_lambda
         # self.interaction_lambda = interaction_lambda
@@ -560,38 +560,35 @@ class DeckBuilder(tf.Module):
             # self.interaction_lambda * self.interaction_reg
         )
 
-    # def compute_metrics(self, true, pred, sample_weight=None, features=None, **kwargs):
-    #     pred_basics, pred_decks = pred
-    #     pred_total = tf.concatenate([pred_basics, pred_decks], axis=-1)
-    #     true_basics, true_decks = true
-    #     if sample_weight is None:
-    #         sample_weight = 1.0/true_decks.shape[0]
-    #     else:
-    #         sample_weight = sample_weight[:,0]
-    #     pred_basics, pred_decks = self.build_decks(pred_total)
-    #     basic_diff = np.average(abs(pred_basics - true_basics).sum(axis=-1), weights=sample_weight)
-    #     deck_diff = np.average(abs(pred_decks - true_decks).sum(axis=-1), weights=sample_weight)
-    #     return {
-    #         'basics_off': basic_diff,
-    #         'spells_off': deck_diff
-    #     }
+    def compute_metrics(self, true, pred, sample_weight=None, features=None, **kwargs):
+        pred_basics, pred_decks = pred
+        pred_total = tf.concatenate([pred_basics, pred_decks], axis=-1)
+        true_basics, true_decks = true
+        if sample_weight is None:
+            sample_weight = 1.0/true_decks.shape[0]
+        else:
+            sample_weight = sample_weight[:,0]
+        pred_basics, pred_decks = self.build_decks(pred_total)
+        basic_diff = np.average(abs(pred_basics - true_basics).sum(axis=-1), weights=sample_weight)
+        deck_diff = np.average(abs(pred_decks - true_decks).sum(axis=-1), weights=sample_weight)
+        return {
+            'basics_off': basic_diff,
+            'spells_off': deck_diff
+        }
 
     # #we only wrap in tf.function for this to be serialized
-    # #@tf.function
-    # def build_decks(self,pred):
-    #     for i in range(0,40):
-    #         deck = output[:,5:]
-    #         basics = output[:,:5]
-    #         pool = pool_holder[:,5:]
-            
-    #         cards_to_add = np.concatenate([basics_to_add, cards_to_add], axis=-1)
-    #         card_to_add = np.squeeze(np.argmax(cards_to_add, axis=-1))
-    #         idx = np.arange(pools.shape[0]),np.zeros_like(card_to_add),card_to_add
-    #         output[idx] += 1
-    #         pool_holder[idx] -= 1
-    #     deck = np.squeeze(output[:,5:])
-    #     basics = np.squeeze(output[:,:5])
-    #     return basics, deck
+    @tf.function
+    def build_decks(basics, spells):
+        deck = np.concatenate([basics, spells], axis=-1)
+        final_deck = np.zeros_like(deck)
+        for i in range(0,40):
+            card_to_add = np.squeeze(np.argmax(deck, axis=-1))
+            idx = np.arange(basics.shape[0]),card_to_add
+            deck[idx] -= 1
+            final_deck[idx] += 1
+        spells = np.squeeze(final_deck[:,5:])
+        basics = np.squeeze(final_deck[:,:5])
+        return basics, spells
 
     def save(self, cards, location):
         pathlib.Path(location).mkdir(parents=True, exist_ok=True)
