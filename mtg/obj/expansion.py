@@ -46,7 +46,7 @@ class Expansion:
                 for basic_idx, basic in enumerate(basics):
                     idx_to_name[basic_idx] = basic
             name_to_idx = {v:k for k,v in idx_to_name.items()}
-            self.cards['idx'] = self.cards['name'].apply(name_to_idx)
+            self.cards['idx'] = self.cards['name'].apply(lambda x: name_to_idx[x])
         #set it so ramp spells that search for basics are seen as rainbow producers
         # logic to subset by basic implemented where needed
         search_check = lambda x: 'search your library' in x['oracle_text']
