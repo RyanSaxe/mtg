@@ -514,6 +514,7 @@ class DeckBuilder(tf.Module):
         learning_rate=0.001,
         basic_lambda=1.0,
         built_lambda=1.0,
+        card_count_lambda=1.0,
         cmc_lambda=0.01,
         # interaction_lambda=0.01,
         optimizer=None,
@@ -531,9 +532,10 @@ class DeckBuilder(tf.Module):
 
         self.basic_lambda = basic_lambda
         self.built_lambda = built_lambda
+        self.card_count_lambda = card_count_lambda
 
-        self.built_loss_f = tf.keras.losses.MeanAbsoluteError(reduction=tf.keras.losses.Reduction.NONE)
-        self.basic_loss_f = tf.keras.losses.MeanAbsoluteError(reduction=tf.keras.losses.Reduction.NONE)
+        # self.built_loss_f = tf.keras.losses.MeanAbsoluteError(reduction=tf.keras.losses.Reduction.NONE)
+        # self.basic_loss_f = tf.keras.losses.MeanAbsoluteError(reduction=tf.keras.losses.Reduction.NONE)
 
         self.cmc_lambda = cmc_lambda
         # self.interaction_lambda = interaction_lambda
@@ -549,15 +551,20 @@ class DeckBuilder(tf.Module):
         pred_basics,pred_built, n_basics = pred
         # self.basic_loss = self.basic_loss_f(true_basics, pred_basics, sample_weight=sample_weight)
         # self.built_loss = self.built_loss_f(true_built, pred_built, sample_weight=sample_weight)
+        n_spells = tf.reduce_sum(pred_built, axis=-1)
+        self.card_count_loss = tf.reduce_sum(abs(40 - (n_spells + n_basics)) * sample_weight)
         self.basic_loss = tf.reduce_sum(tf.reduce_sum(abs(pred_basics - true_basics),axis=-1) * sample_weight)
         self.built_loss = tf.reduce_sum(tf.reduce_sum(abs(pred_built - true_built),axis=-1) * sample_weight)
         if self.cmc_lambda > 0:
-            #pred_built instead of pred to avoid learning to add more basics
-            #add a thing here to avoid all lands in general later
-            self.curve_incentive = tf.reduce_mean(
+            self.pred_curve_average = tf.reduce_mean(
                 tf.multiply(pred_built,tf.expand_dims(self.cmc_map[5:],0)),
-                axis=1
+                axis=-1
             )
+            self.true_curve_average = tf.reduce_mean(
+                tf.multiply(true_built,tf.expand_dims(self.cmc_map[5:],0)),
+                axis=-1
+            )
+            self.curve_incentive = tf.reduce_sum(abs(self.pred_curve_average - self.true_curve_average) * sample_weight)
         else:
             self.curve_incentive = 0.0
         # if self.interaction_lambda > 0:
@@ -568,7 +575,8 @@ class DeckBuilder(tf.Module):
         return (
             self.basic_lambda * self.basic_loss + 
             self.built_lambda * self.built_loss +
-            self.cmc_lambda * self.curve_incentive
+            self.cmc_lambda * self.curve_incentive + 
+            self.card_count_lambda * self.card_count_loss
             # self.interaction_lambda * self.interaction_reg
         )
 
