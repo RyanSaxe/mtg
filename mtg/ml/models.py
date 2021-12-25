@@ -549,8 +549,8 @@ class DeckBuilder(tf.Module):
         pred_basics,pred_built, n_basics = pred
         # self.basic_loss = self.basic_loss_f(true_basics, pred_basics, sample_weight=sample_weight)
         # self.built_loss = self.built_loss_f(true_built, pred_built, sample_weight=sample_weight)
-        self.basic_loss = tf.reduce_sum(abs(pred_basics - true_basics).sum(axis=-1) * sample_weight)
-        self.built_loss = tf.reduce_sum(abs(pred_built - true_built).sum(axis=-1) * sample_weight)
+        self.basic_loss = tf.reduce_sum(tf.reduce_sum(abs(pred_basics - true_basics),axis=-1) * sample_weight)
+        self.built_loss = tf.reduce_sum(tf.reduce_sum(abs(pred_built - true_built),axis=-1) * sample_weight)
         if self.cmc_lambda > 0:
             #pred_built instead of pred to avoid learning to add more basics
             #add a thing here to avoid all lands in general later
@@ -578,8 +578,8 @@ class DeckBuilder(tf.Module):
         if sample_weight is None:
             sample_weight = 1.0/true_decks.shape[0]
         pred_basics, pred_decks = self.build_decks(pred_basics.numpy(), pred_decks.numpy(), n_basics.numpy())
-        basic_diff = tf.reduce_sum(abs(pred_basics - true_basics).sum(axis=-1) * sample_weight)
-        deck_diff = tf.reduce_sum(abs(pred_decks - true_decks).sum(axis=-1) * sample_weight)
+        basic_diff = tf.reduce_sum(tf.reduce_sum(abs(pred_basics - true_basics),axis=-1) * sample_weight)
+        deck_diff = tf.reduce_sum(tf.reduce_sum(abs(pred_decks - true_decks),axis=-1) * sample_weight)
         return {
             'basics_off': basic_diff,
             'spells_off': deck_diff
