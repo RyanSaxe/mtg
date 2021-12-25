@@ -66,11 +66,11 @@ def display_deck(pool, basics, spells, cards, return_url=False):
             sb_count = 0
         if sb_count > 0:
             sb_text += str(int(sb_count)) + " " + name + "\n"
-            deck_json["sideboard"].append({"name": name, count: sb_count})
+            deck_json["sideboard"].append({"name": name, "count": int(sb_count)})
         if count == 0:
             continue
         deck_text += str(int(count)) + " " + name + "\n"
-        deck_json["deck"].append({"name": name, count: count})
+        deck_json["deck"].append({"name": name, "count": int(count)})
     if return_url:
         r = requests.post(url="https://www.sealeddeck.tech/api/pools", json=deck_json)
         r_js = r.json()
