@@ -452,6 +452,7 @@ class DeckBuilder(tf.Module):
                 out_act=None,
                 style="bottleneck"
             )
+            self.interactions_for_weighted_avg = nn.Dense(self.n_cards, self.n_cards, name="iteractions")
             #self.basic_encoder = nn.Dense(5,encoder_in_dim, activation=None, name="basic_encoder")
 
         self.decoder = nn.MLP(
@@ -472,10 +473,14 @@ class DeckBuilder(tf.Module):
         self.determine_n_lands = nn.Dense(latent_dim,1, activation=lambda x: tf.nn.sigmoid(x/4.0) * 4.0 + 15.0, name="determine_n_lands")
         #self.merge_deck_and_pool = nn.Dense(latent_dim * 2, latent_dim, activation=None, name="merge_deck_and_pool")
 
-    @tf.function
+    #@tf.function
     def __call__(self, pools, training=None):
         if self.card_embeddings is not None:
-            pool_embs = tf.reduce_sum(pools[:,:,None] * self.card_embeddings[None,:,:], axis=1)
+            card_embs = pools[:,:,None] * self.card_embeddings[None,:,:]
+            card_interactions = self.interactions_for_weighted_avg(pools)
+            masked_interactions = card_interactions - (1e9 * (1 - tf.clip_by_value(pools, 0, 1)))
+            pool_card_weights = tf.nn.softmax(masked_interactions)
+            pool_embs = tf.reduce_sum(card_embs * pool_card_weights, axis=1)
             self.latent_rep = self.embedding_compressor_pool(pool_embs, training=training)
         else:
             self.latent_rep = self.pool_encoder(pools, training=training)
