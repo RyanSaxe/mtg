@@ -45,6 +45,39 @@ def get_draft_json(draft_log_url, stream=False):
         response = response.json()
     return response
 
+def display_deck(pool, basics, spells, cards, return_url=False):
+    pool = np.squeeze(pool)
+    basics = np.squeeze(basics)
+    spells = np.squeeze(spells)
+    deck = np.concatenate([basics, spells])
+    idx_to_name = cards.set_index('idx')['name'].to_dict()
+    sb_text = "SIDEBOARD\n\n"
+    deck_text = "DECK\n\n"
+    deck_json = {
+        'sideboard':[],
+        'deck':[]
+    }
+    for idx,count in enumerate(deck):
+        name = idx_to_name[idx]
+        if idx >= 5:
+            sb_count = pool[idx - 5] - count
+        else:
+            sb_count = 0
+        if sb_count > 0:
+            sb_text += str(int(sb_count)) + " " + name + "\n"
+            deck_json['sideboard'].append({'name':name, count:sb_count})
+        if count == 0:
+            continue
+        deck_text += str(int(count)) + " " + name + "\n"
+        deck_json['deck'].append({'name':name, count:count})
+    if return_url:
+        r = requests.post(url = "https://www.sealeddeck.tech/api/pools", json = deck_json)
+        r_js = r.json()
+        output = r_js['url']
+    else:
+        output = deck_text + "\n" + sb_text
+    return output
+
 def list_to_names(cards_json):
     if len(cards_json) > 0:
         return [x['name'].lower().split("//")[0].strip() for x in cards_json]
@@ -160,7 +193,7 @@ def read_mtgo(fname, name_to_idx=None, model=None, t=42):
             return read_mtgo(fname, name_to_idx=name_to_idx, model=model, t=t)
     return model_input
 
-def draft_sim(expansion, model, t=None, idx_to_name=None, token=""):
+def draft_sim(expansion, model, t=None, idx_to_name=None, token="", build_model=None):
     name_to_idx = {v:k for k,v in idx_to_name.items()}
     seats = 8
     n_packs = 3
@@ -225,6 +258,7 @@ def draft_sim(expansion, model, t=None, idx_to_name=None, token=""):
         r_js = r.json()
         draft_id = r_js['id']
         draft_logs.append(f"https://www.17lands.com/submitted_draft/{draft_id}")
+    if build_model is not None
     return draft_logs
 
 def draft_log_ai(draft_log_url, model, t=None, n_cards=None, idx_to_name=None, return_attention=False, return_style='df', batch_size=1, exchange_picks=-1, exchange_packs=-1, return_model_input=False, token=""):
@@ -391,3 +425,139 @@ def plot_attention_weights(attention_heads):
         plt.title(f'Head {h+1}')
         plt.tight_layout()
         plt.show()
+
+def build_decks(basics, spells, n_basics, cards=None):
+    n_basics = np.round(n_basics)
+    n_spells = 40 - n_basics
+    deck = np.concatenate([basics, spells], axis=-1)
+    deck_out = np.zeros_like(deck)
+    for i in range(0,40):
+        card_to_add = np.where(
+            np.squeeze(n_spells) > i,
+            np.squeeze(np.argmax(deck[:,5:], axis=-1)) + 5,
+            np.squeeze(np.argmax(deck[:,:5], axis=-1))
+        )
+        idx = np.arange(deck.shape[0]),card_to_add
+        deck[idx] -= 1
+        deck_out[idx] += 1
+    if cards is not None:
+        recalibrate_basics(deck_out, cards)
+    return deck_out[:,:5], deck_out[:,5:]
+
+def recalibrate_basics(built_deck, cards, verbose=False):
+    color_to_idx = cards[cards['idx'] < 5].set_index('idx')['produced_mana'].apply(
+        lambda x: x[0]
+    ).reset_index().set_index('produced_mana').to_dict()['idx']
+
+    pip_count = {c:0 for c in list('WUBRG')}
+    # don't count a green mana dork that produces G as a G source, but if it produces other colors, it can count as a source
+    basic_adds_extra_sources = {c:0 for c in list('WUBRG')}
+    splash_produces_count = {c:0 for c in list('WUBRG')}
+    for card_idx,count in enumerate(built_deck):
+        if count == 0:
+            continue
+        card = cards[cards['idx'] == card_idx]
+        basic_special_case_flag = (card['basic_land_search']).iloc[0]
+        mc = card['mana_cost'].iloc[0]
+        splash_produce = list(set(card['produced_mana'].iloc[0]) - {'C'} - set(card['colors'].iloc[0])) if not card['produced_mana'].isna().iloc[0] else []
+        for color in pip_count.keys():
+            pip_count[color] += count * mc.count(color)
+            if basic_special_case_flag:
+                basic_count = built_deck[color_to_idx[color]]
+                if basic_count == 0:
+                    basic_adds_extra_sources[color] += count
+                else:
+                    splash_produces_count[color] += count
+            elif color in splash_produce:
+                splash_produces_count[color] += count
+
+    min_produces_map = {
+        0: 0,
+        1: 3,
+        2: 4,
+        3: 4,
+        4: 5,
+    }
+    
+    add_basics_dict = {c:0 for c in list('WUBRG')}
+    
+    cut_basics_dict = {c:0 for c in list('WUBRG')}
+
+    basic_cut_limit = {c:0 for c in list('WUBRG')}
+    
+    for color in list('WUBRG'):
+        pips = pip_count[color]
+        if pips == 0:
+            #ensure we cut basics that dont do anything
+            idx_for_basic = color_to_idx[color]
+            basic_count_in_deck = built_deck[idx_for_basic]
+            cut_basics_dict[color] += basic_count_in_deck
+        if pips > 0 and basic_adds_extra_sources[color] > 0:
+            min_add = 1
+        else:
+            min_add = 0
+        mana_req = min_produces_map.get(pips, 5)
+        produces = splash_produces_count[color]
+        produces_diff = produces - mana_req
+        if produces_diff < 0:
+            add_basics_dict[color] += abs(produces_diff)
+        else:
+            basic_cut_limit[color] = max(produces_diff,0)
+        if add_basics_dict[color] < min_add:
+            add_basics_dict[color] = min_add
+
+    #now ad_basics_dict is the number of basics per color that needs to be added
+    # the following logic determines what basics need to be cut
+    # get number of basics in the deck, but if that basic is required to be added, don't allow it to be cut
+    basics_that_can_be_cut = {c:min(built_deck[color_to_idx[c]],basic_cut_limit[c]) if n == 0 else 0 for c,n in add_basics_dict.items()}
+    # this is used for making swaps when adding basics. If we are forcing some basics to be cut, don't let them be added
+    basics_that_can_be_cut = {c:np.clip(v - cut_basics_dict[c], 0, np.inf) for c,v in basics_that_can_be_cut.items()}
+    total_basics_to_cut = sum([x for x in add_basics_dict.values()])
+    if total_basics_to_cut > sum([x for x in basics_that_can_be_cut.values()]):
+        if verbose:
+            print('This manabase is not salvageable')
+    cur_color_idx = 0
+    colors_to_add = [c for c,n in add_basics_dict.items() if n > 0]
+    check_bug = 0
+    colors = list('WUBRG')
+    while sum([x for x in add_basics_dict.values()]) > 0 or sum([x for x in cut_basics_dict.values()]) > 0:
+        if len(colors_to_add) == 0:
+            if sum([x for x in add_basics_dict.values()]) > 0:
+                colors_to_add = [c for c,n in add_basics_dict.items() if n > 0]
+            else:
+                if sum([x for x in cut_basics_dict.values()]) <= 0:
+                    #nothing to add or cut!
+                    break
+                else:
+                    colors_to_add = [c for c,n in basics_that_can_be_cut.items() if n > 0]
+        if len(colors_to_add) == 0:
+            if verbose:
+                print('Nothing else is allowed to be cut, bad manabase')
+            break 
+        c = colors[cur_color_idx % 5]
+        #this is the actual idx in the deck built, not the fake one used to cycle through colors
+        idx = color_to_idx[c]
+        ad_c = colors_to_add[0]
+        colors_to_add = colors_to_add[1:]
+        ad_idx = color_to_idx[ad_c]
+        if sum([x for x in cut_basics_dict.values()]) > 0:
+            if cut_basics_dict[c] > 0:
+                built_deck[idx] -= 1
+                built_deck[ad_idx] += 1
+                basics_that_can_be_cut[c] -= 1
+                cut_basics_dict[c] -= 1
+                add_basics_dict[ad_c] -= 1
+        else:
+            if basics_that_can_be_cut[c] > 0:
+                built_deck[idx] -= 1
+                built_deck[ad_idx] += 1
+                basics_that_can_be_cut[c] -= 1
+                cut_basics_dict[c] -= 1
+                add_basics_dict[ad_c] -= 1
+
+        cur_color_idx += 1
+        check_bug += 1
+        if check_bug > 100:
+            print('BUG')
+            break
+    return built_deck

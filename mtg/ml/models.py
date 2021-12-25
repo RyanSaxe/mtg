@@ -1,5 +1,5 @@
 import tensorflow as tf
-import tensorflow_probability as tfp
+from mtg.utils.display import build_decks
 from tensorflow.python.keras.engine.base_layer import Layer
 from mtg.ml import nn
 from mtg.ml.layers import MultiHeadAttention, Dense, LayerNormalization, Embedding
@@ -469,7 +469,7 @@ class DeckBuilder(tf.Module):
         )
         #self.interactions = nn.Dense(self.n_cards, self.n_cards, activation=None)
         self.add_basics_to_deck = nn.Dense(latent_dim,5, activation=tf.nn.softmax, name="add_basics_to_deck")
-        self.determine_n_basics = nn.Dense(latent_dim,1, activation=lambda x: tf.nn.sigmoid(x/4.0) * 4.0 + 15.0, name="add_basics_to_deck")
+        self.determine_n_lands = nn.Dense(latent_dim,1, activation=lambda x: tf.nn.sigmoid(x/4.0) * 4.0 + 15.0, name="determine_n_lands")
         #self.merge_deck_and_pool = nn.Dense(latent_dim * 2, latent_dim, activation=None, name="merge_deck_and_pool")
 
     @tf.function
@@ -479,10 +479,11 @@ class DeckBuilder(tf.Module):
             self.latent_rep = self.embedding_compressor_pool(pool_embs, training=training)
         else:
             self.latent_rep = self.pool_encoder(pools, training=training)
-        reconstruction = self.decoder(self.latent_rep, training=training)
-        n_basics = self.determine_n_basics(self.latent_rep, training=training)
+        reconstruction = self.decoder(self.latent_rep, training=training) * pools
+        n_lands = self.determine_n_lands(self.latent_rep, training=training)
+        n_basics = n_lands - tf.reduce_sum(reconstruction * self.land_mtx[None, 5:], axis=-1)
         basics_to_add = self.add_basics_to_deck(self.latent_rep,  training=training) * n_basics
-        return basics_to_add, reconstruction * pools, n_basics
+        return basics_to_add, reconstruction, n_basics
 
     # @tf.function
     # def __call__(self, features, training=None):
@@ -510,6 +511,7 @@ class DeckBuilder(tf.Module):
 
     def compile(
         self,
+        card_data=None,
         cards=None,
         learning_rate=0.001,
         basic_lambda=1.0,
@@ -539,12 +541,17 @@ class DeckBuilder(tf.Module):
 
         self.cmc_lambda = cmc_lambda
         # self.interaction_lambda = interaction_lambda
-        if cards is not None:
-            self.set_card_params(cards)
+        self.cards = cards
+        if card_data is not None:
+            self.set_card_params(card_data)
         self.metric_names = metric_names
 
-    def set_card_params(self, cards):
-        self.cmc_map = cards.sort_values(by='idx')['cmc'].to_numpy(dtype=np.float32)
+    def set_card_params(self, card_data):
+        self.cmc_map = card_data['cmc'].to_numpy(dtype=np.float32)
+        colors = list('wubrg')
+        self.produces_mtx = card_data[['produces ' + c for c in colors]].to_numpy(dtype=np.float32)
+        self.pip_mtx = card_data[[c + ' pips' for c in colors]].to_numpy(dtype=np.float32)
+        self.land_mtx = card_data['land'].to_numpy(dtype=np.float32)
 
     def loss(self, true, pred, sample_weight=None, **kwargs):
         true_basics,true_built = true
@@ -588,29 +595,13 @@ class DeckBuilder(tf.Module):
         if not training:
             # if not training, we can do numpy based argmaxes to built the deck so we can see validation
             # performance on how we actually build decks from the output
-            pred_basics, pred_decks = self.build_decks(pred_basics.numpy(), pred_decks.numpy(), n_basics.numpy())
+            pred_basics, pred_decks = build_decks(pred_basics.numpy(), pred_decks.numpy(), n_basics.numpy(), cards=None)
         basic_diff = tf.reduce_sum(tf.reduce_sum(tf.math.abs(pred_basics - true_basics),axis=-1) * sample_weight)
         deck_diff = tf.reduce_sum(tf.reduce_sum(tf.math.abs(pred_decks - true_decks),axis=-1) * sample_weight)
         return {
             'basics_off': basic_diff,
             'spells_off': deck_diff
         }
-
-    def build_decks(self, basics, spells, n_basics):
-        n_basics = np.round(n_basics)
-        n_spells = 40 - n_basics
-        deck = np.concatenate([basics, spells], axis=-1)
-        deck_out = np.zeros_like(deck)
-        for i in range(0,40):
-            card_to_add = np.where(
-                np.squeeze(n_spells) > i,
-                np.squeeze(np.argmax(deck[:,5:], axis=-1)) + 5,
-                np.squeeze(np.argmax(deck[:,:5], axis=-1))
-            )
-            idx = np.arange(deck.shape[0]),card_to_add
-            deck[idx] -= 1
-            deck_out[idx] += 1
-        return deck_out[:,:5], deck_out[:,5:]
 
     def save(self, cards, location):
         pathlib.Path(location).mkdir(parents=True, exist_ok=True)
@@ -619,3 +610,4 @@ class DeckBuilder(tf.Module):
         tf.saved_model.save(self,model_loc)
         with open(data_loc,'wb') as f:
             pickle.dump(cards,f) 
+
