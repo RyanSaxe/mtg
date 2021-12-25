@@ -1,15 +1,16 @@
 import tensorflow as tf
 import numpy as np
 
+
 class Dense(tf.Module):
     def __init__(
         self,
         in_dim,
         out_dim,
-        name = None,
-        initializer = tf.initializers.GlorotNormal(),
-        activation = tf.nn.relu,
-        use_bias = True,
+        name=None,
+        initializer=tf.initializers.GlorotNormal(),
+        activation=tf.nn.relu,
+        use_bias=True,
     ):
         super().__init__(name=name)
 
@@ -18,8 +19,8 @@ class Dense(tf.Module):
 
         self.w = tf.Variable(
             initializer([in_dim, out_dim]),
-            dtype = tf.float32,
-            name = self.name + '_w',
+            dtype=tf.float32,
+            name=self.name + "_w",
             trainable=True,
         )
         if self.use_bias:
@@ -27,7 +28,7 @@ class Dense(tf.Module):
                 tf.zeros([out_dim]),
                 dtype=tf.float32,
                 trainable=True,
-                name=self.name + '_b',
+                name=self.name + "_b",
             )
 
     @tf.function
@@ -47,26 +48,32 @@ class Dense(tf.Module):
             y = self.activation(y)
         return y
 
+
 class LayerNormalization(tf.Module):
     def __init__(
-        self,
-        last_dim,
-        epsilon=1e-6,
-        center=True,
-        scale=True,
-        name=None,
+        self, last_dim, epsilon=1e-6, center=True, scale=True, name=None,
     ):
         super().__init__(name=name)
         self.center = center
         self.epsilon = epsilon
-        #current implementation can only normalize off last axis
+        # current implementation can only normalize off last axis
         self.axis = -1
         if scale:
-            self.gamma = tf.Variable(tf.ones(last_dim), dtype=tf.float32, trainable=True, name=self.name + "_gamma")
+            self.gamma = tf.Variable(
+                tf.ones(last_dim),
+                dtype=tf.float32,
+                trainable=True,
+                name=self.name + "_gamma",
+            )
         else:
             self.gamma = None
         if center:
-            self.beta = tf.Variable(tf.zeros(last_dim), dtype=tf.float32, trainable=True, name=self.name + "_beta")
+            self.beta = tf.Variable(
+                tf.zeros(last_dim),
+                dtype=tf.float32,
+                trainable=True,
+                name=self.name + "_beta",
+            )
         else:
             self.beta = None
 
@@ -79,11 +86,12 @@ class LayerNormalization(tf.Module):
             sigma,
             offset=self.beta,
             scale=self.gamma,
-            variance_epsilon=self.epsilon
+            variance_epsilon=self.epsilon,
         )
         # If some components of the shape got lost due to adjustments, fix that.
         outputs.set_shape(x.shape)
         return outputs
+
 
 class MultiHeadAttention(tf.Module):
     """
@@ -101,6 +109,7 @@ class MultiHeadAttention(tf.Module):
 
     https://www.tensorflow.org/text/tutorials/transformer
     """
+
     def __init__(self, d_model, k_dim, num_heads, v_dim=None, name=None):
         super().__init__(name=name)
         self.num_heads = num_heads
@@ -139,14 +148,20 @@ class MultiHeadAttention(tf.Module):
         # scaled_attention.shape == (batch_size, num_heads, seq_len_q, depth)
         # attention_weights.shape == (batch_size, num_heads, seq_len_q, seq_len_k)
         scaled_attention, attention_weights = self.scaled_dot_product_attention(
-            q, k, v, mask)
+            q, k, v, mask
+        )
 
-        scaled_attention = tf.transpose(scaled_attention, perm=[0, 2, 1, 3])  # (batch_size, seq_len_q, num_heads, depth)
+        scaled_attention = tf.transpose(
+            scaled_attention, perm=[0, 2, 1, 3]
+        )  # (batch_size, seq_len_q, num_heads, depth)
 
-        concat_attention = tf.reshape(scaled_attention,
-                                        (batch_size, -1, self.d_model))  # (batch_size, seq_len_q, d_model)
+        concat_attention = tf.reshape(
+            scaled_attention, (batch_size, -1, self.d_model)
+        )  # (batch_size, seq_len_q, d_model)
 
-        output = self.dense(concat_attention, training=training)  # (batch_size, seq_len_q, d_model)
+        output = self.dense(
+            concat_attention, training=training
+        )  # (batch_size, seq_len_q, d_model)
 
         return output, attention_weights
 
@@ -176,21 +191,35 @@ class MultiHeadAttention(tf.Module):
 
         # add the mask to the scaled tensor.
         if mask is not None:
-            #expand mask dimension to allow for addition on all attention heads
-            scaled_attention_logits += (tf.expand_dims(mask,1) * -1e9)
+            # expand mask dimension to allow for addition on all attention heads
+            scaled_attention_logits += tf.expand_dims(mask, 1) * -1e9
 
         # softmax is normalized on the last axis (seq_len_k) so that the scores
         # add up to 1.
-        attention_weights = tf.nn.softmax(scaled_attention_logits, axis=-1)  # (..., seq_len_q, seq_len_k)
+        attention_weights = tf.nn.softmax(
+            scaled_attention_logits, axis=-1
+        )  # (..., seq_len_q, seq_len_k)
 
         output = tf.matmul(attention_weights, v)  # (..., seq_len_q, depth_v)
 
         return output, attention_weights
 
+
 class Embedding(tf.Module):
-    def __init__(self, num_items, emb_dim, initializer=tf.initializers.GlorotNormal(), name=None, activation=None,):
+    def __init__(
+        self,
+        num_items,
+        emb_dim,
+        initializer=tf.initializers.GlorotNormal(),
+        name=None,
+        activation=None,
+    ):
         super().__init__(name=name)
-        self.embedding = tf.Variable(initializer(shape=(num_items, emb_dim)), dtype=tf.float32, name=self.name + "_embedding")
+        self.embedding = tf.Variable(
+            initializer(shape=(num_items, emb_dim)),
+            dtype=tf.float32,
+            name=self.name + "_embedding",
+        )
         self.activation = activation
 
     @tf.function

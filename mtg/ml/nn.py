@@ -1,6 +1,7 @@
 import tensorflow as tf
 from mtg.ml.layers import Dense
 
+
 class MLP(tf.Module):
     def __init__(
         self,
@@ -16,11 +17,13 @@ class MLP(tf.Module):
         style="bottleneck",
         name=None,
     ):
-        assert style in ['bottleneck','flat','reverse_bottleneck']
+        assert style in ["bottleneck", "flat", "reverse_bottleneck"]
         super().__init__(name=name)
         self.noise = noise
         self.dropout = dropout
-        self.layers = [Dense(in_dim, start_dim, activation=start_act, name=self.name + "_0")]
+        self.layers = [
+            Dense(in_dim, start_dim, activation=start_act, name=self.name + "_0")
+        ]
         last_dim = start_dim
         for i in range(n_h_layers):
             if style == "bottleneck":
@@ -30,10 +33,17 @@ class MLP(tf.Module):
             else:
                 dim = last_dim
             self.layers.append(
-                Dense(last_dim, dim, activation=middle_act, name=self.name + "_" + str(i+1))
+                Dense(
+                    last_dim,
+                    dim,
+                    activation=middle_act,
+                    name=self.name + "_" + str(i + 1),
+                )
             )
             last_dim = dim
-        self.layers.append(Dense(last_dim, out_dim, activation=out_act, name=self.name + "_out"))
+        self.layers.append(
+            Dense(last_dim, out_dim, activation=out_act, name=self.name + "_out")
+        )
 
     @tf.function
     def __call__(self, x, training=None):
