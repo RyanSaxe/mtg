@@ -580,9 +580,9 @@ class DeckBuilder(tf.Module):
         deck_out = np.zeros_like(deck)
         for i in range(0,40):
             card_to_add = np.where(
-                np.squeeze(n_spells) < i,
-                np.squeeze(np.argmax(spells, axis=-1)) + 5,
-                np.squeeze(np.argmax(basics, axis=-1))
+                np.squeeze(n_spells) > i,
+                np.squeeze(np.argmax(deck[:,5:], axis=-1)) + 5,
+                np.squeeze(np.argmax(deck[:,:5], axis=-1))
             )
             idx = np.arange(deck.shape[0]),card_to_add
             deck[idx] -= 1
