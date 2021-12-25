@@ -551,10 +551,10 @@ class DeckBuilder(tf.Module):
         pred_basics,pred_built, n_basics = pred
         # self.basic_loss = self.basic_loss_f(true_basics, pred_basics, sample_weight=sample_weight)
         # self.built_loss = self.built_loss_f(true_built, pred_built, sample_weight=sample_weight)
-        n_spells = tf.reduce_sum(pred_built, axis=-1)
-        self.card_count_loss = tf.reduce_sum(abs(40 - (n_spells + n_basics)) * sample_weight)
-        self.basic_loss = tf.reduce_sum(tf.reduce_sum(abs(pred_basics - true_basics),axis=-1) * sample_weight)
-        self.built_loss = tf.reduce_sum(tf.reduce_sum(abs(pred_built - true_built),axis=-1) * sample_weight)
+        # n_spells = tf.reduce_sum(pred_built, axis=-1)
+        # self.card_count_loss = tf.reduce_sum(tf.math.square(40 - (n_spells + n_basics)) * sample_weight)
+        self.basic_loss = tf.reduce_sum(tf.reduce_sum(tf.math.abs(pred_basics - true_basics),axis=-1) * sample_weight)
+        self.built_loss = tf.reduce_sum(tf.reduce_sum(tf.math.square(pred_built - true_built),axis=-1) * sample_weight)
         if self.cmc_lambda > 0:
             self.pred_curve_average = tf.reduce_mean(
                 tf.multiply(pred_built,tf.expand_dims(self.cmc_map[5:],0)),
@@ -576,7 +576,7 @@ class DeckBuilder(tf.Module):
             self.basic_lambda * self.basic_loss + 
             self.built_lambda * self.built_loss +
             self.cmc_lambda * self.curve_incentive + 
-            self.card_count_lambda * self.card_count_loss
+            # self.card_count_lambda * self.card_count_loss
             # self.interaction_lambda * self.interaction_reg
         )
 
@@ -586,8 +586,8 @@ class DeckBuilder(tf.Module):
         if sample_weight is None:
             sample_weight = 1.0/true_decks.shape[0]
         pred_basics, pred_decks = self.build_decks(pred_basics.numpy(), pred_decks.numpy(), n_basics.numpy())
-        basic_diff = tf.reduce_sum(tf.reduce_sum(abs(pred_basics - true_basics),axis=-1) * sample_weight)
-        deck_diff = tf.reduce_sum(tf.reduce_sum(abs(pred_decks - true_decks),axis=-1) * sample_weight)
+        basic_diff = tf.reduce_sum(tf.reduce_sum(tf.math.abs(pred_basics - true_basics),axis=-1) * sample_weight)
+        deck_diff = tf.reduce_sum(tf.reduce_sum(tf.math.abs(pred_decks - true_decks),axis=-1) * sample_weight)
         return {
             'basics_off': basic_diff,
             'spells_off': deck_diff
