@@ -584,7 +584,6 @@ class DeckBuilder(tf.Module):
                 np.squeeze(np.argmax(spells, axis=-1)) + 5,
                 np.squeeze(np.argmax(basics, axis=-1))
             )
-            card_to_add = np.squeeze(np.argmax(spells, axis=-1))
             idx = np.arange(deck.shape[0]),card_to_add
             deck[idx] -= 1
             deck_out[idx] += 1
