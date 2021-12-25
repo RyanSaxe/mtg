@@ -576,19 +576,19 @@ class DeckBuilder(tf.Module):
     def build_decks(self, basics, spells, n_basics):
         n_basics = np.round(n_basics)
         n_spells = 40 - n_basics
-        out_spells = np.zeros_like(spells)
-        out_basics = np.zeros_like(basics)
-        for i in range(0,n_spells):
+        deck = np.concatenate([basics, spells], axis=-1)
+        deck_out = np.zeros_like(deck)
+        for i in range(0,40):
+            card_to_add = np.where(
+                np.squeeze(n_spells) < i,
+                np.squeeze(np.argmax(spells, axis=-1)) + 5,
+                np.squeeze(np.argmax(basics, axis=-1))
+            )
             card_to_add = np.squeeze(np.argmax(spells, axis=-1))
-            idx = np.arange(spells.shape[0]),card_to_add
-            spells[idx] -= 1
-            out_spells[idx] += 1
-        for i in range(0,n_basics):
-            card_to_add = np.squeeze(np.argmax(basics, axis=-1))
-            idx = np.arange(basics.shape[0]),card_to_add
-            basics[idx] -= 1
-            out_basics[idx] += 1
-        return np.squeeze(basics), np.squeeze(spells)
+            idx = np.arange(deck.shape[0]),card_to_add
+            deck[idx] -= 1
+            deck_out[idx] += 1
+        return deck_out[:,:5], deck_out[:,5:]
 
     def save(self, cards, location):
         pathlib.Path(location).mkdir(parents=True, exist_ok=True)
