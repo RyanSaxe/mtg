@@ -483,12 +483,14 @@ class DeckBuilder(tf.Module):
         n_basics = self.determine_n_basics(self.latent_rep, training=training)
         basics_to_add = self.add_basics_to_deck(self.latent_rep,  training=training) * n_basics
         deck = tf.concat([basics_to_add, reconstruction * pools], axis=-1)
+        output = tf.zeros_like(deck)
         for i in range(40):
             masked_deck = deck - (1e9 * (1 - tf.clip_by_value(deck, 0, 1)))
             probs = tf.nn.softmax(masked_deck)
             sample = tfp.distributions.RelaxedOneHotCategorical(1e-9, probs=probs)
             deck = deck - sample
-        return deck[:, :5], deck[:, 5:]
+            output = output + sample
+        return output[:, :5], output[:, 5:]
 
     # @tf.function
     # def __call__(self, features, training=None):
