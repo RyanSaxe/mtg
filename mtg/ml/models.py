@@ -487,7 +487,7 @@ class DeckBuilder(tf.Module):
         for i in range(40):
             masked_deck = deck - (1e9 * (1 - tf.clip_by_value(deck, 0, 1)))
             probs = tf.nn.softmax(masked_deck)
-            dist = tfp.distributions.RelaxedOneHotCategorical(1e-9, probs=probs)
+            dist = tfp.distributions.RelaxedOneHotCategorical(1e-2, probs=probs)
             sample = dist.sample()
             deck = deck - sample
             output = output + sample
