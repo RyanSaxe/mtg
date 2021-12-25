@@ -314,7 +314,7 @@ def draft_log_ai(
     picks = get_draft_json(draft_log_url)["picks"]
     n_picks_per_pack = t / 3
     n_cards = len(name_to_idx)
-    pool = np.zeros(n_cards)
+    pool = np.zeros(n_cards, dtype=np.float32)
     draft_info = np.zeros((batch_size, t, n_cards * 2))
     positions = np.tile(
         np.expand_dims(np.arange(t, dtype=np.int32), 0), batch_size
