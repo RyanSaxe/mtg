@@ -258,7 +258,6 @@ def draft_sim(expansion, model, t=None, idx_to_name=None, token="", build_model=
         r_js = r.json()
         draft_id = r_js['id']
         draft_logs.append(f"https://www.17lands.com/submitted_draft/{draft_id}")
-    if build_model is not None
     return draft_logs
 
 def draft_log_ai(draft_log_url, model, t=None, n_cards=None, idx_to_name=None, return_attention=False, return_style='df', batch_size=1, exchange_picks=-1, exchange_packs=-1, return_model_input=False, token=""):
