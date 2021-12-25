@@ -482,16 +482,7 @@ class DeckBuilder(tf.Module):
         reconstruction = self.decoder(self.latent_rep, training=training)
         n_basics = self.determine_n_basics(self.latent_rep, training=training)
         basics_to_add = self.add_basics_to_deck(self.latent_rep,  training=training) * n_basics
-        deck = tf.concat([basics_to_add, reconstruction * pools], axis=-1)
-        output = tf.zeros_like(deck)
-        for i in range(40):
-            #masked_deck = deck - (1e9 * (1 - tf.clip_by_value(deck, 0, 1)))
-            #probs = tf.nn.softmax(masked_deck)
-            dist = tfp.distributions.RelaxedOneHotCategorical(1e-5, logits=deck)
-            sample = dist.sample()
-            deck = deck - sample
-            output = output + sample
-        return output[:, :5], output[:, 5:]
+        return basics_to_add, reconstruction * pools, n_basics
 
     # @tf.function
     # def __call__(self, features, training=None):
@@ -520,6 +511,7 @@ class DeckBuilder(tf.Module):
     def compile(
         self,
         cards=None,
+        learning_rate=0.001,
         basic_lambda=1.0,
         built_lambda=1.0,
         cmc_lambda=0.01,
@@ -527,7 +519,15 @@ class DeckBuilder(tf.Module):
         optimizer=None,
         metric_names=['basics_off', 'spells_off']
     ):
-        self.optimizer = tf.optimizers.Adam() if optimizer is None else optimizer
+        if optimizer is None:
+            if isinstance(learning_rate, dict):
+                learning_rate = CustomSchedule(500, **learning_rate)
+            else:
+                learning_rate = learning_rate
+
+            self.optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.9, beta_2=0.98,epsilon=1e-9)
+        else:
+            self.optimizer = optimizer
 
         self.basic_lambda = basic_lambda
         self.built_lambda = built_lambda
@@ -546,9 +546,11 @@ class DeckBuilder(tf.Module):
 
     def loss(self, true, pred, sample_weight=None, **kwargs):
         true_basics,true_built = true
-        pred_basics,pred_built = pred
-        self.basic_loss = self.basic_loss_f(true_basics, pred_basics, sample_weight=sample_weight)
-        self.built_loss = self.built_loss_f(true_built, pred_built, sample_weight=sample_weight)
+        pred_basics,pred_built, n_basics = pred
+        # self.basic_loss = self.basic_loss_f(true_basics, pred_basics, sample_weight=sample_weight)
+        # self.built_loss = self.built_loss_f(true_built, pred_built, sample_weight=sample_weight)
+        self.basic_loss = tf.reduce_sum(abs(pred_basics - true_basics).sum(axis=-1) * sample_weight)
+        self.built_loss = tf.reduce_sum(abs(pred_built - true_built).sum(axis=-1) * sample_weight)
         if self.cmc_lambda > 0:
             #pred_built instead of pred to avoid learning to add more basics
             #add a thing here to avoid all lands in general later
@@ -576,8 +578,8 @@ class DeckBuilder(tf.Module):
         if sample_weight is None:
             sample_weight = 1.0/true_decks.shape[0]
         pred_basics, pred_decks = self.build_decks(pred_basics.numpy(), pred_decks.numpy(), n_basics.numpy())
-        basic_diff = np.average(abs(pred_basics - true_basics).sum(axis=-1), weights=sample_weight)
-        deck_diff = np.average(abs(pred_decks - true_decks).sum(axis=-1), weights=sample_weight)
+        basic_diff = tf.reduce_sum(abs(pred_basics - true_basics).sum(axis=-1) * sample_weight)
+        deck_diff = tf.reduce_sum(abs(pred_decks - true_decks).sum(axis=-1) * sample_weight)
         return {
             'basics_off': basic_diff,
             'spells_off': deck_diff
