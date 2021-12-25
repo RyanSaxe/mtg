@@ -481,7 +481,7 @@ class DeckBuilder(tf.Module):
         reconstruction = self.decoder(self.latent_rep, training=training)
         n_basics = self.determine_n_basics(self.latent_rep, training=training)
         basics_to_add = self.add_basics_to_deck(self.latent_rep,  training=training) * n_basics
-        return basics_to_add, reconstruction * pools
+        return basics_to_add, reconstruction * pools, n_basics
 
     # @tf.function
     # def __call__(self, features, training=None):
@@ -536,7 +536,7 @@ class DeckBuilder(tf.Module):
 
     def loss(self, true, pred, sample_weight=None, **kwargs):
         true_basics,true_built = true
-        pred_basics,pred_built = pred
+        pred_basics,pred_built, n_basics = pred
         self.basic_loss = self.basic_loss_f(true_basics, pred_basics, sample_weight=sample_weight)
         self.built_loss = self.built_loss_f(true_built, pred_built, sample_weight=sample_weight)
         if self.cmc_lambda > 0:
@@ -561,11 +561,11 @@ class DeckBuilder(tf.Module):
         )
 
     def compute_metrics(self, true, pred, sample_weight=None, features=None, **kwargs):
-        pred_basics, pred_decks = pred
+        pred_basics, pred_decks, n_basics = pred
         true_basics, true_decks = true
         if sample_weight is None:
             sample_weight = 1.0/true_decks.shape[0]
-        pred_basics, pred_decks = self.build_decks(pred_basics.numpy(), pred_decks.numpy())
+        pred_basics, pred_decks = self.build_decks(pred_basics.numpy(), pred_decks.numpy(), n_basics.numpy())
         basic_diff = np.average(abs(pred_basics - true_basics).sum(axis=-1), weights=sample_weight)
         deck_diff = np.average(abs(pred_decks - true_decks).sum(axis=-1), weights=sample_weight)
         return {
@@ -573,17 +573,22 @@ class DeckBuilder(tf.Module):
             'spells_off': deck_diff
         }
 
-    def build_decks(self, basics, spells):
-        deck = np.concatenate([basics, spells], axis=-1)
-        final_deck = np.zeros_like(deck)
-        for i in range(0,40):
-            card_to_add = np.squeeze(np.argmax(deck, axis=-1))
+    def build_decks(self, basics, spells, n_basics):
+        n_basics = np.round(n_basics)
+        n_spells = 40 - n_basics
+        out_spells = np.zeros_like(spells)
+        out_basics = np.zeros_like(basics)
+        for i in range(0,n_spells):
+            card_to_add = np.squeeze(np.argmax(spells, axis=-1))
+            idx = np.arange(spells.shape[0]),card_to_add
+            spells[idx] -= 1
+            out_spells[idx] += 1
+        for i in range(0,n_basics):
+            card_to_add = np.squeeze(np.argmax(basics, axis=-1))
             idx = np.arange(basics.shape[0]),card_to_add
-            deck[idx] -= 1
-            final_deck[idx] += 1
-        spells = np.squeeze(final_deck[:,5:])
-        basics = np.squeeze(final_deck[:,:5])
-        return basics, spells
+            basics[idx] -= 1
+            out_basics[idx] += 1
+        return np.squeeze(basics), np.squeeze(spells)
 
     def save(self, cards, location):
         pathlib.Path(location).mkdir(parents=True, exist_ok=True)
