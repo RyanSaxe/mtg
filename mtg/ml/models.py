@@ -1,4 +1,5 @@
 import tensorflow as tf
+import tensorflow_probability as tfp
 from tensorflow.python.keras.engine.base_layer import Layer
 from mtg.ml import nn
 from mtg.ml.layers import MultiHeadAttention, Dense, LayerNormalization, Embedding
@@ -481,7 +482,13 @@ class DeckBuilder(tf.Module):
         reconstruction = self.decoder(self.latent_rep, training=training)
         n_basics = self.determine_n_basics(self.latent_rep, training=training)
         basics_to_add = self.add_basics_to_deck(self.latent_rep,  training=training) * n_basics
-        return basics_to_add, reconstruction * pools, n_basics
+        deck = tf.concat([basics_to_add, reconstruction * pools], axis=-1)
+        for i in range(40):
+            masked_deck = deck - (1e9 * (1 - tf.clip_by_value(deck, 0, 1)))
+            probs = tf.nn.softmax(masked_deck)
+            sample = tfp.distributions.RelaxedOneHotCategorical(1e-9, probs=probs)
+            deck = deck - sample
+        return deck[:, :5], deck[:, 5:]
 
     # @tf.function
     # def __call__(self, features, training=None):
@@ -536,7 +543,7 @@ class DeckBuilder(tf.Module):
 
     def loss(self, true, pred, sample_weight=None, **kwargs):
         true_basics,true_built = true
-        pred_basics,pred_built, n_basics = pred
+        pred_basics,pred_built = pred
         self.basic_loss = self.basic_loss_f(true_basics, pred_basics, sample_weight=sample_weight)
         self.built_loss = self.built_loss_f(true_built, pred_built, sample_weight=sample_weight)
         if self.cmc_lambda > 0:
