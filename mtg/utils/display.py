@@ -207,7 +207,9 @@ def read_mtgo(fname, name_to_idx=None, model=None, t=42):
 
 
 # test
-def draft_sim(expansion, model, t=None, idx_to_name=None, token="", build_model=None):
+def draft_sim(
+    expansion, model, t=None, idx_to_name=None, token="", build_model=None, cards=None
+):
     name_to_idx = {v: k for k, v in idx_to_name.items()}
     seats = 8
     n_packs = 3
@@ -229,6 +231,7 @@ def draft_sim(expansion, model, t=None, idx_to_name=None, token="", build_model=
     pick_data = np.ones((seats, t), dtype=np.int32) * n_cards
     pack_data = np.ones((seats, t, n_cards), dtype=np.float32)
     pool_data = np.ones((seats, t, n_cards), dtype=np.float32)
+    final_pools = np.zeros((seats, n_cards), dtype=np.float32)
     positions = np.tile(np.arange(t, dtype=np.int32), [seats, 1])
     cur_pos = 0
     for pack_number in range(n_packs):
@@ -247,6 +250,7 @@ def draft_sim(expansion, model, t=None, idx_to_name=None, token="", build_model=
                 # make pick
                 predictions, _ = model(data, training=False, return_attention=True)
                 bot_pick = tf.math.argmax(predictions[0, cur_pos]).numpy()
+                final_pools[idx][bot_pick] += 1
                 if cur_pos + 1 < t:
                     pick_data[idx][cur_pos + 1] = bot_pick
                     pool_data[idx][cur_pos + 1][bot_pick] += 1
@@ -267,10 +271,20 @@ def draft_sim(expansion, model, t=None, idx_to_name=None, token="", build_model=
             cur_pos += 1
     draft_logs = []
     for idx in range(seats):
+        if build_model is not None:
+            pool = np.expand_dims(final_pools[idx], 0)
+            basics, spells, n_basics = build_model(pool, training=False)
+            basics, spells = build_decks(basics, spells, n_basics, cards=cards)
+            deck_url = display_deck(pool, basics, spells, cards, return_url=True)
+        else:
+            deck_url is None
         r = requests.post(url="https://www.17lands.com/api/submit_draft", json=js[idx])
         r_js = r.json()
         draft_id = r_js["id"]
-        draft_logs.append(f"https://www.17lands.com/submitted_draft/{draft_id}")
+        output = f"https://www.17lands.com/submitted_draft/{draft_id}"
+        if deck_url is not None:
+            output = (output, deck_url)
+        draft_logs.append(output)
     return draft_logs
 
 
@@ -287,6 +301,8 @@ def draft_log_ai(
     exchange_packs=-1,
     return_model_input=False,
     token="",
+    build_model=None,
+    cards=None,
 ):
     exchange_picks = (
         [exchange_picks] if isinstance(exchange_picks, int) else exchange_picks
@@ -393,9 +409,19 @@ def draft_log_ai(
         js_obj["suggested_pick"] = arena_id_mapping[predicted_picks[i]]
     r = requests.post(url="https://www.17lands.com/api/submit_draft", json=js)
     r_js = r.json()
+    if build_model is not None:
+        pool = np.expand_dims(pool, 0)
+        basics, spells, n_basics = build_model(pool, training=False)
+        basics, spells = build_decks(basics, spells, n_basics, cards=cards)
+        deck_url = display_deck(pool, basics, spells, cards, return_url=True)
+    else:
+        deck_url = None
     try:
         draft_id = r_js["id"]
-        return f"https://www.17lands.com/submitted_draft/{draft_id}"
+        output = f"https://www.17lands.com/submitted_draft/{draft_id}"
+        if deck_url is not None:
+            output = (output, deck_url)
+        return output
     except:
         warnings.warn("Draft Log Upload Failed. Returning sent JSON to help debug.")
         return (js, r)
@@ -503,7 +529,8 @@ def build_decks(basics, spells, n_basics, cards=None):
         deck[idx] -= 1
         deck_out[idx] += 1
     if cards is not None:
-        recalibrate_basics(deck_out, cards)
+        deck_out = recalibrate_basics(np.squeeze(deck_out), cards)
+        deck_out = deck_out[None, :]
     return deck_out[:, :5], deck_out[:, 5:]
 
 
