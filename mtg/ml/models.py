@@ -553,7 +553,7 @@ class DeckBuilder(tf.Module):
         # self.built_loss = self.built_loss_f(true_built, pred_built, sample_weight=sample_weight)
         # n_spells = tf.reduce_sum(pred_built, axis=-1)
         # self.card_count_loss = tf.reduce_sum(tf.math.square(40 - (n_spells + n_basics)) * sample_weight)
-        self.basic_loss = tf.reduce_sum(tf.reduce_sum(tf.math.abs(pred_basics - true_basics),axis=-1) * sample_weight)
+        self.basic_loss = tf.reduce_sum(tf.reduce_sum(tf.math.square(pred_basics - true_basics),axis=-1) * sample_weight)
         self.built_loss = tf.reduce_sum(tf.reduce_sum(tf.math.square(pred_built - true_built),axis=-1) * sample_weight)
         if self.cmc_lambda > 0:
             self.pred_curve_average = tf.reduce_mean(
@@ -580,12 +580,15 @@ class DeckBuilder(tf.Module):
             # self.interaction_lambda * self.interaction_reg
         )
 
-    def compute_metrics(self, true, pred, sample_weight=None, features=None, **kwargs):
+    def compute_metrics(self, true, pred, sample_weight=None, training=None, **kwargs):
         pred_basics, pred_decks, n_basics = pred
         true_basics, true_decks = true
         if sample_weight is None:
             sample_weight = 1.0/true_decks.shape[0]
-        pred_basics, pred_decks = self.build_decks(pred_basics.numpy(), pred_decks.numpy(), n_basics.numpy())
+        if not training:
+            # if not training, we can do numpy based argmaxes to built the deck so we can see validation
+            # performance on how we actually build decks from the output
+            pred_basics, pred_decks = self.build_decks(pred_basics.numpy(), pred_decks.numpy(), n_basics.numpy())
         basic_diff = tf.reduce_sum(tf.reduce_sum(tf.math.abs(pred_basics - true_basics),axis=-1) * sample_weight)
         deck_diff = tf.reduce_sum(tf.reduce_sum(tf.math.abs(pred_decks - true_decks),axis=-1) * sample_weight)
         return {

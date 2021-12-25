@@ -54,7 +54,7 @@ class Trainer:
             output = self.model(batch_features, training=True)
             loss = self.model.loss(batch_target, output, sample_weight=batch_weights, training=True)
         if len(self.model.metric_names) > 0 and not only_val_metrics:
-            metrics = self.model.compute_metrics(batch_target, output, sample_weight=batch_weights)
+            metrics = self.model.compute_metrics(batch_target, output, sample_weight=batch_weights, training=True)
         else:
             metrics = dict()
             #put regularization here if necessary
@@ -119,7 +119,7 @@ class Trainer:
                     val_output = self.model(val_features, training=False)
                     val_loss = self.model.loss(val_target, val_output, sample_weight=val_weights, training=False)
                     if len(self.model.metric_names) > 0:
-                        val_metrics = self.model.compute_metrics(val_target, val_output, sample_weight=val_weights, features=val_features)
+                        val_metrics = self.model.compute_metrics(val_target, val_output, sample_weight=val_weights, training=False)
                     else:
                         val_metrics = dict()
                     for m_key, m_val in val_metrics.items():
