@@ -66,8 +66,8 @@ class Expansion:
             self.cards["idx"] = self.cards["name"].apply(lambda x: name_to_idx[x])
         # set it so ramp spells that search for basics are seen as rainbow producers
         # logic to subset by basic implemented where needed
-        search_check = lambda x: "search your library" in x["oracle_text"]
-        basic_check = lambda x: "basic land" in x["oracle_text"]
+        search_check = lambda x: "search your library" in x["oracle_text"].lower()
+        basic_check = lambda x: "basic land" in x["oracle_text"].lower()
         self.cards["basic_land_search"] = self.cards.apply(
             lambda x: search_check(x) and basic_check(x), axis=1
         )
