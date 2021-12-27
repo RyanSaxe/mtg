@@ -319,7 +319,7 @@ class DraftBot(tf.Module):
         self.rare_flag = (card_data["mythic"] + card_data["rare"]).values[None, None, :]
         self.cmc = card_data["cmc"].values[None, None, :]
 
-    def loss(self, true, pred, sample_weight=None, training=None):
+    def loss(self, true, pred, sample_weight=None, training=None, **kwargs):
         pred, emb_dists = pred
         # if isinstance(pred, tuple):
         #     pred, built_decks_pred = pred
@@ -367,7 +367,7 @@ class DraftBot(tf.Module):
         self.rare_loss = tf.reduce_sum(rare_loss * sample_weight)
         return self.cmc_loss + self.rare_loss
 
-    def compute_metrics(self, true, pred, sample_weight=None):
+    def compute_metrics(self, true, pred, sample_weight=None, **kwargs):
         if sample_weight is None:
             sample_weight = tf.ones_like(true.shape) / (true.shape[0] * true.shape[1])
         sample_weight = sample_weight.flatten()
