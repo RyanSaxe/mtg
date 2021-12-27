@@ -571,7 +571,7 @@ def recalibrate_basics(built_deck, cards, verbose=False):
                     splash_produces_count[color] += count
             elif color in splash_produce:
                 splash_produces_count[color] += count
-
+    print(pip_count)
     min_produces_map = {
         0: 0,
         1: 3,
@@ -597,11 +597,13 @@ def recalibrate_basics(built_deck, cards, verbose=False):
             min_add = 1
         else:
             min_add = 0
-        mana_req = min_produces_map.get(pips, 5)
+        mana_req = min_produces_map.get(pips, 6)
         produces = splash_produces_count[color]
         produces_diff = produces - mana_req
         if produces_diff < 0:
-            add_basics_dict[color] += abs(produces_diff)
+            add_basics_dict[color] += (
+                abs(produces_diff) - basic_adds_extra_sources[color]
+            )
         else:
             basic_cut_limit[color] = max(produces_diff, 0)
         if add_basics_dict[color] < min_add:
@@ -626,7 +628,11 @@ def recalibrate_basics(built_deck, cards, verbose=False):
     cur_color_idx = 0
     colors_to_add = [c for c, n in add_basics_dict.items() if n > 0]
     check_bug = 0
-    colors = list("WUBRG")
+    # if we are cutting lands, make sure to cut basics corresponding to
+    # lower pips in the deck. This could have problems if there's already too
+    # high an allocation to that, but empirically it seems more often balanced
+    colors = sorted(list("WUBRG"), key=lambda color: pip_count[color])
+    print(colors)
     while (
         sum([x for x in add_basics_dict.values()]) > 0
         or sum([x for x in cut_basics_dict.values()]) > 0
