@@ -607,7 +607,7 @@ class DeckBuilder(tf.Module):
             masked_interactions = card_interactions - (
                 1e9 * (1 - tf.clip_by_value(pools, 0, 1))
             )
-            pool_card_weights = tf.nn.softmax(masked_interactions)
+            pool_card_weights = tf.nn.softmax(masked_interactions)[:, :, None]
             pool_embs = tf.reduce_sum(card_embs * pool_card_weights, axis=1)
             self.latent_rep = self.embedding_compressor_pool(
                 pool_embs, training=training
