@@ -520,13 +520,17 @@ def build_decks(basics, spells, n_basics, cards=None):
     deck = np.concatenate([basics, spells], axis=-1)
     deck_out = np.zeros_like(deck)
     for i in range(0, 40):
-        card_to_add = np.where(
-            np.squeeze(n_spells) > i,
-            np.squeeze(np.argmax(deck[:, 5:], axis=-1)) + 5,
-            np.squeeze(np.argmax(deck[:, :5], axis=-1)),
-        )
+        spell_argmax = np.squeeze(np.argmax(deck[:, 5:], axis=-1)) + 5
+        basic_argmax = np.squeeze(np.argmax(deck[:, :5], axis=-1))
+        card_to_add = np.where(np.squeeze(n_spells) > i, spell_argmax, basic_argmax,)
         idx = np.arange(deck.shape[0]), card_to_add
-        deck[idx] -= 1
+        score = deck[idx]
+        floor_score = score // 1
+        dist_to_next = score - floor_score
+        # 1.5 goes to 0.75, 1.2 goes to 0.3, 1.9 goes to 1.0
+        next_score = score - 1 + (dist_to_next / 2)
+        score_subtraction = min(floor_score, next_score)
+        deck[idx] = score_subtraction
         deck_out[idx] += 1
     if cards is not None:
         deck_out = recalibrate_basics(np.squeeze(deck_out), cards)
