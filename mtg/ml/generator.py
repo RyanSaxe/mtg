@@ -335,6 +335,7 @@ def create_train_and_val_gens(
     exclude_basics=True,
     generator=MTGDataGenerator,
     include_val=True,
+    **kwargs,
 ):
     if weights:
         data["ml_weights"] = importance_weighting(data)
@@ -364,6 +365,7 @@ def create_train_and_val_gens(
         shuffle=shuffle,
         to_fit=to_fit,
         exclude_basics=exclude_basics,
+        **kwargs,
     )
     if test_data is not None and include_val:
         n_train_batches = len(train_gen)
@@ -375,6 +377,7 @@ def create_train_and_val_gens(
             shuffle=shuffle,
             to_fit=to_fit,
             exclude_basics=exclude_basics,
+            **kwargs,
         )
     else:
         val_gen = None
