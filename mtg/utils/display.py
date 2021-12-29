@@ -303,6 +303,7 @@ def draft_log_ai(
     token="",
     build_model=None,
     cards=None,
+    verbose=False,
 ):
     exchange_picks = (
         [exchange_picks] if isinstance(exchange_picks, int) else exchange_picks
@@ -412,6 +413,10 @@ def draft_log_ai(
     if build_model is not None:
         pool = np.expand_dims(pool, 0)
         basics, spells, n_basics = build_model(pool, training=False)
+        if verbose:
+            for spell_idx, spell in enumerate(spells):
+                if spell > 0:
+                    print(idx_to_name[spell_idx], spell)
         basics, spells = build_decks(basics, spells, n_basics, cards=cards)
         deck_url = display_deck(pool, basics, spells, cards, return_url=True)
     else:
@@ -575,7 +580,6 @@ def recalibrate_basics(built_deck, cards, verbose=False):
                     splash_produces_count[color] += count
             elif color in splash_produce:
                 splash_produces_count[color] += count
-    print(pip_count)
     min_produces_map = {
         0: 0,
         1: 3,
@@ -636,7 +640,6 @@ def recalibrate_basics(built_deck, cards, verbose=False):
     # lower pips in the deck. This could have problems if there's already too
     # high an allocation to that, but empirically it seems more often balanced
     colors = sorted(list("WUBRG"), key=lambda color: pip_count[color])
-    print(colors)
     while (
         sum([x for x in add_basics_dict.values()]) > 0
         or sum([x for x in cut_basics_dict.values()]) > 0
