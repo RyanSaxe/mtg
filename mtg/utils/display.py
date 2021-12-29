@@ -414,7 +414,7 @@ def draft_log_ai(
         pool = np.expand_dims(pool, 0)
         basics, spells, n_basics = build_model(pool, training=False)
         if verbose:
-            for spell_idx, spell in enumerate(spells):
+            for spell_idx, spell in enumerate(spells[0]):
                 if spell > 0:
                     print(idx_to_name[spell_idx], spell)
         basics, spells = build_decks(basics, spells, n_basics, cards=cards)
