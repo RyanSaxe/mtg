@@ -232,6 +232,7 @@ class DeckGenerator(MTGDataGenerator):
         )
         self.pos_neg_sample = pos_neg_sample
         self.mask_decks = mask_decks
+        self.max_n_spells = np.max(self.decks.sum(axis=1))
 
     def generate_data(self, indices):
         decks = self.deck[indices, :]
@@ -242,18 +243,19 @@ class DeckGenerator(MTGDataGenerator):
             masked_decks = masked_decks.astype(np.float32)
             masked_basics = masked_basics.astype(np.float32)
             cards_to_add = (decks[:, None, :] - masked_decks).astype(np.float32)
-            basics_to_add = (basics[:, None, :] - masked_basics).astype(np.float32)
             modified_sideboards = (sideboards[:, None, :] + cards_to_add).astype(
                 np.float32
             )
-            X = (modified_sideboards, masked_decks, masked_basics)
-            Y = (basics_to_add, cards_to_add)
+            X = (modified_sideboards, masked_decks)
+            Y = (basics.astype(np.float32), cards_to_add)
         else:
             X = (decks + sideboards).astype(np.float32)
             Y = (basics.astype(np.float32), decks.astype(np.float32))
         if self.weights is not None:
             if self.mask_decks:
-                weights = self.weights[indices][:, None] * np.ones((len(indices), 40))
+                weights = self.weights[indices][:, None] * np.ones(
+                    (len(indices), self.max_n_spells)
+                )
             else:
                 weights = self.weights[indices]
             weights = weights / weights.sum()
@@ -264,15 +266,14 @@ class DeckGenerator(MTGDataGenerator):
             return (*X, anchor, pos, neg), Y, weights
         return X, Y, weights
 
-    def create_masked_objects(self, decks, basics):
-        masked_decks = np.zeros((decks.shape[0], 40, decks.shape[1]))
-        masked_basics = np.zeros((basics.shape[0], 40, basics.shape[1]))
-        full_decks = np.concatenate([decks, basics], axis=-1)
-        for i in range(1, 40):
-            sample = self.get_vectorized_sample(full_decks.copy(), n=i, uniform=True)
-            masked_decks[:, i, :] = decks - sample[:, 5:]
-            masked_basics[:, i, :] = basics - sample[:, :5]
-        return masked_decks, masked_basics
+    def create_masked_objects(self, decks):
+        min_n_spells = np.min(decks.sum(axis=1))
+        masked_decks = np.zeros((decks.shape[0], self.max_n_spells, decks.shape[1]))
+        for i in range(1, min_n_spells):
+            masked_decks[:, i, :] = self.get_vectorized_sample(
+                decks.copy(), n=i, uniform=True
+            )
+        return masked_decks
 
     def get_vectorized_sample(
         self, mtx, n=1, uniform=True, return_mtx=True, modify_mtx=True
