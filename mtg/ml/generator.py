@@ -239,9 +239,8 @@ class DeckGenerator(MTGDataGenerator):
         sideboards = self.sideboard[indices, :]
         basics = self.deck_basics[indices, :]
         if self.mask_decks:
-            masked_decks, masked_basics = self.create_masked_objects(decks, basics)
+            masked_decks = self.create_masked_objects(decks)
             masked_decks = masked_decks.astype(np.float32)
-            masked_basics = masked_basics.astype(np.float32)
             cards_to_add = (decks[:, None, :] - masked_decks).astype(np.float32)
             modified_sideboards = (sideboards[:, None, :] + cards_to_add).astype(
                 np.float32
