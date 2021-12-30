@@ -412,7 +412,7 @@ def draft_log_ai(
     r_js = r.json()
     if build_model is not None:
         pool = np.expand_dims(pool, 0)
-        basics, spells = build_decks_2(build_model, pool, cards=cards)
+        basics, spells, n_basics = build_decks_2(build_model, pool, cards=cards)
         deck_url = display_deck(pool, basics, spells, cards, return_url=True)
     else:
         deck_url = None
@@ -559,7 +559,6 @@ def build_decks_2(model, pool, cards=None):
         basics_out[idx] += 1
         basics[idx] -= 1
     deck_out = np.concatenate([basics_out, deck_out], axis=-1)
-    print(basics_out)
     if cards is not None:
         deck_out = recalibrate_basics(np.squeeze(deck_out), cards)
         deck_out = deck_out[None, :]
