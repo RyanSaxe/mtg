@@ -239,8 +239,10 @@ class DeckGenerator(MTGDataGenerator):
         sideboards = self.sideboard[indices, :]
         basics = self.deck_basics[indices, :]
         if self.mask_decks:
-            basics = np.repeat(basics[:, None, :], self.max_n_spells, axis=1)
-            masked_decks = self.create_masked_objects(decks)
+            max_n_non_basics = np.max(decks.sum(axis=1))
+            n = max_n_non_basics + 1
+            basics = np.repeat(basics[:, None, :], n, axis=1)
+            masked_decks = self.create_masked_objects(decks, n=n)
             masked_decks = masked_decks.astype(np.float32)
             cards_to_add = (decks[:, None, :] - masked_decks).astype(np.float32)
             modified_sideboards = (sideboards[:, None, :] + cards_to_add).astype(
@@ -266,10 +268,9 @@ class DeckGenerator(MTGDataGenerator):
             return (*X, anchor, pos, neg), Y, weights
         return X, Y, weights
 
-    def create_masked_objects(self, decks):
-        max_n_non_basics = np.max(decks.sum(axis=1))
-        masked_decks = np.zeros((decks.shape[0], max_n_non_basics + 1, decks.shape[1]))
-        for i in range(1, max_n_non_basics + 1):
+    def create_masked_objects(self, decks, n):
+        masked_decks = np.zeros((decks.shape[0], n, decks.shape[1]))
+        for i in range(1, n):
             masked_decks[:, i, :] = self.get_vectorized_sample(
                 decks.copy(), n=i, uniform=True
             )
