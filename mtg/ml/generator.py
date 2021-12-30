@@ -232,7 +232,6 @@ class DeckGenerator(MTGDataGenerator):
         )
         self.pos_neg_sample = pos_neg_sample
         self.mask_decks = mask_decks
-        self.max_n_spells = np.max(self.deck.sum(axis=1))
 
     def generate_data(self, indices):
         decks = self.deck[indices, :]
@@ -255,9 +254,7 @@ class DeckGenerator(MTGDataGenerator):
             Y = (basics.astype(np.float32), decks.astype(np.float32))
         if self.weights is not None:
             if self.mask_decks:
-                weights = self.weights[indices][:, None] * np.ones(
-                    (len(indices), self.max_n_spells)
-                )
+                weights = self.weights[indices][:, None] * np.ones((len(indices), n))
             else:
                 weights = self.weights[indices]
             weights = weights / weights.sum()
