@@ -628,7 +628,7 @@ class DeckBuilder(tf.Module):
         basics_to_add = (
             self.add_basics_to_deck(self.latent_rep, training=training) * n_basics
         )
-        return basics_to_add, cards_to_add
+        return basics_to_add, cards_to_add, n_basics
 
     def compile(
         self,
