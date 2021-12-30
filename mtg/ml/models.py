@@ -563,15 +563,17 @@ class DeckBuilder(tf.Module):
         self.add_basics_to_deck = nn.Dense(
             latent_dim, 5, activation=tf.nn.softmax, name="add_basics_to_deck"
         )
-        self.determine_n_lands = nn.Dense(
+        # only allow more than 18 lands when there are multiple nonbasic lands
+        self.determine_n_non_basics = nn.Dense(
             latent_dim,
             1,
-            activation=lambda x: tf.nn.sigmoid(x / 4.0) * 4.0 + 15.0,
-            name="determine_n_lands",
+            activation=lambda x: tf.nn.relu(x) * + 22.0,
+            name="determine_n_non_basics",
         )
         self.merge_deck_and_pool = nn.Dense(
             concat_dim, latent_dim, activation=None, name="merge_deck_and_pool"
         )
+        self.dropout = dropout
 
     # @tf.function
     # def __call__(self, pools, training=None):
@@ -615,20 +617,20 @@ class DeckBuilder(tf.Module):
             self.latent_rep_pool = self.pool_encoder(pools, training=training)
             self.latent_rep_deck = self.deck_encoder(decks, training=training)
         concat_emb = tf.concat([self.latent_rep_deck, self.latent_rep_pool], axis=-1)
+        if self.dropout > 0.0 and training:
+            concat_emb = tf.nn.dropout(concat_emb, self.dropout)
         self.latent_rep = self.merge_deck_and_pool(concat_emb, training=training)
         cards_to_add = self.decoder(self.latent_rep, training=training) * pools
-        fully_built_deck = cards_to_add + decks
-        n_lands = self.determine_n_lands(self.latent_rep, training=training)
-        n_basics = n_lands - tf.reduce_sum(
-            fully_built_deck * self.land_mtx[None, 5:], axis=-1, keepdims=True
-        )
+        #fully_built_deck = cards_to_add + decks
+        n_non_basics = self.determine_n_spells(self.latent_rep, training=training)
+        n_basics = (40 - n_non_basics)
+        # n_basics = n_lands - tf.reduce_sum(
+        #     fully_built_deck * self.land_mtx[None, 5:], axis=-1, keepdims=True
+        # )
         basics_to_add = (
             self.add_basics_to_deck(self.latent_rep, training=training) * n_basics
         )
-        basics_to_add = (
-            self.add_basics_to_deck(self.latent_rep, training=training) * n_basics
-        )
-        return basics_to_add, cards_to_add, n_basics
+        return basics_to_add, cards_to_add, n_non_basics
 
     def compile(
         self,

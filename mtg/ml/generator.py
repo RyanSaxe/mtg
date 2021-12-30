@@ -267,9 +267,9 @@ class DeckGenerator(MTGDataGenerator):
         return X, Y, weights
 
     def create_masked_objects(self, decks):
-        min_n_spells = np.min(decks.sum(axis=1))
-        masked_decks = np.zeros((decks.shape[0], self.max_n_spells, decks.shape[1]))
-        for i in range(1, min_n_spells):
+        max_n_non_basics = np.max(decks.sum(axis=1))
+        masked_decks = np.zeros((decks.shape[0], max_n_non_basics + 1, decks.shape[1]))
+        for i in range(1, max_n_non_basics + 1):
             masked_decks[:, i, :] = self.get_vectorized_sample(
                 decks.copy(), n=i, uniform=True
             )
@@ -280,14 +280,15 @@ class DeckGenerator(MTGDataGenerator):
     ):
         if uniform:
             clip_mtx = np.clip(mtx, 0, 1)
-            probabilities = clip_mtx / clip_mtx.sum(1, keepdims=True)
+            probabilities = clip_mtx / (clip_mtx.sum(1, keepdims=True) + 1e-9)
         else:
-            probabilities = mtx / mtx.sum(1, keepdims=True)
+            probabilities = mtx / (mtx.sum(1, keepdims=True) + 1e-9)
+        live_idxs = np.where(mtx.sum(1) != 0)
         cumulative_dist = probabilities.cumsum(axis=1)
         random_bin = np.random.rand(len(cumulative_dist), 1)
         sample = (random_bin < cumulative_dist).argmax(axis=1)
         if modify_mtx:
-            mtx[(np.arange(mtx.shape[0]), sample)] -= 1
+            mtx[live_idxs, sample[live_idxs]] -= 1
         if n > 1:
             cts_sample = self.get_vectorized_sample(
                 mtx, n=n - 1, uniform=uniform, return_mtx=False

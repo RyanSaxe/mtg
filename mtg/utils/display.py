@@ -535,27 +535,38 @@ def build_decks(basics, spells, n_basics, cards=None):
 def build_decks_2(model, pool, cards=None):
     pool = pool.copy()
     deck_out = np.zeros_like(pool)
+    masked_flag = len(deck_out.shape) == 3
     spells_added = 0
-    # run model twice at the beginning to get the basic info and n_basics
-    basics, spells, n_basics = model((pool, deck_out), training=False)
-    basics = basics.numpy()
-    n_basics = n_basics.numpy()[0][0]
-    spells_to_add = 40 - np.round(n_basics)
-    while spells_to_add > 0:
-        _, spells, _ = model((pool, deck_out), training=False)
+    while True:
+        basics, spells, n_non_basics = model((pool, deck_out), training=False)
+        if np.round(n_non_basics) == 0:
+            break
         spells = spells.numpy()
+        basics = basics.numpy()
+        n_non_basics = n_non_basics.numpy()[0][0]
         card_to_add = np.squeeze(np.argmax(spells, axis=-1))
-        idx = np.arange(deck_out.shape[0]), card_to_add
+        if not masked_flag:
+            idx = np.arange(deck_out.shape[0]), card_to_add
+        else:
+            idx = (
+                np.arange(deck_out.shape[0]),
+                np.arange(deck_out.shape[0]),
+                card_to_add,
+            )
         deck_out[idx] += 1
         pool[idx] -= 1
         spells_added += 1
-        spells_to_add -= 1
-    n_basics_scaler = (40 - spells_added) / n_basics
-    basics = basics * n_basics_scaler
     basics_out = np.zeros((deck_out.shape[0], 5))
     for _ in range(40 - spells_added):
         card_to_add = np.squeeze(np.argmax(basics, axis=-1))
-        idx = np.arange(deck_out.shape[0]), card_to_add
+        if not masked_flag:
+            idx = np.arange(deck_out.shape[0]), card_to_add
+        else:
+            idx = (
+                np.arange(deck_out.shape[0]),
+                np.arange(deck_out.shape[0]),
+                card_to_add,
+            )
         basics_out[idx] += 1
         basics[idx] -= 1
     deck_out = np.concatenate([basics_out, deck_out], axis=-1)
