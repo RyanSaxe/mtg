@@ -567,7 +567,7 @@ class DeckBuilder(tf.Module):
         self.determine_n_non_basics = nn.Dense(
             latent_dim,
             1,
-            activation=lambda x: tf.nn.relu(x) * + 22.0,
+            activation=lambda x: tf.nn.relu(x) * +22.0,
             name="determine_n_non_basics",
         )
         self.merge_deck_and_pool = nn.Dense(
@@ -621,9 +621,9 @@ class DeckBuilder(tf.Module):
             concat_emb = tf.nn.dropout(concat_emb, self.dropout)
         self.latent_rep = self.merge_deck_and_pool(concat_emb, training=training)
         cards_to_add = self.decoder(self.latent_rep, training=training) * pools
-        #fully_built_deck = cards_to_add + decks
-        n_non_basics = self.determine_n_spells(self.latent_rep, training=training)
-        n_basics = (40 - n_non_basics)
+        # fully_built_deck = cards_to_add + decks
+        n_non_basics = self.determine_n_non_basics(self.latent_rep, training=training)
+        n_basics = 40 - n_non_basics
         # n_basics = n_lands - tf.reduce_sum(
         #     fully_built_deck * self.land_mtx[None, 5:], axis=-1, keepdims=True
         # )
