@@ -600,7 +600,7 @@ class DeckBuilder(tf.Module):
     #     )
     #     return basics_to_add, reconstruction, n_basics
 
-    @tf.function
+    @tf.function(experimental_relax_shapes=True)
     def __call__(self, features, training=None):
         # batch x sample x n_cards
         pools, decks = features
