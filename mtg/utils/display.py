@@ -529,18 +529,46 @@ def build_decks(basics, spells, n_basics, cards=None):
         basic_argmax = np.squeeze(np.argmax(deck[:, :5], axis=-1))
         card_to_add = np.where(np.squeeze(n_spells) > i, spell_argmax, basic_argmax,)
         idx = np.arange(deck.shape[0]), card_to_add
-        score = deck[idx]
-        floor_score = score // 1
-        dist_to_next = score - floor_score
-        # 1.5 goes to 0.75, 1.2 goes to 0.3, 1.9 goes to 1.0
-        next_score = score - 1 + (dist_to_next / 2)
-        score_subtraction = min(floor_score, next_score)
-        deck[idx] = score_subtraction
+        deck[idx] -= 1
         deck_out[idx] += 1
     if cards is not None:
         deck_out = recalibrate_basics(np.squeeze(deck_out), cards)
         deck_out = deck_out[None, :]
     return deck_out[:, :5], deck_out[:, 5:]
+
+
+def build_decks_2(model, pool, cards=None):
+    pool = pool.copy()
+    deck_out = np.zeros_like(pool)
+    spells_added = 0
+    # run model twice at the beginning to get the basic info and n_basics
+    basics, spells, n_basics = model((pool, deck_out), training=False)
+    basics = basics.numpy()
+    n_basics = n_basics.numpy()[0][0]
+    spells_to_add = 40 - np.round(n_basics)
+    while spells_to_add > 0:
+        _, spells, _ = model((pool, deck_out), training=False)
+        spells = spells.numpy()
+        card_to_add = np.squeeze(np.argmax(spells, axis=-1))
+        idx = np.arange(deck_out.shape[0]), card_to_add
+        deck_out[idx] += 1
+        pool[idx] -= 1
+        spells_added += 1
+        spells_to_add -= 1
+    n_basics_scaler = (40 - spells_added) / n_basics
+    basics = basics * n_basics_scaler
+    basics_out = np.zeros((deck_out.shape[0], 5))
+    for _ in range(40 - spells_added):
+        card_to_add = np.squeeze(np.argmax(basics, axis=-1))
+        idx = np.arange(deck_out.shape[0]), card_to_add
+        basics_out[idx] += 1
+        basics[idx] -= 1
+    deck_out = np.concatenate([basics_out, deck_out], axis=-1)
+    print(basics_out)
+    if cards is not None:
+        deck_out = recalibrate_basics(np.squeeze(deck_out), cards)
+        deck_out = deck_out[None, :]
+    return deck_out[:, :5], deck_out[:, 5:], 40 - spells_added
 
 
 def recalibrate_basics(built_deck, cards, verbose=False):
@@ -640,6 +668,7 @@ def recalibrate_basics(built_deck, cards, verbose=False):
     # lower pips in the deck. This could have problems if there's already too
     # high an allocation to that, but empirically it seems more often balanced
     colors = sorted(list("WUBRG"), key=lambda color: pip_count[color])
+    added_already = []
     while (
         sum([x for x in add_basics_dict.values()]) > 0
         or sum([x for x in cut_basics_dict.values()]) > 0
@@ -653,8 +682,14 @@ def recalibrate_basics(built_deck, cards, verbose=False):
                     break
                 else:
                     colors_to_add = [
-                        c for c, n in basics_that_can_be_cut.items() if n > 0
+                        c
+                        for c, n in basics_that_can_be_cut.items()
+                        if n > 0 and c not in added_already
                     ]
+                    if len(colors_to_add) == 0:
+                        colors_to_add = [
+                            c for c, n in basics_that_can_be_cut.items() if n > 0
+                        ]
         if len(colors_to_add) == 0:
             if verbose:
                 print("Nothing else is allowed to be cut, bad manabase")
@@ -663,7 +698,6 @@ def recalibrate_basics(built_deck, cards, verbose=False):
         # this is the actual idx in the deck built, not the fake one used to cycle through colors
         idx = color_to_idx[c]
         ad_c = colors_to_add[0]
-        colors_to_add = colors_to_add[1:]
         ad_idx = color_to_idx[ad_c]
         if sum([x for x in cut_basics_dict.values()]) > 0:
             if cut_basics_dict[c] > 0:

@@ -725,12 +725,12 @@ class DeckBuilder(tf.Module):
         true_basics, true_decks = true
         if sample_weight is None:
             sample_weight = 1.0 / true_decks.shape[0]
-        if not training:
-            # if not training, we can do numpy based argmaxes to built the deck so we can see validation
-            # performance on how we actually build decks from the output
-            pred_basics, pred_decks = build_decks(
-                pred_basics.numpy(), pred_decks.numpy(), n_basics.numpy(), cards=None
-            )
+        # if not training:
+        #     # if not training, we can do numpy based argmaxes to built the deck so we can see validation
+        #     # performance on how we actually build decks from the output
+        #     pred_basics, pred_decks = build_decks(
+        #         pred_basics.numpy(), pred_decks.numpy(), n_basics.numpy(), cards=None
+        #     )
         basic_diff = tf.reduce_sum(
             tf.reduce_sum(tf.math.abs(pred_basics - true_basics), axis=-1)
             * sample_weight
