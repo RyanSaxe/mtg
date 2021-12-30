@@ -239,9 +239,13 @@ class DeckGenerator(MTGDataGenerator):
         basics = self.deck_basics[indices, :]
         if self.mask_decks:
             max_n_non_basics = np.max(decks.sum(axis=1))
-            n = max_n_non_basics + 1
+            n = max_n_non_basics + 2
             basics = np.repeat(basics[:, None, :], n, axis=1)
             masked_decks = self.create_masked_objects(decks, n=n)
+            # this is set up so the first element in masked decks has an empty
+            # deck to predict from the whole pool, and the last element has a fully
+            # built deck where the only thing to predict is the basics
+            masked_decks[:, -1, :] = decks
             masked_decks = masked_decks.astype(np.float32)
             cards_to_add = (decks[:, None, :] - masked_decks).astype(np.float32)
             modified_sideboards = (sideboards[:, None, :] + cards_to_add).astype(
