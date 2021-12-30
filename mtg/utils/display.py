@@ -412,12 +412,7 @@ def draft_log_ai(
     r_js = r.json()
     if build_model is not None:
         pool = np.expand_dims(pool, 0)
-        basics, spells, n_basics = build_model(pool, training=False)
-        if verbose:
-            for spell_idx, spell in enumerate(spells[0]):
-                if spell > 0:
-                    print(idx_to_name[spell_idx], spell)
-        basics, spells = build_decks(basics, spells, n_basics, cards=cards)
+        basics, spells = build_decks_2(build_model, pool, cards=cards)
         deck_url = display_deck(pool, basics, spells, cards, return_url=True)
     else:
         deck_url = None
