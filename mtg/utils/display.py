@@ -412,7 +412,7 @@ def draft_log_ai(
     r_js = r.json()
     if build_model is not None:
         pool = np.expand_dims(pool, 0)
-        basics, spells, n_basics = build_decks_2(build_model, pool, cards=cards)
+        basics, spells, _ = build_decks_2(build_model, pool, cards=cards)
         deck_url = display_deck(pool, basics, spells, cards, return_url=True)
     else:
         deck_url = None
@@ -533,7 +533,7 @@ def build_decks(basics, spells, n_basics, cards=None):
 
 
 def build_decks_2(model, pool, cards=None):
-    pool = pool.copy()
+    pool = np.expand_dims(pool, 0)
     deck_out = np.zeros_like(pool)
     masked_flag = len(deck_out.shape) == 3
     spells_added = 0
