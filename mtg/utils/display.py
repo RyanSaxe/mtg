@@ -556,6 +556,9 @@ def build_decks_2(model, pool, cards=None):
         deck_out[idx] += 1
         pool[idx] -= 1
         spells_added += 1
+    # overwrite basics prediction using the actual discrete deck
+    # not continuous representation
+    basics = model.basic_decoder(deck_out) * (40 - spells_added)
     basics_out = np.zeros((deck_out.shape[0], 5))
     for _ in range(40 - spells_added):
         card_to_add = np.squeeze(np.argmax(basics, axis=-1))

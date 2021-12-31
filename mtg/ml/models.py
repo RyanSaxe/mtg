@@ -546,26 +546,35 @@ class DeckBuilder(tf.Module):
         else:
             concat_dim = self.card_embeddings.shape[1] * 2
 
-        self.decoder = nn.MLP(
+        self.card_decoder = nn.MLP(
             in_dim=latent_dim,
             start_dim=latent_dim * 2,
             out_dim=self.n_cards,
             n_h_layers=2,
             dropout=0.0,
-            name="decoder",
+            name="card_decoder",
             noise=0.0,
             start_act=tf.nn.selu,
             middle_act=tf.nn.selu,
             out_act=tf.nn.sigmoid,
             style="reverse_bottleneck",
         )
-        # self.interactions = nn.Dense(self.n_cards, self.n_cards, activation=None)
-        self.add_basics_to_deck = nn.Dense(
-            latent_dim, 5, activation=tf.nn.softmax, name="add_basics_to_deck"
+        self.basic_decoder = nn.MLP(
+            in_dim=self.n_cards,
+            start_dim=self.n_cards // 2,
+            out_dim=5,
+            n_h_layers=2,
+            dropout=0.0,
+            name="basic_decoder",
+            noise=0.0,
+            start_act=tf.nn.selu,
+            middle_act=tf.nn.selu,
+            out_act=tf.nn.softmax,
+            style="reverse_bottleneck",
         )
         # only allow more than 18 lands when there are multiple nonbasic lands
         self.determine_n_non_basics = nn.Dense(
-            latent_dim,
+            self.n_cards,
             1,
             activation=lambda x: tf.nn.relu(x) * +22.0,
             name="determine_n_non_basics",
@@ -604,6 +613,7 @@ class DeckBuilder(tf.Module):
     def __call__(self, features, training=None):
         # batch x sample x n_cards
         pools, decks = features
+        full_decks = decks[:, -1, :]
         # store full pools to access in metrics
 
         if self.card_embeddings is not None:
@@ -620,17 +630,24 @@ class DeckBuilder(tf.Module):
         if self.dropout > 0.0 and training:
             concat_emb = tf.nn.dropout(concat_emb, self.dropout)
         self.latent_rep = self.merge_deck_and_pool(concat_emb, training=training)
-        cards_to_add = self.decoder(self.latent_rep, training=training) * pools
+        self.cards_to_add = (
+            self.card_decoder(self.latent_rep, training=training) * pools
+        )
         # fully_built_deck = cards_to_add + decks
-        n_non_basics = self.determine_n_non_basics(self.latent_rep, training=training)
-        n_basics = 40 - n_non_basics
+        self.n_non_basics = self.determine_n_non_basics(
+            self.latent_rep, training=training
+        )
+        n_basics = 40 - self.n_non_basics
         # n_basics = n_lands - tf.reduce_sum(
         #     fully_built_deck * self.land_mtx[None, 5:], axis=-1, keepdims=True
         # )
-        basics_to_add = (
-            self.add_basics_to_deck(self.latent_rep, training=training) * n_basics
+        self.basics_to_add = (
+            self.basic_decoder(self.cards_to_add, training=training) * n_basics
         )
-        return basics_to_add, cards_to_add, n_non_basics
+        self.basics_from_full = (
+            self.basic_decoder(full_decks, training=training) * n_basics
+        )
+        return self.basics_to_add, self.cards_to_add, self.n_non_basics
 
     def compile(
         self,
@@ -690,7 +707,12 @@ class DeckBuilder(tf.Module):
         # n_spells = tf.reduce_sum(pred_built, axis=-1)
         # self.card_count_loss = tf.reduce_sum(tf.math.square(40 - (n_spells + n_basics)) * sample_weight)
         self.basic_loss = tf.reduce_sum(
-            tf.reduce_sum(tf.math.square(pred_basics - true_basics), axis=-1)
+            (
+                tf.reduce_sum(tf.math.square(pred_basics - true_basics), axis=-1)
+                + tf.reduce_sum(
+                    tf.math.square(true_basics - self.basics_from_full), axis=-1
+                )
+            )
             * sample_weight
         )
         self.built_loss = tf.reduce_sum(
