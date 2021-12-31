@@ -633,16 +633,15 @@ class DeckBuilder(tf.Module):
         self.cards_to_add = (
             self.card_decoder(self.latent_rep, training=training) * pools
         )
+        built_deck = self.cards_to_add + decks
         # fully_built_deck = cards_to_add + decks
-        self.n_non_basics = self.determine_n_non_basics(
-            self.latent_rep, training=training
-        )
+        self.n_non_basics = self.determine_n_non_basics(built_deck, training=training)
         n_basics = 40 - self.n_non_basics
         # n_basics = n_lands - tf.reduce_sum(
         #     fully_built_deck * self.land_mtx[None, 5:], axis=-1, keepdims=True
         # )
         self.basics_to_add = (
-            self.basic_decoder(self.cards_to_add, training=training) * n_basics
+            self.basic_decoder(built_deck, training=training) * n_basics
         )
         self.basics_from_full = (
             self.basic_decoder(full_decks, training=training) * n_basics
