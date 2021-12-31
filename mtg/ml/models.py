@@ -613,7 +613,7 @@ class DeckBuilder(tf.Module):
     def __call__(self, features, training=None):
         # batch x sample x n_cards
         pools, decks = features
-        full_decks = decks[:, -1, :]
+        full_decks = tf.expand_dims(decks[:, -1, :], 1)
         # store full pools to access in metrics
 
         if self.card_embeddings is not None:
