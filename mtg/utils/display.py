@@ -539,7 +539,7 @@ def build_decks_2(model, pool, cards=None):
     spells_added = 0
     while True:
         basics, spells, n_non_basics = model((pool, deck_out), training=False)
-        if np.round(n_non_basics) == 0:
+        if np.round(n_non_basics) <= spells_added:
             break
         spells = spells.numpy()
         basics = basics.numpy()
@@ -559,7 +559,8 @@ def build_decks_2(model, pool, cards=None):
     # overwrite basics prediction using the actual discrete deck
     # not continuous representation
     basics = model.basic_decoder(deck_out) * (40 - spells_added)
-    basics_out = np.zeros((deck_out.shape[0], 5))
+    basics = basics.numpy()
+    basics_out = np.zeros((*deck_out.shape[: len(deck_out.shape) - 1], 5))
     for _ in range(40 - spells_added):
         card_to_add = np.squeeze(np.argmax(basics, axis=-1))
         if not masked_flag:
