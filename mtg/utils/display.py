@@ -7,6 +7,7 @@ from matplotlib.colors import LinearSegmentedColormap
 import matplotlib.pyplot as plt
 import warnings
 import re
+import json
 
 
 def print_deck(deck, cards, sort_by="name", return_str=False):
@@ -729,3 +730,85 @@ def recalibrate_basics(built_deck, cards, verbose=False):
             print("BUG")
             break
     return built_deck
+
+
+def live_arena_draft(idx_to_name=None, model=None, t=42, **kwargs):
+    n_cards = len(idx_to_name)
+    positions = np.expand_dims(np.arange(42, dtype=np.int32), 0)
+    packs = np.ones((1, 42, n_cards), dtype=np.float32)
+    picks = np.ones((1, 42), dtype=np.int32) * n_cards
+    output, _ = model((packs, picks, positions), training=False, return_attention=True)
+    p1p1_order = output[0, 0, :].numpy().argsort()[::-1]
+    p1p1_lookup = dict()
+    for i, idx in enumerate(p1p1_order):
+        name = idx_to_name[idx]
+        p1p1_lookup[name] = i
+    p1p1_running = True
+    while p1p1_running:
+        check_card = input("Check P1P1 Ranking for Card:")
+        if check_card == "stop":
+            p1p1_running = False
+        else:
+            rank = p1p1_lookup.get(check_card, "Improper Cardname")
+            print(rank)
+    name_to_idx = {v: k for k, v in idx_to_name.items()}
+    log_url = input("17lands Log URL:")
+    return read_arena(log_url, model=model, name_to_idx=name_to_idx, t=t, **kwargs)
+
+
+def read_arena(log, name_to_idx=None, model=None, t=42, **kwargs):
+    sdraft = get_draft_json(log, stream=True)
+    lines = sdraft.iter_lines()
+    n_picks_per_pack = t / 3
+    n_cards = len(name_to_idx)
+    positions = np.expand_dims(np.arange(t, dtype=np.int32), 0)
+    pick_data = np.ones((1, t), dtype=np.int32) * n_cards
+    pack_data = np.ones((1, t, n_cards), dtype=np.float32)
+    for line in lines:
+        line = line.decode("utf8").replace("null", '"null"')
+        if len(line) > 0:
+            data = json.loads(line[6:])
+            while isinstance(data, list):
+                data = data[0]
+            picks = data["payload"]["picks"]
+            for pick in picks:
+                print(
+                    f"Pack {str(pick['pack_number'] + 1)} Pick {str(pick['pick_number'] + 1)}"
+                )
+                idx = int(pick["pack_number"] * n_picks_per_pack + pick["pick_number"])
+                correct_pick = pick["pick"]
+                print(f"\tData Type: {type(correct_pick)}")
+                pack = names_to_array(pick["available"], name_to_idx)
+                pack_data[0, idx, :] = pack
+                if isinstance(correct_pick, dict):
+                    correct_pick = correct_pick["name"].lower().split("//")[0].strip()
+                    print(f"\tPick In Data Stream: {correct_pick}")
+                    pick_idx = name_to_idx[correct_pick]
+                else:
+                    model_input = (pack_data, pick_data, positions)
+                    predictions, att = model(
+                        model_input, training=False, return_attention=True
+                    )
+                    top3 = tf.math.top_k(predictions, k=3).indices.numpy()[0]
+                    pick_idx = top3[idx][0]
+                    idx_to_name = {v: k for k, v in name_to_idx.items()}
+                    print(
+                        "\tpick:",
+                        idx_to_name[top3[idx][0]],
+                        "(",
+                        predictions[0, idx, top3[idx][0]].numpy().round(3),
+                        ")",
+                        "\n\t\t2nd:",
+                        idx_to_name[top3[idx][1]],
+                        "(",
+                        predictions[0, idx, top3[idx][1]].numpy().round(3),
+                        ")",
+                        "\n\t\t3rd:",
+                        idx_to_name[top3[idx][2]],
+                        "(",
+                        predictions[0, idx, top3[idx][2]].numpy().round(3),
+                        ")",
+                    )
+                if idx < t - 1:
+                    pick_data[0, idx + 1] = pick_idx
+    return None
