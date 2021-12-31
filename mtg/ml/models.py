@@ -613,7 +613,6 @@ class DeckBuilder(tf.Module):
     def __call__(self, features, training=None):
         # batch x sample x n_cards
         pools, decks = features
-        full_decks = tf.expand_dims(decks[:, -1, :], 1)
         # store full pools to access in metrics
 
         if self.card_embeddings is not None:
@@ -643,9 +642,17 @@ class DeckBuilder(tf.Module):
         self.basics_to_add = (
             self.basic_decoder(built_deck, training=training) * n_basics
         )
-        self.basics_from_full = (
-            self.basic_decoder(full_decks, training=training) * n_basics
-        )
+        if training:
+            full_decks = tf.expand_dims(decks[:, -1, :], 1)
+            basics_from_full = (
+                self.basic_decoder(full_decks, training=training) * n_basics
+            )
+            return (
+                self.basics_to_add,
+                basics_from_full,
+                self.cards_to_add,
+                self.n_non_basics,
+            )
         return self.basics_to_add, self.cards_to_add, self.n_non_basics
 
     def compile(
@@ -700,7 +707,14 @@ class DeckBuilder(tf.Module):
 
     def loss(self, true, pred, sample_weight=None, **kwargs):
         true_basics, true_built = true
-        pred_basics, pred_built, n_basics = pred
+        if len(pred) == 4:
+            pred_basics, full_basics, pred_built, n_basics = pred
+            extra_basic_penalty = tf.reduce_sum(
+                tf.math.square(true_basics - full_basics), axis=-1
+            )
+        else:
+            extra_basic_penalty = 0.0
+            pred_basics, pred_built, n_basics = pred
         # self.basic_loss = self.basic_loss_f(true_basics, pred_basics, sample_weight=sample_weight)
         # self.built_loss = self.built_loss_f(true_built, pred_built, sample_weight=sample_weight)
         # n_spells = tf.reduce_sum(pred_built, axis=-1)
@@ -708,9 +722,7 @@ class DeckBuilder(tf.Module):
         self.basic_loss = tf.reduce_sum(
             (
                 tf.reduce_sum(tf.math.square(pred_basics - true_basics), axis=-1)
-                + tf.reduce_sum(
-                    tf.math.square(true_basics - self.basics_from_full), axis=-1
-                )
+                + extra_basic_penalty
             )
             * sample_weight
         )
@@ -744,7 +756,10 @@ class DeckBuilder(tf.Module):
         )
 
     def compute_metrics(self, true, pred, sample_weight=None, training=None, **kwargs):
-        pred_basics, pred_decks, n_basics = pred
+        if len(pred) == 4:
+            pred_basics, full_basics, pred_built, n_basics = pred
+        else:
+            pred_basics, pred_built, n_basics = pred
         true_basics, true_decks = true
         if sample_weight is None:
             sample_weight = 1.0 / true_decks.shape[0]
@@ -759,7 +774,7 @@ class DeckBuilder(tf.Module):
             * sample_weight
         )
         deck_diff = tf.reduce_sum(
-            tf.reduce_sum(tf.math.abs(pred_decks - true_decks), axis=-1) * sample_weight
+            tf.reduce_sum(tf.math.abs(pred_built - true_decks), axis=-1) * sample_weight
         )
         return {"basics_off": basic_diff, "spells_off": deck_diff}
 
