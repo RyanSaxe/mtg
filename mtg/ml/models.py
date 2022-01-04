@@ -546,10 +546,16 @@ class DeckBuilder(tf.Module):
         else:
             concat_dim = self.card_embeddings.shape[1] * 2
             self.deck_attention = MultiHeadAttention(
-                encoder_in_dim, encoder_in_dim, 4, name="deck_attention"
+                self.card_embeddings.shape[1],
+                self.card_embeddings.shape[1],
+                4,
+                name="deck_attention",
             )
             self.pool_attention = MultiHeadAttention(
-                encoder_in_dim, encoder_in_dim, 4, name="pool_attention"
+                self.card_embeddings.shape[1],
+                self.card_embeddings.shape[1],
+                4,
+                name="pool_attention",
             )
 
         self.card_decoder = nn.MLP(
@@ -625,7 +631,9 @@ class DeckBuilder(tf.Module):
             pool_embs = pools[:, :, :, None] * self.card_embeddings[None, None, :, :]
             deck_embs = decks[:, :, :, None] * self.card_embeddings[None, None, :, :]
             deck_mask = tf.where(decks > 0, 0, 1)
+            deck_mask = tf.repeat(tf.expand_dims(deck_mask, -1), 267, axis=-1)
             pool_mask = tf.where(pools > 0, 0, 1)
+            pool_mask = tf.repeat(tf.expand_dims(pool_mask, -1), 267, axis=-1)
             deck_att, _ = self.deck_attention(
                 deck_embs,
                 deck_embs,
