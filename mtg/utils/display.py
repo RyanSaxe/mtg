@@ -403,6 +403,7 @@ def draft_log_ai(
     r = requests.post(url="https://www.17lands.com/api/submit_draft", json=js)
     r_js = r.json()
     if build_model is not None:
+        pool[100000000000]
         pool = np.expand_dims(pool, 0)
         basics, spells, _ = build_decks_2(
             build_model, pool.copy(), cards=cards if basic_prior else None
