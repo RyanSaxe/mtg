@@ -545,18 +545,6 @@ class DeckBuilder(tf.Module):
             concat_dim = latent_dim * 2
         else:
             concat_dim = self.card_embeddings.shape[1] * 2
-            self.deck_attention = MultiHeadAttention(
-                self.card_embeddings.shape[1],
-                self.card_embeddings.shape[1],
-                4,
-                name="deck_attention",
-            )
-            self.pool_attention = MultiHeadAttention(
-                self.card_embeddings.shape[1],
-                self.card_embeddings.shape[1],
-                4,
-                name="pool_attention",
-            )
 
         self.card_decoder = nn.MLP(
             in_dim=latent_dim,
@@ -596,7 +584,7 @@ class DeckBuilder(tf.Module):
         )
         self.dropout = dropout
 
-    # #@tf.function
+    # @tf.function
     # def __call__(self, pools, training=None):
     #     if self.card_embeddings is not None:
     #         card_embs = pools[:, :, None] * self.card_embeddings[None, :, :]
@@ -628,46 +616,12 @@ class DeckBuilder(tf.Module):
         # store full pools to access in metrics
 
         if self.card_embeddings is not None:
-            input_shape = decks.shape
-            input_flat_shape = (input_shape[0] * input_shape[1], input_shape[2])
-            rshape_pools = tf.reshape(pools, input_flat_shape)
-            rshape_decks = tf.reshape(pools, input_flat_shape)
-            pool_embs = rshape_pools[:, :, None] * self.card_embeddings[None, :, :]
-            deck_embs = rshape_decks[:, :, None] * self.card_embeddings[None, :, :]
-            deck_mask = tf.repeat(
-                tf.expand_dims(tf.where(rshape_decks > 0, 0, 1), -1),
-                input_flat_shape[-1],
-                axis=-1,
+            self.latent_rep_pool = tf.reduce_sum(
+                pools[:, :, :, None] * self.card_embeddings[None, None, :, :], axis=2
             )
-            pool_mask = tf.repeat(
-                tf.expand_dims(tf.where(rshape_pools > 0, 0, 1), -1),
-                input_flat_shape[-1],
-                axis=-1,
+            self.latent_rep_deck = tf.reduce_sum(
+                decks[:, :, :, None] * self.card_embeddings[None, None, :, :], axis=2
             )
-            deck_att, _ = self.deck_attention(
-                deck_embs,
-                deck_embs,
-                deck_embs,
-                mask=tf.cast(deck_mask, dtype=tf.float32),
-                training=training,
-            )
-            pool_att, _ = self.pool_attention(
-                pool_embs,
-                pool_embs,
-                pool_embs,
-                mask=tf.cast(pool_mask, dtype=tf.float32),
-                training=training,
-            )
-            pool_att = tf.reshape(
-                pool_att,
-                (input_shape[0], input_shape[1], input_shape[2], pool_att.shape[-1]),
-            )
-            deck_att = tf.reshape(
-                deck_att,
-                (input_shape[0], input_shape[1], input_shape[2], deck_att.shape[-1]),
-            )
-            self.latent_rep_pool = tf.reduce_sum(pool_att, axis=2)
-            self.latent_rep_deck = tf.reduce_sum(deck_att, axis=2)
         else:
             self.latent_rep_pool = self.pool_encoder(pools, training=training)
             self.latent_rep_deck = self.deck_encoder(decks, training=training)
