@@ -624,8 +624,8 @@ class DeckBuilder(tf.Module):
         if self.card_embeddings is not None:
             pool_embs = pools[:, :, :, None] * self.card_embeddings[None, None, :, :]
             deck_embs = decks[:, :, :, None] * self.card_embeddings[None, None, :, :]
-            deck_mask = tf.where(decks > 0, 0, 1)
-            pool_mask = tf.where(pools > 0, 0, 1)
+            deck_mask = tf.where(tf.cast(decks, dtype=tf.int32) > 0, 0, 1)
+            pool_mask = tf.where(tf.cast(pools, dtype=tf.int32) > 0, 0, 1)
             deck_att, _ = self.deck_attention(
                 deck_embs, deck_embs, deck_embs, mask=deck_mask, training=training
             )
