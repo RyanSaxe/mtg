@@ -321,19 +321,19 @@ def draft_log_ai(
     for pick in picks:
         pxpy = "P" + str(pick["pack_number"] + 1) + "P" + str(pick["pick_number"] + 1)
         pack_mod = mod_lookup.get(pxpy, dict()).get("pack", dict())
-        pick_mod = mod_lookup.get(pxpy, dict()).get("pick", dict())
-        pick["available"] = [
-            pack_mod.get(
-                cardname["name"].lower().split("//")[0].strip(),
-                cardname["name"].lower().split("//")[0].strip(),
-            )
-            for cardname in pick["available"]
-        ]
+        pick_mod = mod_lookup.get(pxpy, dict()).get("pick", None)
+        for i, option in enumerate(pick["available"]):
+            cardname = option["name"].lower().split("//")[0].strip()
+            if cardname in pack_mod:
+                pick["available"][i]["name"] = cardname
         arena_ids_in_pack, arena_id_mapping = names_to_arena_ids(
             pick["available"], mapping=arena_id_mapping, return_mapping=True
         )
         position = int(pick["pack_number"] * n_picks_per_pack + pick["pick_number"])
-        correct_pick = pick["pick"]["name"].lower().split("//")[0].strip()
+        if pick_mod is not None:
+            correct_pick = pick_mod
+        else:
+            correct_pick = pick["pick"]["name"].lower().split("//")[0].strip()
         position_to_pxpy[position] = pxpy
         pick_idx = name_to_idx[correct_pick]
         pack = names_to_array(pick["available"], name_to_idx)
@@ -348,6 +348,10 @@ def draft_log_ai(
             "pick": arena_id_mapping[correct_pick],
         }
         js["picks"].append(pick_js)
+    pool_mod = mod_lookup.get("pool", dict())
+    for cardname, n_change in pool_mod.items():
+        card_idx = name_to_idx[cardname]
+        pool[card_idx] += n_change
     # insert n_cards idx to shift the picks passed into the model to prevent seeing the correct pick
     np_pick = np.tile(
         np.expand_dims(

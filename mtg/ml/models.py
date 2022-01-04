@@ -70,7 +70,7 @@ class ConcatEmbedding(tf.Module):
         )
         self.activation = activation
 
-    @tf.function
+    # @tf.function
     def __call__(self, x, training=None):
         # x is a card id
         item_embeddings = tf.gather(self.embedding, x)
@@ -176,7 +176,7 @@ class DraftBot(tf.Module):
         #     name=self.name + "_initial_card_bias",
         # )
 
-    @tf.function
+    # @tf.function
     def __call__(
         self, features, training=None, return_attention=False, return_build=True
     ):
@@ -449,7 +449,7 @@ class TransformerBlock(tf.Module):
         x = self.expand_attention(x, training=training)
         return self.compress_expansion(x, training=training)
 
-    @tf.function
+    # @tf.function
     def __call__(self, x, mask, encoder_output=None, training=None):
         attention_emb, attention_weights = self.attention(
             x, x, x, mask, training=training
@@ -590,7 +590,7 @@ class DeckBuilder(tf.Module):
         )
         self.dropout = dropout
 
-    # @tf.function
+    # #@tf.function
     # def __call__(self, pools, training=None):
     #     if self.card_embeddings is not None:
     #         card_embs = pools[:, :, None] * self.card_embeddings[None, :, :]
@@ -615,7 +615,7 @@ class DeckBuilder(tf.Module):
     #     )
     #     return basics_to_add, reconstruction, n_basics
 
-    @tf.function(experimental_relax_shapes=True)
+    # @tf.function(experimental_relax_shapes=True)
     def __call__(self, features, training=None):
         # batch x sample x n_cards
         pools, decks = features
