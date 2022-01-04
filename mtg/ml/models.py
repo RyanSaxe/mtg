@@ -630,14 +630,14 @@ class DeckBuilder(tf.Module):
                 deck_embs,
                 deck_embs,
                 deck_embs,
-                mask=tf.cast(deck_mask, dtype=tf.int32),
+                mask=tf.cast(deck_mask, dtype=tf.float32),
                 training=training,
             )
             pool_att, _ = self.pool_attention(
                 pool_embs,
                 pool_embs,
                 pool_embs,
-                mask=tf.cast(pool_mask, dtype=tf.int32),
+                mask=tf.cast(pool_mask, dtype=tf.float32),
                 training=training,
             )
             self.latent_rep_pool = tf.reduce_sum(pool_att, axis=2)
