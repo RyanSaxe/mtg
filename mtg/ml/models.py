@@ -624,9 +624,14 @@ class DeckBuilder(tf.Module):
         if self.card_embeddings is not None:
             pool_embs = pools[:, :, :, None] * self.card_embeddings[None, None, :, :]
             deck_embs = decks[:, :, :, None] * self.card_embeddings[None, None, :, :]
-
-            deck_att, _ = self.deck_attention(deck_embs, mask=tf.ones_like(deck_embs), training=training)
-            pool_att, _ = self.pool_attention(pool_embs, mask=tf.ones_like(pool_embs), training=training)
+            deck_mask = tf.where(decks > 0, 0, 1)
+            pool_mask = tf.where(pools > 0, 0, 1)
+            deck_att, _ = self.deck_attention(
+                deck_embs, deck_embs, deck_embs, mask=deck_mask, training=training
+            )
+            pool_att, _ = self.pool_attention(
+                pool_embs, pool_embs, pool_embs, mask=pool_mask, training=training
+            )
             self.latent_rep_pool = tf.reduce_sum(pool_att, axis=2)
             self.latent_rep_deck = tf.reduce_sum(deck_att, axis=2)
         else:
