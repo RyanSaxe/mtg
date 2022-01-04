@@ -488,7 +488,7 @@ def display_draft(df, cmap=None, pack=None):
         }
     )
 
-def save_att_to_dir(attention, location)
+def save_att_to_dir(attention, location):
     pathlib.Path(location).mkdir(parents=True, exist_ok=True)
     pxpy = []
     seq_l = attention.shape[-1]
