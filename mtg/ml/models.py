@@ -634,8 +634,14 @@ class DeckBuilder(tf.Module):
             rshape_decks = tf.reshape(pools, input_flat_shape)
             pool_embs = rshape_pools[:, :, None] * self.card_embeddings[None, :, :]
             deck_embs = rshape_decks[:, :, None] * self.card_embeddings[None, :, :]
-            deck_mask = tf.where(rshape_decks > 0, 0, 1)
-            pool_mask = tf.where(rshape_pools > 0, 0, 1)
+            deck_mask = tf.repeat(
+                tf.expand_dims(tf.where(rshape_decks > 0, 0, 1), -1),
+                input_flat_shape[-1],
+            )
+            pool_mask = tf.repeat(
+                tf.expand_dims(tf.where(rshape_pools > 0, 0, 1), -1),
+                input_flat_shape[-1],
+            )
             deck_att, _ = self.deck_attention(
                 deck_embs,
                 deck_embs,
