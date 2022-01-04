@@ -298,20 +298,13 @@ def draft_log_ai(
     return_attention=False,
     return_style="df",
     batch_size=1,
-    exchange_picks=-1,
-    exchange_packs=-1,
     return_model_input=False,
     token="",
     build_model=None,
     cards=None,
     verbose=False,
+    mod_lookup=dict(),
 ):
-    exchange_picks = (
-        [exchange_picks] if isinstance(exchange_picks, int) else exchange_picks
-    )
-    exchange_packs = (
-        [exchange_packs] if isinstance(exchange_packs, int) else exchange_packs
-    )
     name_to_idx = {v: k for k, v in idx_to_name.items()}
     picks = get_draft_json(draft_log_url)["picks"]
     n_picks_per_pack = t / 3
@@ -326,29 +319,22 @@ def draft_log_ai(
     js = {"expansion": "VOW", "token": f"{token}", "picks": []}
     arena_id_mapping = None
     for pick in picks:
+        pxpy = "P" + str(pick["pack_number"] + 1) + "P" + str(pick["pick_number"] + 1)
+        pack_mod = mod_lookup.get(pxpy, dict()).get("pack", dict())
+        pick_mod = mod_lookup.get(pxpy, dict()).get("pick", dict())
+        pick["available"] = [
+            pack_mod.get(
+                cardname["name"].lower().split("//")[0].strip(),
+                cardname["name"].lower().split("//")[0].strip(),
+            )
+            for cardname in pick["available"]
+        ]
         arena_ids_in_pack, arena_id_mapping = names_to_arena_ids(
             pick["available"], mapping=arena_id_mapping, return_mapping=True
         )
-        if pick["pick_number"] in exchange_picks:
-            exchange = True
-        else:
-            exchange = False
         position = int(pick["pack_number"] * n_picks_per_pack + pick["pick_number"])
-        if exchange and pick["pack_number"] in exchange_packs:
-            correct_pick_options = [
-                x["name"].lower().split("//")[0].strip()
-                for x in pick["available"]
-                if x["name"] != pick["pick"]["name"]
-            ]
-            correct_pick = np.random.choice(correct_pick_options)
-            position_to_pxpy[position] = (
-                "P" + str(pick["pack_number"] + 1) + "P*" + str(pick["pick_number"] + 1)
-            )
-        else:
-            correct_pick = pick["pick"]["name"].lower().split("//")[0].strip()
-            position_to_pxpy[position] = (
-                "P" + str(pick["pack_number"] + 1) + "P" + str(pick["pick_number"] + 1)
-            )
+        correct_pick = pick["pick"]["name"].lower().split("//")[0].strip()
+        position_to_pxpy[position] = pxpy
         pick_idx = name_to_idx[correct_pick]
         pack = names_to_array(pick["available"], name_to_idx)
         draft_info[0, position, :n_cards] = pack
