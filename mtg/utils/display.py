@@ -8,6 +8,9 @@ import matplotlib.pyplot as plt
 import warnings
 import re
 import json
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+import os
+import pathlib
 
 
 def print_deck(deck, cards, sort_by="name", return_str=False):
@@ -305,6 +308,7 @@ def draft_log_ai(
     verbose=False,
     mod_lookup=dict(),
     basic_prior=True,
+    att_folder=None,
 ):
     name_to_idx = {v: k for k, v in idx_to_name.items()}
     picks = get_draft_json(draft_log_url)["picks"]
@@ -369,12 +373,21 @@ def draft_log_ai(
         return model_input
     # we get the first element in anything we return to handle the case where the model couldn't properly serialize
     # and we hence need to copy the data to be the same shape as the batch size in order to run a stored model
-    if return_attention:
-        output, attention = model(model_input, training=False, return_attention=True)
-        output = output[0]
-        # attention = tf.squeeze(attention)
-    else:
-        output = model(model_input, training=False)[0]
+    output, attention = model(model_input, training=False, return_attention=True)
+    output = output[0]
+
+    if att_folder is not None:
+        draft_id = draft_log_url.split("/")[-1]
+        location = os.path.join(att_folder, draft_id)
+        att = {
+            "pack": attention[0],
+            "pick": attention[1][0],
+            "final": attention[1][1]
+        }
+        for att_name, att_vec in att.items():
+            att_loc = os.path.join(location, att_name)
+            save_att_to_dir(att_vec, att_loc)
+
     if return_style == "output":
         if return_attention:
             return output, attention
@@ -475,11 +488,39 @@ def display_draft(df, cmap=None, pack=None):
         }
     )
 
+def save_att_to_dir(attention, location)
+    pathlib.Path(location).mkdir(parents=True, exist_ok=True)
+    pxpy = []
+    seq_l = attention.shape[-1]
+    n_picks = (seq_l) / 3
+    for i in range(seq_l):
+        pack = i // n_picks + 1
+        pick = (i % n_picks) + 1
+        pxpy.append("P" + str(int(pack)) + "P" + str(int(pick)))
+    for i,pick in enumerate(pxpy)
+        img_loc = os.path.join(location, pick + ".png")
+        attention_weights = attention[:,i,:i + 1]
+        xlabels = pxpy[:i + 1]
+        fig = plt.figure(figsize=(900/96, 600/96), dpi=96)
+        plt.grid()
+        ax = plt.gca()
+        mat = ax.matshow(attention_weights)
+        ax.set_xticks(range(attention_weights.shape[-1]))
+        ax.set_yticks(range(attention_weights.shape[0]))
+        divider = make_axes_locatable(ax)
+        cax = divider.append_axes("right", size="5%", pad=0.05)
+        plt.colorbar(mat, cax=cax)
+        ax.set_xticklabels(xlabels, rotation=90)
+        plt.tight_layout()
+        plt.savefig(img_loc)
 
 def plot_attention_head(attention, pxpy):
 
     ax = plt.gca()
-    ax.matshow(attention)
+    mat = ax.matshow(attention)
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes("right", size="5%", pad=0.05)
+    plt.colorbar(mat, cax=cax)
     ax.set_xticks(range(len(pxpy)))
     ax.set_yticks(range(len(pxpy)))
 
