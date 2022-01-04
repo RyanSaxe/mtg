@@ -637,10 +637,12 @@ class DeckBuilder(tf.Module):
             deck_mask = tf.repeat(
                 tf.expand_dims(tf.where(rshape_decks > 0, 0, 1), -1),
                 input_flat_shape[-1],
+                axis=-1,
             )
             pool_mask = tf.repeat(
                 tf.expand_dims(tf.where(rshape_pools > 0, 0, 1), -1),
                 input_flat_shape[-1],
+                axis=-1,
             )
             deck_att, _ = self.deck_attention(
                 deck_embs,

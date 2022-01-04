@@ -304,6 +304,7 @@ def draft_log_ai(
     cards=None,
     verbose=False,
     mod_lookup=dict(),
+    basic_prior=True,
 ):
     name_to_idx = {v: k for k, v in idx_to_name.items()}
     picks = get_draft_json(draft_log_url)["picks"]
@@ -403,7 +404,9 @@ def draft_log_ai(
     r_js = r.json()
     if build_model is not None:
         pool = np.expand_dims(pool, 0)
-        basics, spells, _ = build_decks_2(build_model, pool.copy(), cards=cards)
+        basics, spells, _ = build_decks_2(
+            build_model, pool.copy(), cards=cards if basic_prior else None
+        )
         deck_url = display_deck(pool, basics, spells, cards, return_url=True)
     else:
         deck_url = None
