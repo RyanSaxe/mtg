@@ -382,7 +382,8 @@ def draft_log_ai(
         att = {"pack": attention[0], "pick": attention[1][0], "final": attention[1][1]}
         for att_name, att_vec in att.items():
             att_loc = os.path.join(location, att_name)
-            save_att_to_dir(att_vec, att_loc)
+            # index because shape is (1, n_heads, seq, seq)
+            save_att_to_dir(att_vec[0], att_loc)
 
     if return_style == "output":
         if return_attention:
