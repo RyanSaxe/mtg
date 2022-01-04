@@ -628,12 +628,14 @@ class DeckBuilder(tf.Module):
         # store full pools to access in metrics
 
         if self.card_embeddings is not None:
-            pool_embs = pools[:, :, :, None] * self.card_embeddings[None, None, :, :]
-            deck_embs = decks[:, :, :, None] * self.card_embeddings[None, None, :, :]
-            deck_mask = tf.where(decks > 0, 0, 1)
-            deck_mask = tf.repeat(tf.expand_dims(deck_mask, -1), 267, axis=-1)
-            pool_mask = tf.where(pools > 0, 0, 1)
-            pool_mask = tf.repeat(tf.expand_dims(pool_mask, -1), 267, axis=-1)
+            input_shape = decks.shape
+            input_flat_shape = (input_shape[0] * input_shape[1], input_shape[2])
+            rshape_pools = tf.reshape(pools, input_flat_shape)
+            rshape_decks = tf.reshape(pools, input_flat_shape)
+            pool_embs = rshape_pools[:, :, None] * self.card_embeddings[None, :, :]
+            deck_embs = rshape_decks[:, :, None] * self.card_embeddings[None, :, :]
+            deck_mask = tf.where(rshape_decks > 0, 0, 1)
+            pool_mask = tf.where(rshape_pools > 0, 0, 1)
             deck_att, _ = self.deck_attention(
                 deck_embs,
                 deck_embs,
@@ -647,6 +649,14 @@ class DeckBuilder(tf.Module):
                 pool_embs,
                 mask=tf.cast(pool_mask, dtype=tf.float32),
                 training=training,
+            )
+            pool_att = tf.reshape(
+                pool_att,
+                (input_shape[0], input_shape[1], input_shape[2], pool_att.shape[-1]),
+            )
+            deck_att = tf.reshape(
+                deck_att,
+                (input_shape[0], input_shape[1], input_shape[2], deck_att.shape[-1]),
             )
             self.latent_rep_pool = tf.reduce_sum(pool_att, axis=2)
             self.latent_rep_deck = tf.reduce_sum(deck_att, axis=2)
