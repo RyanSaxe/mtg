@@ -379,11 +379,7 @@ def draft_log_ai(
     if att_folder is not None:
         draft_id = draft_log_url.split("/")[-1]
         location = os.path.join(att_folder, draft_id)
-        att = {
-            "pack": attention[0],
-            "pick": attention[1][0],
-            "final": attention[1][1]
-        }
+        att = {"pack": attention[0], "pick": attention[1][0], "final": attention[1][1]}
         for att_name, att_vec in att.items():
             att_loc = os.path.join(location, att_name)
             save_att_to_dir(att_vec, att_loc)
@@ -488,6 +484,7 @@ def display_draft(df, cmap=None, pack=None):
         }
     )
 
+
 def save_att_to_dir(attention, location):
     pathlib.Path(location).mkdir(parents=True, exist_ok=True)
     pxpy = []
@@ -497,11 +494,11 @@ def save_att_to_dir(attention, location):
         pack = i // n_picks + 1
         pick = (i % n_picks) + 1
         pxpy.append("P" + str(int(pack)) + "P" + str(int(pick)))
-    for i,pick in enumerate(pxpy)
+    for i, pick in enumerate(pxpy):
         img_loc = os.path.join(location, pick + ".png")
-        attention_weights = attention[:,i,:i + 1]
-        xlabels = pxpy[:i + 1]
-        fig = plt.figure(figsize=(900/96, 600/96), dpi=96)
+        attention_weights = attention[:, i, : i + 1]
+        xlabels = pxpy[: i + 1]
+        fig = plt.figure(figsize=(900 / 96, 600 / 96), dpi=96)
         plt.grid()
         ax = plt.gca()
         mat = ax.matshow(attention_weights)
@@ -513,6 +510,7 @@ def save_att_to_dir(attention, location):
         ax.set_xticklabels(xlabels, rotation=90)
         plt.tight_layout()
         plt.savefig(img_loc)
+
 
 def plot_attention_head(attention, pxpy):
 
