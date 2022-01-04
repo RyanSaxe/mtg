@@ -545,6 +545,12 @@ class DeckBuilder(tf.Module):
             concat_dim = latent_dim * 2
         else:
             concat_dim = self.card_embeddings.shape[1] * 2
+            self.deck_attention = MultiHeadAttention(
+                encoder_in_dim, encoder_in_dim, 4, name="deck_attention"
+            )
+            self.pool_attention = MultiHeadAttention(
+                encoder_in_dim, encoder_in_dim, 4, name="pool_attention"
+            )
 
         self.card_decoder = nn.MLP(
             in_dim=latent_dim,
@@ -616,12 +622,13 @@ class DeckBuilder(tf.Module):
         # store full pools to access in metrics
 
         if self.card_embeddings is not None:
-            self.latent_rep_pool = tf.reduce_sum(
-                pools[:, :, :, None] * self.card_embeddings[None, None, :, :], axis=2
-            )
-            self.latent_rep_deck = tf.reduce_sum(
-                decks[:, :, :, None] * self.card_embeddings[None, None, :, :], axis=2
-            )
+            pool_embs = pools[:, :, :, None] * self.card_embeddings[None, None, :, :]
+            deck_embs = decks[:, :, :, None] * self.card_embeddings[None, None, :, :]
+
+            deck_att, _ = self.deck_attention(deck_embs, training=training)
+            pool_att, _ = self.pool_attention(pool_embs, training=training)
+            self.latent_rep_pool = tf.reduce_sum(pool_att, axis=2)
+            self.latent_rep_deck = tf.reduce_sum(deck_att, axis=2)
         else:
             self.latent_rep_pool = self.pool_encoder(pools, training=training)
             self.latent_rep_deck = self.deck_encoder(decks, training=training)
