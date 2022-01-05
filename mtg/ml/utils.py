@@ -39,7 +39,7 @@ def importance_weighting(df, minim=0.1, maxim=1.0):
     return (
         position_scale
         * scaled_win_rate
-        * np.clip(df["won"], a_min=0.5, a_max=1.0)
+        # * np.clip(df["won"], a_min=0.5, a_max=1.0)
         * 0.9 ** n_weeks
     )
 
