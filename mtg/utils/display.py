@@ -330,7 +330,7 @@ def draft_log_ai(
         for i, option in enumerate(pick["available"]):
             cardname = option["name"].lower().split("//")[0].strip()
             if cardname in pack_mod:
-                pick["available"][i]["name"] = cardname
+                pick["available"][i]["name"] = pack_mod[cardname]
         arena_ids_in_pack, arena_id_mapping = names_to_arena_ids(
             pick["available"], mapping=arena_id_mapping, return_mapping=True
         )
