@@ -25,7 +25,9 @@ def main():
         card_data=expansion.card_data_for_ML[5:],
         emb_dim=FLAGS.emb_dim,
         t=expansion.draft["position"].max() + 1,
-        num_heads=FLAGS.num_heads,
+        num_encoder_heads=FLAGS.num_encoder_heads,
+        num_decoder_heads=FLAGS.num_decoder_heads,
+        pointwise_ffn_width=FLAGS.pointwise_ffn_width,
         num_encoder_layers=FLAGS.num_encoder_layers,
         num_decoder_layers=FLAGS.num_decoder_layers,
         emb_dropout=FLAGS.embedding_dropout,
@@ -78,7 +80,22 @@ if __name__ == "__main__":
         "--emb_dim", type=int, default=128, help="card embedding dimension"
     )
     parser.add_argument(
-        "--num_heads", type=int, default=4, help="number of heads in the transformer"
+        "--num_encoder_heads",
+        type=int,
+        default=8,
+        help="number of heads in the encoder blocks of transformer",
+    )
+    parser.add_argument(
+        "--num_decoder_heads",
+        type=int,
+        default=8,
+        help="number of heads in the decoder blocks of transformer",
+    )
+    parser.add_argument(
+        "--pointwise_ffn_width",
+        type=int,
+        default=512,
+        help="each transformer block has a pointwise_ffn with this width as latent space",
     )
     parser.add_argument(
         "--num_encoder_layers",

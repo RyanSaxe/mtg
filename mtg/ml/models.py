@@ -89,9 +89,11 @@ class DraftBot(tf.Module):
         cards,
         emb_dim,
         t,
-        num_heads,
+        num_encoder_heads,
+        num_decoder_heads,
         num_encoder_layers,
         num_decoder_layers,
+        pointwise_ffn_width,
         card_data=None,
         emb_dropout=0.0,
         memory_dropout=0.0,
@@ -113,9 +115,9 @@ class DraftBot(tf.Module):
         self.positional_mask = 1 - tf.linalg.band_part(tf.ones((t, t)), -1, 0)
         self.encoder_layers = [
             TransformerBlock(
-                self.n_cards,
                 emb_dim,
-                num_heads,
+                num_encoder_heads,
+                pointwise_ffn_width,
                 dropout=memory_dropout,
                 name=f"memory_encoder_{i}",
             )
@@ -139,9 +141,9 @@ class DraftBot(tf.Module):
             )
         self.decoder_layers = [
             TransformerBlock(
-                self.n_cards,
                 emb_dim,
-                num_heads,
+                num_decoder_heads,
+                pointwise_ffn_width,
                 dropout=memory_dropout,
                 name=f"memory_decoder_{i}",
                 decode=True,
@@ -413,7 +415,7 @@ class TransformerBlock(tf.Module):
     """
 
     def __init__(
-        self, n_cards, emb_dim, num_heads, dropout=0.0, decode=False, name=None
+        self, emb_dim, num_heads, pointwise_ffn_width, dropout=0.0, decode=False, name=None
     ):
         super().__init__(name=name)
         self.dropout = dropout
@@ -425,12 +427,12 @@ class TransformerBlock(tf.Module):
         )
         self.expand_attention = Dense(
             emb_dim,
-            emb_dim * 4,
+            pointwise_ffn_width,
             activation=tf.nn.relu,
             name=self.name + "_pointwise_in",
         )
         self.compress_expansion = Dense(
-            emb_dim * 4, emb_dim, activation=None, name=self.name + "_pointwise_out"
+            pointwise_ffn_width, emb_dim, activation=None, name=self.name + "_pointwise_out"
         )
         self.final_layer_norm = LayerNormalization(
             emb_dim, name=self.name + "_out_norm"
