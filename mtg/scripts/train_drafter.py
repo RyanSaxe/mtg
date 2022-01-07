@@ -30,7 +30,7 @@ def main():
         pointwise_ffn_width=FLAGS.pointwise_ffn_width,
         num_encoder_layers=FLAGS.num_encoder_layers,
         num_decoder_layers=FLAGS.num_decoder_layers,
-        emb_dropout=FLAGS.embedding_dropout,
+        emb_dropout=FLAGS.emb_dropout,
         memory_dropout=FLAGS.transformer_dropout,
         name="DraftBot",
         output_MLP=FLAGS.output_MLP,
