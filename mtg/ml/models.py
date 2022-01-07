@@ -90,7 +90,8 @@ class DraftBot(tf.Module):
         emb_dim,
         t,
         num_heads,
-        num_memory_layers,
+        num_encoder_layers,
+        num_decoder_layers,
         card_data=None,
         emb_dropout=0.0,
         memory_dropout=0.0,
@@ -118,7 +119,7 @@ class DraftBot(tf.Module):
                 dropout=memory_dropout,
                 name=f"memory_encoder_{i}",
             )
-            for i in range(num_memory_layers)
+            for i in range(num_encoder_layers)
         ]
         # extra embedding as representation of bias before the draft starts. This is grabbed as the
         # representation for the "previous pick" that goes into the decoder for P1P1
@@ -145,7 +146,7 @@ class DraftBot(tf.Module):
                 name=f"memory_decoder_{i}",
                 decode=True,
             )
-            for i in range(num_memory_layers)
+            for i in range(num_decoder_layers)
         ]
         self.output_MLP = output_MLP
         if self.output_MLP:
