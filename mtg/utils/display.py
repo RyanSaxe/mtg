@@ -511,6 +511,7 @@ def save_att_to_dir(attention, location):
         ax.set_xticklabels(xlabels, rotation=90)
         plt.tight_layout()
         plt.savefig(img_loc)
+        plt.clf()
 
 
 def plot_attention_head(attention, pxpy):
@@ -847,3 +848,25 @@ def read_arena(log, name_to_idx=None, model=None, t=42, **kwargs):
                 if idx < t - 1:
                     pick_data[0, idx + 1] = pick_idx
     return None
+
+
+def p1p1_adjacency_matrix(model, expansion, n_sims=10000, n_top=3):
+    n_cards = len(expansion.cards) - 5
+    packs = np.ones((1, 42, n_cards), dtype=np.float32)
+    positions = np.expand_dims(np.arange(42, dtype=np.int32), 0)
+    picks = np.ones((1, 42), dtype=np.int32) * n_cards
+    output_mtx = np.zeros((n_sims, n_cards))
+    for i in range(n_sims):
+        if i % 1000 == 0:
+            print(i)
+        pack = expansion.generate_pack()
+        packs[0, 0, :] = pack
+        model_input = (packs, picks, positions)
+        output, _ = model(model_input, training=False, return_attention=True)
+        p1p1_out = output.numpy()[0, 0, :]
+        output_mtx[i, :] = p1p1_out
+    ranks = np.argsort(output_mtx, axis=-1)[:, ::-1]
+    adj_mtx = np.zeros((n_cards, n_cards))
+    for i in range(n_top - 1):
+        adj_mtx[np.tile(ranks[:, [i]], n_top - (i + 1)), ranks[:, i + 1 : n_top]] = 1
+    return adj_mtx
