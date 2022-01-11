@@ -4,3 +4,5 @@ scikit-learn
 ipykernel
 jupyter
 matplotlib
+tensorflow
+tqdm
