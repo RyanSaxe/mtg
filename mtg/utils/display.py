@@ -212,7 +212,14 @@ def read_mtgo(fname, name_to_idx=None, model=None, t=42):
 
 # test
 def draft_sim(
-    expansion, model, t=None, idx_to_name=None, token="", build_model=None, cards=None
+    expansion,
+    model,
+    t=None,
+    idx_to_name=None,
+    token="",
+    build_model=None,
+    cards=None,
+    basic_prior=True,
 ):
     name_to_idx = {v: k for k, v in idx_to_name.items()}
     seats = 8
@@ -277,11 +284,12 @@ def draft_sim(
     for idx in range(seats):
         if build_model is not None:
             pool = np.expand_dims(final_pools[idx], 0)
-            basics, spells, n_basics = build_model(pool, training=False)
-            basics, spells = build_decks(basics, spells, n_basics, cards=cards)
+            basics, spells, _ = build_decks(
+                build_model, pool.copy(), cards=cards if basic_prior else None
+            )
             deck_url = display_deck(pool, basics, spells, cards, return_url=True)
         else:
-            deck_url is None
+            deck_url = None
         r = requests.post(url="https://www.17lands.com/api/submit_draft", json=js[idx])
         r_js = r.json()
         draft_id = r_js["id"]
@@ -414,7 +422,7 @@ def draft_log_ai(
     r_js = r.json()
     if build_model is not None:
         pool = np.expand_dims(pool, 0)
-        basics, spells, _ = build_decks_2(
+        basics, spells, _ = build_decks(
             build_model, pool.copy(), cards=cards if basic_prior else None
         )
         deck_url = display_deck(pool, basics, spells, cards, return_url=True)
@@ -549,25 +557,7 @@ def plot_attention_weights(attention_heads):
         plt.show()
 
 
-def build_decks(basics, spells, n_basics, cards=None):
-    n_basics = np.round(n_basics)
-    n_spells = 40 - n_basics
-    deck = np.concatenate([basics, spells], axis=-1)
-    deck_out = np.zeros_like(deck)
-    for i in range(0, 40):
-        spell_argmax = np.squeeze(np.argmax(deck[:, 5:], axis=-1)) + 5
-        basic_argmax = np.squeeze(np.argmax(deck[:, :5], axis=-1))
-        card_to_add = np.where(np.squeeze(n_spells) > i, spell_argmax, basic_argmax,)
-        idx = np.arange(deck.shape[0]), card_to_add
-        deck[idx] -= 1
-        deck_out[idx] += 1
-    if cards is not None:
-        deck_out = recalibrate_basics(np.squeeze(deck_out), cards)
-        deck_out = deck_out[None, :]
-    return deck_out[:, :5], deck_out[:, 5:]
-
-
-def build_decks_2(model, pool, cards=None):
+def build_decks(model, pool, cards=None):
     pool = np.expand_dims(pool, 0)
     deck_out = np.zeros_like(pool)
     masked_flag = len(deck_out.shape) == 3

@@ -4,7 +4,7 @@ from mtg.ml.models import DeckBuilder
 import pickle
 from mtg.ml.trainer import Trainer
 import numpy as np
-from mtg.utils.display import build_decks_2
+from mtg.utils.display import build_decks
 from mtg.ml.utils import load_model
 
 
@@ -51,7 +51,7 @@ def main():
     x, y, z = train_gen[0]
     pid = 0
     pool = np.expand_dims(x[0][pid, 0, :], 0)
-    basics, spells, n_basics = build_decks_2(model, pool, cards=expansion.cards)
+    basics, spells, n_basics = build_decks(model, pool, cards=expansion.cards)
 
     model.save(expansion.cards, FLAGS.model_name)
 
