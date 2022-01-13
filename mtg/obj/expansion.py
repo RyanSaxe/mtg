@@ -30,6 +30,7 @@ class Expansion:
             self.card_data_for_ML = self.get_card_data_for_ML()
         else:
             self.card_data_for_ML = None
+        self.create_data_dependent_attributes()
 
     @property
     def types(self):
@@ -69,6 +70,8 @@ class Expansion:
         self.cards["basic_land_search"] = self.cards.apply(
             lambda x: search_check(x) and basic_check(x), axis=1
         )
+        # TODO: at the moment, flip cards are any non-normal cards. Consider
+        #      ways to handle other layouts like split cards too
         self.cards["flip"] = self.cards["layout"].apply(
             lambda x: 0.0 if x == "normal" else 1.0
         )
@@ -186,6 +189,20 @@ class Expansion:
         deck_cols = [x for x in decks.columns if x.startswith("deck_")]
         decks = decks[decks[deck_cols].sum(1) == 40]
         return decks
+
+    def create_data_dependent_attributes(self):
+        if self.draft is not None:
+            self.t = self.draft["position"].max() + 1
+
+    def get_mapping(self, key, value, include_basics=False):
+        assert key != value, "key and value must be different"
+        mapping = self.cards.set_index(key)[value].to_dict()
+        if not include_basics:
+            if key == "idx":
+                mapping = {k - 5: v for k, v in mapping.items() if k >= 5}
+            elif value == "idx":
+                mapping = {k: v - 5 for k, v in mapping.items() if v >= 5}
+        return mapping
 
 
 class VOW(Expansion):
