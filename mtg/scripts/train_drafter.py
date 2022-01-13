@@ -12,7 +12,7 @@ def main():
 
     train_gen, val_gen = create_train_and_val_gens(
         expansion.draft,
-        expansion.cards,
+        expansion.cards.copy(),
         train_p=FLAGS.train_p,
         id_col="draft_id",
         train_batch_size=FLAGS.batch_size,
@@ -21,10 +21,8 @@ def main():
     )
 
     model = DraftBot(
-        cards=train_gen.cards,
-        card_data=expansion.card_data_for_ML[5:],
+        expansion=expansion,
         emb_dim=FLAGS.emb_dim,
-        t=expansion.draft["position"].max() + 1,
         num_encoder_heads=FLAGS.num_encoder_heads,
         num_decoder_heads=FLAGS.num_decoder_heads,
         pointwise_ffn_width=FLAGS.pointwise_ffn_width,
@@ -33,7 +31,6 @@ def main():
         emb_dropout=FLAGS.emb_dropout,
         memory_dropout=FLAGS.transformer_dropout,
         name="DraftBot",
-        output_MLP=FLAGS.output_MLP,
     )
 
     model.compile(
@@ -42,8 +39,8 @@ def main():
         emb_lambda=FLAGS.emb_lambda,
         rare_lambda=FLAGS.rare_lambda,
         cmc_lambda=FLAGS.cmc_lambda,
-        card_data=expansion.card_data_for_ML.iloc[5:-1],
     )
+
     trainer = Trainer(model, generator=train_gen, val_generator=val_gen,)
     trainer.train(
         FLAGS.epochs,
@@ -100,13 +97,13 @@ if __name__ == "__main__":
     parser.add_argument(
         "--num_encoder_layers",
         type=int,
-        default=1,
+        default=2,
         help="number of transformer blocks for the encoder",
     )
     parser.add_argument(
         "--num_decoder_layers",
         type=int,
-        default=1,
+        default=2,
         help="number of transformer blocks for the decoder",
     )
     parser.add_argument(
@@ -120,12 +117,6 @@ if __name__ == "__main__":
         type=float,
         default=0.1,
         help="dropout rate inside each transformer block",
-    )
-    parser.add_argument(
-        "--output_MLP",
-        type=bool,
-        default=True,
-        help="flag to determine if the output of the model is via softmax(MLP(x)). If False, we use the strategy from the Contextual Rating Paper.",
     )
     parser.add_argument(
         "--lr_warmup",

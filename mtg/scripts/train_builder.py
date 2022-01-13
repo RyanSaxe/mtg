@@ -15,7 +15,7 @@ def main():
     decks = expansion.get_bo1_decks()
     train_gen, val_gen = create_train_and_val_gens(
         decks,
-        expansion.cards,
+        expansion.cards.copy(),
         train_p=FLAGS.train_p,
         id_col="draft_id",
         train_batch_size=FLAGS.batch_size,
@@ -91,7 +91,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--lr_warmup",
         type=float,
-        default=2000,
+        default=4000,
         help="number of warmup steps in the classic transformer learning rate scheduler",
     )
     parser.add_argument(

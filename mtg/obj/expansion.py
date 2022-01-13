@@ -75,6 +75,7 @@ class Expansion:
         self.cards["flip"] = self.cards["layout"].apply(
             lambda x: 0.0 if x == "normal" else 1.0
         )
+        self.cards = self.cards.sort_values(by="idx")
 
     def get_card_data_for_ML(self, return_df=True):
         ml_data = self.get_card_stats()
