@@ -172,11 +172,6 @@ class DraftBot(tf.Module):
 
     def loss(self, true, pred, sample_weight=None, training=None, **kwargs):
         pred, emb_dists = pred
-        # if isinstance(pred, tuple):
-        #     pred, built_decks_pred = pred
-        #     true, built_decks_true = true
-        # else:
-        #     self.deck_loss = 0
         self.prediction_loss = self.loss_f(true, pred, sample_weight=sample_weight)
 
         correct_one_hot = tf.one_hot(true, self.n_cards)
@@ -223,8 +218,6 @@ class DraftBot(tf.Module):
             sample_weight = tf.ones_like(true.shape) / (true.shape[0] * true.shape[1])
         sample_weight = sample_weight.flatten()
         pred, _ = pred
-        # if isinstance(pred, tuple):
-        #     pred, built_decks = pred
         top1 = tf.reduce_sum(
             tf.keras.metrics.sparse_top_k_categorical_accuracy(true, pred, 1)
             * sample_weight
