@@ -6,7 +6,7 @@ import warnings
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import os
 import pathlib
-from mtg.utils.dataloading_utils import get_draft_json
+from mtg.obj.dataloading_utils import get_draft_json
 
 
 def names_to_array(names, mapping):

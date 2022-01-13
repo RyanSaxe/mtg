@@ -3,7 +3,7 @@ from mtg.ml.generator import DraftGenerator, create_train_and_val_gens
 from mtg.ml.models import DraftBot
 import pickle
 from mtg.ml.trainer import Trainer
-from mtg.utils.display import draft_log_ai
+from mtg.ml.display import draft_log_ai
 
 
 def main():
