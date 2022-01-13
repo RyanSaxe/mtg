@@ -1,9 +1,7 @@
 from mtg.obj.cards import CardSet
 import pandas as pd
-from mtg.preprocess.seventeenlands import clean_bo1_games, get_card_rating_data
-from mtg.utils.dataloading_utils import load_data
+from mtg.obj.dataloading_utils import load_data, get_card_rating_data
 import numpy as np
-import re
 import time
 import random
 
@@ -32,6 +30,7 @@ class Expansion:
             self.card_data_for_ML = self.get_card_data_for_ML()
         else:
             self.card_data_for_ML = None
+        self.create_data_dependent_attributes()
 
     @property
     def types(self):
@@ -71,9 +70,12 @@ class Expansion:
         self.cards["basic_land_search"] = self.cards.apply(
             lambda x: search_check(x) and basic_check(x), axis=1
         )
+        # TODO: at the moment, flip cards are any non-normal cards. Consider
+        #      ways to handle other layouts like split cards too
         self.cards["flip"] = self.cards["layout"].apply(
             lambda x: 0.0 if x == "normal" else 1.0
         )
+        self.cards = self.cards.sort_values(by="idx")
 
     def get_card_data_for_ML(self, return_df=True):
         ml_data = self.get_card_stats()
@@ -186,33 +188,22 @@ class Expansion:
         )
         decks = self.bo1.groupby("draft_id").agg(d)
         deck_cols = [x for x in decks.columns if x.startswith("deck_")]
-        print("num decks total:", decks.shape[0])
         decks = decks[decks[deck_cols].sum(1) == 40]
-        print("num decks 40 cards:", decks.shape[0])
         return decks
 
-    def generate_pack(self, exclude_basics=True):
-        """
-        generate random pack of MTG cards
-        """
-        cards = self.cards.copy()
-        if exclude_basics:
-            cards = cards[cards["idx"] >= 5].copy()
-            cards["idx"] = cards["idx"] - 5
-        p_r = 7 / 8
-        p_m = 1 / 8
-        if np.random.random() < 1 / 8:
-            rare = random.sample(cards[cards["rarity"] == "mythic"]["idx"].tolist(), 1)
-        else:
-            rare = random.sample(cards[cards["rarity"] == "rare"]["idx"].tolist(), 1)
-        uncommons = random.sample(
-            cards[cards["rarity"] == "uncommon"]["idx"].tolist(), 3
-        )
-        commons = random.sample(cards[cards["rarity"] == "common"]["idx"].tolist(), 10)
-        idxs = rare + uncommons + commons
-        pack = np.zeros(len(cards))
-        pack[idxs] = 1
-        return pack
+    def create_data_dependent_attributes(self):
+        if self.draft is not None:
+            self.t = self.draft["position"].max() + 1
+
+    def get_mapping(self, key, value, include_basics=False):
+        assert key != value, "key and value must be different"
+        mapping = self.cards.set_index(key)[value].to_dict()
+        if not include_basics:
+            if key == "idx":
+                mapping = {k - 5: v for k, v in mapping.items() if k >= 5}
+            elif value == "idx":
+                mapping = {k: v - 5 for k, v in mapping.items() if v >= 5}
+        return mapping
 
 
 class VOW(Expansion):
@@ -262,8 +253,6 @@ class VOW(Expansion):
         )[0]
         upper_rarity = cards[cards["name"] == uncommon_or_rare_flip]["rarity"].values[0]
         if upper_rarity == "uncommon":
-            p_r = 7 / 8
-            p_m = 1 / 8
             if np.random.random() < 1 / 8:
                 rare = random.sample(
                     cards[(cards["rarity"] == "mythic") & (cards["flip"] == 0)][
@@ -327,3 +316,9 @@ class VOW(Expansion):
         types = super().types
         return types + ["human", "zombie", "wolf", "werewolf", "spirit", "aura"]
 
+
+def get_expansion_obj_from_name(expansion):
+    if expansion.lower() == "vow":
+        return VOW
+    else:
+        raise ValueError(f"{expansion} does not have a corresponding Expansion object.")

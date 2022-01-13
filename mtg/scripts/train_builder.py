@@ -4,7 +4,7 @@ from mtg.ml.models import DeckBuilder
 import pickle
 from mtg.ml.trainer import Trainer
 import numpy as np
-from mtg.utils.display import build_decks
+from mtg.ml.display import build_decks
 from mtg.ml.utils import load_model
 
 
@@ -15,7 +15,7 @@ def main():
     decks = expansion.get_bo1_decks()
     train_gen, val_gen = create_train_and_val_gens(
         decks,
-        expansion.cards,
+        expansion.cards.copy(),
         train_p=FLAGS.train_p,
         id_col="draft_id",
         train_batch_size=FLAGS.batch_size,
@@ -42,9 +42,14 @@ def main():
         cmc_lambda=FLAGS.cmc_lambda,
         card_data=expansion.card_data_for_ML.iloc[:-1, :],
     )
-    trainer = Trainer(model, generator=train_gen, val_generator=val_gen,)
+    trainer = Trainer(
+        model,
+        generator=train_gen,
+        val_generator=val_gen,
+    )
     trainer.train(
-        FLAGS.epochs, verbose=FLAGS.verbose,
+        FLAGS.epochs,
+        verbose=FLAGS.verbose,
     )
     # we run inference once before saving the model in order to serialize it with the right input parameters for inference
     # and we do it with train_gen because val_gen can be None, and this isn't used for validation but serialization
@@ -91,7 +96,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--lr_warmup",
         type=float,
-        default=2000,
+        default=4000,
         help="number of warmup steps in the classic transformer learning rate scheduler",
     )
     parser.add_argument(
