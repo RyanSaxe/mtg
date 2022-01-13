@@ -1,6 +1,6 @@
 # ml
 
-This repository is dedicated to Machine Learning implementations for Magic: the Gathering
+This repository is dedicated to Machine Learning implementations for Magic: the Gathering. Below is a quick description of each file, if you would like to see how to take all of this and train your own instances of the models in this folder, please refer to the `train_xxx.py` files in `mtg/scripts/`.
 
 ## layers.py
 
@@ -44,6 +44,10 @@ This file contains implementations of projects to apply Machine Learning to Magi
 ## generator.py
 
 This file contains data generator objects for batching 17lands data properly to feed into models in `models.py`.
+
+## trainer.py
+
+This file contains the custom training object used to train models from `models.py` using generators from `generator.py`.
 
 ## display.py
 
