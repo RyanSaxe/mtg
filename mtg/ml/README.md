@@ -53,7 +53,7 @@ This file contains the custom training object used to train models from `models.
 
 This file contains different ways to visualize and run pretrained models. Here is an example of a common use case for debugging:
 
-```
+```python
 from mtg.ml.display import draft_sim
 
 # assume draft_model and build_model are pretrained instances of those MTG models
