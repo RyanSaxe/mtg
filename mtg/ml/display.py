@@ -9,21 +9,6 @@ import pathlib
 from mtg.obj.dataloading_utils import get_draft_json
 
 
-def names_to_array(names, mapping):
-    """
-    convert json objects from 17lands to array the model can use
-    """
-    if len(names) > 0:
-        names = [x["name"].lower().split("//")[0].strip() for x in names]
-    else:
-        names = None
-    idxs = [mapping[name] for name in names]
-    unique, counts = np.unique(idxs, return_counts=True)
-    arr = np.zeros(len(mapping))
-    arr[unique] += counts
-    return arr
-
-
 def display_deck(pool, basics, spells, cards, return_url=False):
     """
     given deckbuilder model output, return either the text of the build or a link
@@ -60,7 +45,11 @@ def display_deck(pool, basics, spells, cards, return_url=False):
 
 
 def draft_sim(
-    expansion, model, token="", build_model=None, basic_prior=True,
+    expansion,
+    model,
+    token="",
+    build_model=None,
+    basic_prior=True,
 ):
     """
     run a draft table with 8 copies of bots
@@ -220,8 +209,14 @@ def draft_log_ai(
             correct_pick = pick["pick"]["name"].lower().split("//")[0].strip()
         position_to_pxpy[position] = pxpy
         pick_idx = name_to_idx[correct_pick]
-        arena_ids_in_pack = names_to_array(pick["available"], arena_mapping)
-        pack = names_to_array(pick["available"], name_to_idx)
+        names_pack = [
+            x["name"].lower().split("//")[0].strip() for x in pick["available"]
+        ]
+        idxs = [name_to_idx[name] for name in names_pack]
+        arena_ids_in_pack = [arena_mapping[name] for name in names_pack]
+        unique, counts = np.unique(idxs, return_counts=True)
+        pack = np.zeros(len(name_to_idx))
+        pack[unique] += counts
         draft_info[0, position, :n_cards] = pack
         draft_info[0, position, n_cards:] = pool
         pool[pick_idx] += 1
@@ -291,8 +286,8 @@ def draft_log_ai(
 
 def save_att_to_dir(attention, location, shift=False):
     """
-    create and store images showing each attention heads activations for 
-        the different places in models using attention. 
+    create and store images showing each attention heads activations for
+        the different places in models using attention.
 
     This aligns the heads such that it's easier to recognize patterns related
         to which head learns to process what
@@ -385,7 +380,7 @@ def build_decks(model, pool, cards=None):
 
 def recalibrate_basics(built_deck, cards, verbose=False):
     """
-    heuristic modification of basics in deckbuild to avoid OOD yielding 
+    heuristic modification of basics in deckbuild to avoid OOD yielding
      weird manabases (e.g. basic that cant cast anything)
 
     --> eventually this will not be necessary, once deckbuilder improves
