@@ -1,9 +1,8 @@
 from mtg.obj.cards import CardSet
 import pandas as pd
-from mtg.preprocess.seventeenlands import clean_bo1_games, get_card_rating_data
+from mtg.preprocess.seventeenlands import get_card_rating_data
 from mtg.utils.dataloading_utils import load_data
 import numpy as np
-import re
 import time
 import random
 
@@ -186,33 +185,8 @@ class Expansion:
         )
         decks = self.bo1.groupby("draft_id").agg(d)
         deck_cols = [x for x in decks.columns if x.startswith("deck_")]
-        print("num decks total:", decks.shape[0])
         decks = decks[decks[deck_cols].sum(1) == 40]
-        print("num decks 40 cards:", decks.shape[0])
         return decks
-
-    def generate_pack(self, exclude_basics=True):
-        """
-        generate random pack of MTG cards
-        """
-        cards = self.cards.copy()
-        if exclude_basics:
-            cards = cards[cards["idx"] >= 5].copy()
-            cards["idx"] = cards["idx"] - 5
-        p_r = 7 / 8
-        p_m = 1 / 8
-        if np.random.random() < 1 / 8:
-            rare = random.sample(cards[cards["rarity"] == "mythic"]["idx"].tolist(), 1)
-        else:
-            rare = random.sample(cards[cards["rarity"] == "rare"]["idx"].tolist(), 1)
-        uncommons = random.sample(
-            cards[cards["rarity"] == "uncommon"]["idx"].tolist(), 3
-        )
-        commons = random.sample(cards[cards["rarity"] == "common"]["idx"].tolist(), 10)
-        idxs = rare + uncommons + commons
-        pack = np.zeros(len(cards))
-        pack[idxs] = 1
-        return pack
 
 
 class VOW(Expansion):
@@ -262,8 +236,6 @@ class VOW(Expansion):
         )[0]
         upper_rarity = cards[cards["name"] == uncommon_or_rare_flip]["rarity"].values[0]
         if upper_rarity == "uncommon":
-            p_r = 7 / 8
-            p_m = 1 / 8
             if np.random.random() < 1 / 8:
                 rare = random.sample(
                     cards[(cards["rarity"] == "mythic") & (cards["flip"] == 0)][
@@ -327,3 +299,9 @@ class VOW(Expansion):
         types = super().types
         return types + ["human", "zombie", "wolf", "werewolf", "spirit", "aura"]
 
+
+def get_expansion_obj_from_name(expansion):
+    if expansion.lower() == "vow":
+        return VOW
+    else:
+        raise ValueError(f"{expansion} does not have a corresponding Expansion object.")
