@@ -6,7 +6,7 @@ This part of the project is responsible for card and data type objects.
 
 A `CardSet` object is meant to download card information from scryfall.com to easily integrate that information with other Magic data.
 
-```
+```python
 from mtg.obj.cards import CardSet
 #this object contains all cards in Crimson Vow with
 #cmc 4 or greater, that are present in booster packs
@@ -23,7 +23,7 @@ Generally, to work with `CardSet` data, it is best to use a pandas DataFrame. So
 
 Different expansions have different custom rules and datasets. The `Expansion` object will automatically pull the proper statistical data from 17lands.com, and integrate that with information from scryfall.com using the `CardSet` object.
 
-```
+```python
 from mtg.obj.expansion import VOW
 #use_ml_data specifies to get the 17lands stat data
 VOW_expansion = VOW(use_ml_data=True)
