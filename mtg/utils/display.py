@@ -1,59 +1,34 @@
 import tensorflow as tf
 import requests
 import numpy as np
-import pandas as pd
-from matplotlib import colors
-from matplotlib.colors import LinearSegmentedColormap
 import matplotlib.pyplot as plt
 import warnings
-import re
-import json
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import os
 import pathlib
+from mtg.utils.dataloading_utils import get_draft_json
 
 
-def print_deck(deck, cards, sort_by="name", return_str=False):
-    cards = cards.sort_values(by=sort_by)
-    output = ""
-    for card_idx, card_name in cards[["idx", "name"]].to_numpy():
-        count = deck[card_idx]
-        if count > 0:
-            print(count, card_name)
-            if return_str:
-                output += str(count) + " " + card_name + "\n"
-    if return_str:
-        return output
-
-
-def print_counts(deck, cards, col="type_line"):
-    col_counts = dict()
-    cards = cards.set_index("idx")
-    for card_idx, card_count in enumerate(deck):
-        if card_count > 0:
-            val = cards.loc[card_idx, col]
-            if val in col_counts:
-                col_counts[val] += card_count
-            else:
-                col_counts[val] = card_count
-    for key, value in col_counts.items():
-        print(key, ":", value)
-
-
-def get_draft_json(draft_log_url, stream=False):
-    if not stream:
-        base_url = "https://www.17lands.com/data/draft?draft_id="
+def names_to_array(names, mapping):
+    """
+    convert json objects from 17lands to array the model can use
+    """
+    if len(names) > 0:
+        names = [x["name"].lower().split("//")[0].strip() for x in names]
     else:
-        base_url = "https://www.17lands.com/data/draft/stream/?draft_id="
-    draft_ext = draft_log_url.split("/")[-1].strip()
-    log_json_url = base_url + draft_ext
-    response = requests.get(log_json_url, stream=stream)
-    if not stream:
-        response = response.json()
-    return response
+        names = None
+    idxs = [mapping[name] for name in names]
+    unique, counts = np.unique(idxs, return_counts=True)
+    arr = np.zeros(len(mapping))
+    arr[unique] += counts
+    return arr
 
 
 def display_deck(pool, basics, spells, cards, return_url=False):
+    """
+    given deckbuilder model output, return either the text of the build or a link
+     to sealeddeck.tech
+    """
     pool = np.squeeze(pool)
     basics = np.squeeze(basics)
     spells = np.squeeze(spells)
@@ -84,155 +59,31 @@ def display_deck(pool, basics, spells, cards, return_url=False):
     return output
 
 
-def list_to_names(cards_json):
-    if len(cards_json) > 0:
-        return [x["name"].lower().split("//")[0].strip() for x in cards_json]
-    else:
-        return None
-
-
-def names_to_array(names, mapping):
-    names = list_to_names(names)
-    idxs = [mapping[name] for name in names]
-    unique, counts = np.unique(idxs, return_counts=True)
-    arr = np.zeros(len(mapping))
-    arr[unique] += counts
-    return arr
-
-
-def load_arena_ids(expansion):
-    arena_id_file = "/content/drive/My Drive/mtg_data/card_list.csv"
-    id_df = pd.read_csv(arena_id_file)
-    id_df = id_df[(id_df["expansion"] == expansion) & (id_df["is_booster"])]
-    id_df["name"] = id_df["name"].str.lower()
-    return id_df.set_index("name")["id"].to_dict()
-
-
-def names_to_arena_ids(names, expansion="VOW", mapping=None, return_mapping=False):
-    if mapping is None:
-        mapping = load_arena_ids(expansion)
-    if not isinstance(names, list):
-        names = [names]
-    output = [mapping[x["name"].lower().split("//")[0].strip()] for x in names]
-    if return_mapping:
-        output = (output, mapping)
-    return output
-
-
-def read_mtgo(fname, name_to_idx=None, model=None, t=42):
-    """
-    process MTGO log file and convert it into tensors so the bot
-    can say what it would do
-    """
-    ignore_cards = ["plains", "island", "swamp", "mountain", "forest"]
-    with open(fname, "r") as f:
-        lines = f.readlines()
-    n_cards = len(name_to_idx.keys())
-    packs = np.ones((t, n_cards), dtype=np.float32)
-    picks = np.ones(t, dtype=np.int32) * n_cards
-    pools = np.ones((t, n_cards), dtype=np.float32)
-    positions = np.arange(t, dtype=np.int32)
-    in_pack = False
-    cur_pack = np.zeros(n_cards)
-    cur_pick = np.zeros(n_cards)
-    pool = np.zeros(n_cards)
-    idx = 0
-    for line in lines:
-        match = re.findall(r"Pack \d pick \d+", line)
-        if len(match) == 1:
-            in_pack = True
-            continue
-        if in_pack:
-            if len(line.strip()) == 0:
-                in_pack = False
-                if sum(cur_pick) != 0:
-                    pick_idx = np.where(cur_pick != 0)[0]
-                    assert len(pick_idx) == 1
-                    packs[idx, :] = cur_pack
-                    if idx + 1 < 41:
-                        picks[idx + 1] = pick_idx[0]
-                    pools[idx, :] = pool.copy()
-                    pool[pick_idx[0]] += 1
-                    idx += 1
-                cur_pack = np.zeros(n_cards)
-                cur_pick = np.zeros(n_cards)
-                continue
-            process = line.strip()
-            if process.startswith("-"):
-                cardname = process.split(" ", 1)[1].split("//")[0].strip().lower()
-                if cardname in ignore_cards:
-                    continue
-                card_idx = name_to_idx[cardname]
-                cur_pick[card_idx] = 1
-            else:
-                cardname = process.split("//")[0].strip().lower()
-                if cardname in ignore_cards:
-                    continue
-                card_idx = name_to_idx[cardname]
-            cur_pack[card_idx] = 1
-    if idx < 42:
-        packs[idx, :] = cur_pack
-        pools[idx, :] = pool.copy()
-    else:
-        idx -= 1
-    # draft_info = np.concatenate([packs, pools], axis=-1)
-    model_input = (
-        np.expand_dims(packs, 0),
-        np.expand_dims(picks, 0),
-        np.expand_dims(positions, 0),
-    )
-    if model is not None:
-        predictions, att = model(model_input, training=False, return_attention=True)
-        top3 = tf.math.top_k(predictions, k=3).indices.numpy()[0]
-        idx_to_name = {v: k for k, v in name_to_idx.items()}
-        print(
-            "pick:",
-            idx_to_name[top3[idx][0]],
-            "(",
-            predictions[0, idx, top3[idx][0]].numpy().round(3),
-            ")",
-            "--- followed by",
-            idx_to_name[top3[idx][1]],
-            "(",
-            predictions[0, idx, top3[idx][1]].numpy().round(3),
-            ")",
-            "and",
-            idx_to_name[top3[idx][2]],
-            "(",
-            predictions[0, idx, top3[idx][2]].numpy().round(3),
-            ")",
-        )
-        hold = input()
-        if hold == "stop":
-            return model_input
-        if idx < 41:
-            return read_mtgo(fname, name_to_idx=name_to_idx, model=model, t=t)
-    return model_input
-
-
-# test
 def draft_sim(
-    expansion,
-    model,
-    t=None,
-    idx_to_name=None,
-    token="",
-    build_model=None,
-    cards=None,
-    basic_prior=True,
+    expansion, model, token="", build_model=None, basic_prior=True,
 ):
-    name_to_idx = {v: k for k, v in idx_to_name.items()}
+    """
+    run a draft table with 8 copies of bots
+    """
+    t = expansion.t
+    idx_to_name = expansion.create_mapping("idx", "name", include_basics=False)
+    name_to_idx = expansion.create_mapping("name", "idx", include_basics=False)
+    arena_mapping = expansion.create_mapping("name", "arena_id", include_basics=False)
+    cards = expansion.cards.copy()
     seats = 8
     n_packs = 3
     n_cards = len(idx_to_name)
     n_picks = t // n_packs
 
     js = {
-        idx: {"expansion": "VOW", "token": f"{token}", "picks": []}
+        idx: {
+            "expansion": expansion.expansion.upper(),
+            "token": f"{token}",
+            "picks": [],
+        }
         for idx in range(seats)
     }
 
-    arena_mapping = load_arena_ids(expansion.expansion.upper())
     idx_to_js = {i: arena_mapping[idx_to_name[i]] for i in range(n_cards)}
 
     # index circular shuffle per iteration
@@ -303,22 +154,45 @@ def draft_sim(
 def draft_log_ai(
     draft_log_url,
     model,
-    t=None,
-    n_cards=None,
-    idx_to_name=None,
-    return_attention=False,
-    return_style="df",
+    expansion,
     batch_size=1,
-    return_model_input=False,
     token="",
     build_model=None,
-    cards=None,
-    verbose=False,
     mod_lookup=dict(),
     basic_prior=True,
     att_folder=None,
 ):
-    name_to_idx = {v: k for k, v in idx_to_name.items()}
+    """
+    given a draft log, create a copy of that log that highlights what the bot would do
+
+    att_folder: directory for storing attention visualizations
+    basic_prior: heuristic update of manabase in deckbuilder
+    mod_lookup: dictionary that lets you modify the data to prod the model and see if it
+                changes decisions. Use it as such:
+
+                {
+                    'PxPy':{
+                        'pack':{
+                            #change cardA to cardB in PxPy
+                            'cardA':'cardB'
+                        },
+                        #change the pick to cardC
+                        'pick': 'cardC'
+                    }
+                    'pool':{
+                        # remove two copies of cardD from the pool and replace
+                        # it with a copy of cardE and a copy of cardD
+                        'cardD':-2,
+                        'cardE':1,
+                        'cardF':1
+                    }
+                }
+    """
+    t = expansion.t
+    idx_to_name = expansion.create_mapping("idx", "name", include_basics=False)
+    name_to_idx = expansion.create_mapping("name", "idx", include_basics=False)
+    arena_mapping = expansion.create_mapping("name", "arena_id", include_basics=False)
+    cards = expansion.cards.copy()
     picks = get_draft_json(draft_log_url)["picks"]
     n_picks_per_pack = t / 3
     n_cards = len(name_to_idx)
@@ -329,8 +203,7 @@ def draft_log_ai(
     ).reshape(batch_size, t)
     actual_pick = []
     position_to_pxpy = dict()
-    js = {"expansion": "VOW", "token": f"{token}", "picks": []}
-    arena_id_mapping = None
+    js = {"expansion": expansion.expansion.upper(), "token": f"{token}", "picks": []}
     for pick in picks:
         pxpy = "P" + str(pick["pack_number"] + 1) + "P" + str(pick["pick_number"] + 1)
         pack_mod = mod_lookup.get(pxpy, dict()).get("pack", dict())
@@ -339,9 +212,7 @@ def draft_log_ai(
             cardname = option["name"].lower().split("//")[0].strip()
             if cardname in pack_mod:
                 pick["available"][i]["name"] = pack_mod[cardname]
-        arena_ids_in_pack, arena_id_mapping = names_to_arena_ids(
-            pick["available"], mapping=arena_id_mapping, return_mapping=True
-        )
+
         position = int(pick["pack_number"] * n_picks_per_pack + pick["pick_number"])
         if pick_mod is not None:
             correct_pick = pick_mod
@@ -349,6 +220,7 @@ def draft_log_ai(
             correct_pick = pick["pick"]["name"].lower().split("//")[0].strip()
         position_to_pxpy[position] = pxpy
         pick_idx = name_to_idx[correct_pick]
+        arena_ids_in_pack = names_to_array(pick["available"], arena_mapping)
         pack = names_to_array(pick["available"], name_to_idx)
         draft_info[0, position, :n_cards] = pack
         draft_info[0, position, n_cards:] = pool
@@ -358,7 +230,7 @@ def draft_log_ai(
             "pack_number": pick["pack_number"],
             "pick_number": pick["pick_number"],
             "pack_cards": arena_ids_in_pack,
-            "pick": arena_id_mapping[correct_pick],
+            "pick": arena_mapping[correct_pick],
         }
         js["picks"].append(pick_js)
     pool_mod = mod_lookup.get("pool", dict())
@@ -377,8 +249,6 @@ def draft_log_ai(
         tf.convert_to_tensor(np_pick, dtype=tf.int32),
         tf.convert_to_tensor(positions, dtype=tf.int32),
     )
-    if return_style == "input":
-        return model_input
     # we get the first element in anything we return to handle the case where the model couldn't properly serialize
     # and we hence need to copy the data to be the same shape as the batch size in order to run a stored model
     output, attention = model(model_input, training=False, return_attention=True)
@@ -389,35 +259,15 @@ def draft_log_ai(
         location = os.path.join(att_folder, draft_id)
         att = {"pack": attention[0], "pick": attention[1][0], "final": attention[1][1]}
         for att_name, att_vec in att.items():
-            att_loc = os.path.join(location, att_name)
+            # plot attention, shifted right if we're visualizing pick attention
+            att_loc = os.path.join(location, att_name, shift=att_name == "pick")
             # index because shape is (1, n_heads, seq, seq)
             save_att_to_dir(att_vec[0], att_loc)
 
-    if return_style == "output":
-        if return_attention:
-            return output, attention
-        else:
-            return output
     predictions = tf.math.top_k(output, k=3).indices.numpy()
     predicted_picks = [idx_to_name[pred[0]] for pred in predictions]
-    if return_style == "df":
-        df = pd.DataFrame()
-        df["predicted_pick"] = predicted_picks
-        df["human_pick"] = actual_pick
-        df["second_choice"] = [idx_to_name[pred[1]] for pred in predictions]
-        df["second_choice"].loc[
-            [idx for idx in df.index if idx % n_picks_per_pack >= n_picks_per_pack - 1]
-        ] = ""
-        df["third_choice"] = [idx_to_name[pred[2]] for pred in predictions]
-        df["third_choice"].loc[
-            [idx for idx in df.index if idx % n_picks_per_pack >= n_picks_per_pack - 2]
-        ] = ""
-        df.index = [position_to_pxpy[idx] for idx in df.index]
-        if return_attention:
-            return df, attention
-        return df
     for i, js_obj in enumerate(js["picks"]):
-        js_obj["suggested_pick"] = arena_id_mapping[predicted_picks[i]]
+        js_obj["suggested_pick"] = arena_mapping[predicted_picks[i]]
     r = requests.post(url="https://www.17lands.com/api/submit_draft", json=js)
     r_js = r.json()
     if build_model is not None:
@@ -439,70 +289,28 @@ def draft_log_ai(
         return (js, r)
 
 
-def display_draft(df, cmap=None, pack=None):
-    if pack is not None:
-        df = df.loc[[x for x in df.index if x.startswith("P" + str(pack))]]
-    if cmap is None:
-        cmap = LinearSegmentedColormap.from_list("gr", ["g", "w", "r"], N=256)
-    cm = plt.cm.get_cmap(cmap)
-    good_c = colors.rgb2hex(cm(int(cmap.N * 1 / 3)))
-    bad_c = colors.rgb2hex(cm(int(cmap.N * 2 / 3)))
-    human_picks = df["human_pick"].values
-    anything_correct = np.zeros_like(human_picks)
+def save_att_to_dir(attention, location, shift=False):
+    """
+    create and store images showing each attention heads activations for 
+        the different places in models using attention. 
 
-    def f(dat, good_c="green", bad_c="red", human_col_val=None):
-        output = []
-        for i, pick in enumerate(dat):
-            if human_col_val is not None:
-                flag = pick == human_picks[i]
-            else:
-                flag = anything_correct[i]
-                good_c = colors.rgb2hex(cm(int(cmap.N * (1 - flag))))
-            if flag:
-                output.append(f"background-color: {good_c}")
-                if human_col_val is not None:
-                    anything_correct[i] += human_col_val
-            else:
-                output.append(f"background-color: {bad_c}")
-        return output
-
-    style = df.style
-    human_col_val_map = {
-        "predicted_pick": 1.0,
-        "second_choice": 2.0 / 3.0,
-        "third_choice": 2.0 / 3.0,
-    }
-    for column in df.columns:
-        if column == "human_pick":
-            continue
-        style = style.apply(
-            f,
-            axis=0,
-            subset=column,
-            good_c=good_c,
-            bad_c=bad_c,
-            human_col_val=human_col_val_map[column],
-        )
-    style = style.apply(f, axis=0, subset="human_pick", good_c=good_c, bad_c=bad_c)
-    return style.set_properties(
-        **{
-            "text-align": "center",
-            "padding": "10px",
-            "border": "1px solid black",
-            "margin": "0px",
-        }
-    )
-
-
-def save_att_to_dir(attention, location):
+    This aligns the heads such that it's easier to recognize patterns related
+        to which head learns to process what
+    """
     pathlib.Path(location).mkdir(parents=True, exist_ok=True)
-    pxpy = []
+    if shift:
+        pxpy = ["BIAS"]
+    else:
+        pxpy = []
     seq_l = attention.shape[-1]
     n_picks = (seq_l) / 3
     for i in range(seq_l):
         pack = i // n_picks + 1
         pick = (i % n_picks) + 1
         pxpy.append("P" + str(int(pack)) + "P" + str(int(pick)))
+    if shift:
+        # if we shift right, we exclude the last pick of pack 3
+        pxpy = pxpy[:-1]
     for i, pick in enumerate(pxpy):
         img_loc = os.path.join(location, pick + ".png")
         attention_weights = attention[:, i, : i + 1]
@@ -522,42 +330,10 @@ def save_att_to_dir(attention, location):
         plt.clf()
 
 
-def plot_attention_head(attention, pxpy):
-
-    ax = plt.gca()
-    mat = ax.matshow(attention)
-    divider = make_axes_locatable(ax)
-    cax = divider.append_axes("right", size="5%", pad=0.05)
-    plt.colorbar(mat, cax=cax)
-    ax.set_xticks(range(len(pxpy)))
-    ax.set_yticks(range(len(pxpy)))
-
-    ax.set_xticklabels(pxpy, rotation=90)
-
-    ax.set_yticklabels(pxpy)
-
-
-def plot_attention_weights(attention_heads):
-    # pxpy = ["BIAS"]
-    pxpy = []
-    seq_l = attention_heads.shape[-1]
-    n_picks = (seq_l) / 3
-    for i in range(seq_l):
-        pack = i // n_picks + 1
-        pick = (i % n_picks) + 1
-        pxpy.append("P" + str(int(pack)) + "P" + str(int(pick)))
-
-    for h, head in enumerate(attention_heads):
-        fig = plt.figure(figsize=(10, 30))
-        plot_attention_head(head, pxpy)
-        plt.scatter(range(seq_l), range(seq_l), color="red")
-        plt.grid()
-        plt.title(f"Head {h+1}")
-        plt.tight_layout()
-        plt.show()
-
-
 def build_decks(model, pool, cards=None):
+    """
+    iteratively call the model to build the deck from a card pool
+    """
     pool = np.expand_dims(pool, 0)
     deck_out = np.zeros_like(pool)
     masked_flag = len(deck_out.shape) == 3
@@ -608,6 +384,12 @@ def build_decks(model, pool, cards=None):
 
 
 def recalibrate_basics(built_deck, cards, verbose=False):
+    """
+    heuristic modification of basics in deckbuild to avoid OOD yielding 
+     weird manabases (e.g. basic that cant cast anything)
+
+    --> eventually this will not be necessary, once deckbuilder improves
+    """
     color_to_idx = (
         cards[cards["idx"] < 5]
         .set_index("idx")["produced_mana"]
@@ -756,107 +538,3 @@ def recalibrate_basics(built_deck, cards, verbose=False):
             print("BUG")
             break
     return built_deck
-
-
-def live_arena_draft(idx_to_name=None, model=None, t=42, **kwargs):
-    n_cards = len(idx_to_name)
-    positions = np.expand_dims(np.arange(42, dtype=np.int32), 0)
-    packs = np.ones((1, 42, n_cards), dtype=np.float32)
-    picks = np.ones((1, 42), dtype=np.int32) * n_cards
-    output, _ = model((packs, picks, positions), training=False, return_attention=True)
-    p1p1_order = output[0, 0, :].numpy().argsort()[::-1]
-    p1p1_lookup = dict()
-    for i, idx in enumerate(p1p1_order):
-        name = idx_to_name[idx]
-        p1p1_lookup[name] = i
-    p1p1_running = True
-    while p1p1_running:
-        check_card = input("Check P1P1 Ranking for Card:")
-        if check_card == "stop":
-            p1p1_running = False
-        else:
-            rank = p1p1_lookup.get(check_card, "Improper Cardname")
-            print(rank)
-    name_to_idx = {v: k for k, v in idx_to_name.items()}
-    log_url = input("17lands Log URL:")
-    return read_arena(log_url, model=model, name_to_idx=name_to_idx, t=t, **kwargs)
-
-
-def read_arena(log, name_to_idx=None, model=None, t=42, **kwargs):
-    sdraft = get_draft_json(log, stream=True)
-    lines = sdraft.iter_lines()
-    n_picks_per_pack = t / 3
-    n_cards = len(name_to_idx)
-    positions = np.expand_dims(np.arange(t, dtype=np.int32), 0)
-    pick_data = np.ones((1, t), dtype=np.int32) * n_cards
-    pack_data = np.ones((1, t, n_cards), dtype=np.float32)
-    for line in lines:
-        line = line.decode("utf8").replace("null", '"null"')
-        if len(line) > 0:
-            data = json.loads(line[6:])
-            while isinstance(data, list):
-                data = data[0]
-            picks = data["payload"]["picks"]
-            for pick in picks:
-                print(
-                    f"Pack {str(pick['pack_number'] + 1)} Pick {str(pick['pick_number'] + 1)}"
-                )
-                idx = int(pick["pack_number"] * n_picks_per_pack + pick["pick_number"])
-                correct_pick = pick["pick"]
-                print(f"\tData Type: {type(correct_pick)}")
-                pack = names_to_array(pick["available"], name_to_idx)
-                pack_data[0, idx, :] = pack
-                if isinstance(correct_pick, dict):
-                    correct_pick = correct_pick["name"].lower().split("//")[0].strip()
-                    print(f"\tPick In Data Stream: {correct_pick}")
-                    pick_idx = name_to_idx[correct_pick]
-                else:
-                    model_input = (pack_data, pick_data, positions)
-                    predictions, att = model(
-                        model_input, training=False, return_attention=True
-                    )
-                    top3 = tf.math.top_k(predictions, k=3).indices.numpy()[0]
-                    pick_idx = top3[idx][0]
-                    idx_to_name = {v: k for k, v in name_to_idx.items()}
-                    print(
-                        "\tpick:",
-                        idx_to_name[top3[idx][0]],
-                        "(",
-                        predictions[0, idx, top3[idx][0]].numpy().round(3),
-                        ")",
-                        "\n\t\t2nd:",
-                        idx_to_name[top3[idx][1]],
-                        "(",
-                        predictions[0, idx, top3[idx][1]].numpy().round(3),
-                        ")",
-                        "\n\t\t3rd:",
-                        idx_to_name[top3[idx][2]],
-                        "(",
-                        predictions[0, idx, top3[idx][2]].numpy().round(3),
-                        ")",
-                    )
-                if idx < t - 1:
-                    pick_data[0, idx + 1] = pick_idx
-    return None
-
-
-def p1p1_adjacency_matrix(model, expansion, n_sims=10000, n_top=3):
-    n_cards = len(expansion.cards) - 5
-    packs = np.ones((1, 42, n_cards), dtype=np.float32)
-    positions = np.expand_dims(np.arange(42, dtype=np.int32), 0)
-    picks = np.ones((1, 42), dtype=np.int32) * n_cards
-    output_mtx = np.zeros((n_sims, n_cards))
-    for i in range(n_sims):
-        if i % 1000 == 0:
-            print(i)
-        pack = expansion.generate_pack()
-        packs[0, 0, :] = pack
-        model_input = (packs, picks, positions)
-        output, _ = model(model_input, training=False, return_attention=True)
-        p1p1_out = output.numpy()[0, 0, :]
-        output_mtx[i, :] = p1p1_out
-    ranks = np.argsort(output_mtx, axis=-1)[:, ::-1]
-    adj_mtx = np.zeros((n_cards, n_cards))
-    for i in range(n_top - 1):
-        adj_mtx[np.tile(ranks[:, [i]], n_top - (i + 1)), ranks[:, i + 1 : n_top]] = 1
-    return adj_mtx

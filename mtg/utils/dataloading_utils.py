@@ -183,3 +183,16 @@ def get_card_rating_data(expansion, endpoint=None, start=None, end=None, colors=
     card_df["name"] = card_df["name"].str.lower()
     card_df = card_df.set_index("name")
     return card_df[numerical_cols]
+
+
+def get_draft_json(draft_log_url, stream=False):
+    if not stream:
+        base_url = "https://www.17lands.com/data/draft?draft_id="
+    else:
+        base_url = "https://www.17lands.com/data/draft/stream/?draft_id="
+    draft_ext = draft_log_url.split("/")[-1].strip()
+    log_json_url = base_url + draft_ext
+    response = requests.get(log_json_url, stream=stream)
+    if not stream:
+        response = response.json()
+    return response
