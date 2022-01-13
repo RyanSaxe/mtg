@@ -68,7 +68,7 @@ def load_model(location, extra_pickle="attrs.pkl"):
     model = tf.saved_model.load(model_loc)
     try:
         with open(data_loc, "rb") as f:
-            cards = pickle.load(f)
-        return (model, cards)
+            extra = pickle.load(f)
+        return (model, extra)
     except:
         return model
