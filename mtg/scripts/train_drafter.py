@@ -3,7 +3,7 @@ from mtg.ml.generator import DraftGenerator, create_train_and_val_gens
 from mtg.ml.models import DraftBot
 import pickle
 from mtg.ml.trainer import Trainer
-from mtg.ml.display import draft_log_ai
+import tensorflow as tf
 
 
 def main():
@@ -41,18 +41,26 @@ def main():
         cmc_lambda=FLAGS.cmc_lambda,
     )
 
-    trainer = Trainer(model, generator=train_gen, val_generator=val_gen,)
+    trainer = Trainer(
+        model,
+        generator=train_gen,
+        val_generator=val_gen,
+    )
     trainer.train(
         FLAGS.epochs,
         print_keys=["prediction_loss", "embedding_loss", "rare_loss", "cmc_loss"],
         verbose=FLAGS.verbose,
     )
     # we run inference once before saving the model in order to serialize it with the right input parameters for inference
-    output_df, attention = draft_log_ai(
-        "https://www.17lands.com/draft/79dcc54822204a20a88a0e68ec3f8564",
-        model,
-        expansion,
+    # and we do it with train_gen because val_gen can be None, and this isn't used for validation but serialization
+    x, y, z = train_gen[0]
+    (packs, shifted_picks, positions) = x
+    model_input = (
+        tf.expand_dims(packs[0], 0),
+        tf.expand_dims(shifted_picks[0], 0),
+        tf.expand_dims(positions[0], 0),
     )
+    output, attention = model(model_input, training=False, return_attention=True)
     model.save(FLAGS.model_name)
 
 
