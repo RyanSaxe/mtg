@@ -24,7 +24,7 @@ class DraftBot(tf.Module):
         name=None,
     ):
         super().__init__(name=name)
-        self.idx_to_name = expansion.create_mapping("idx", "name", include_basics=False)
+        self.idx_to_name = expansion.get_mapping("idx", "name", include_basics=False)
         self.n_cards = len(self.idx_to_name)
         self.t = expansion.t
         self.card_data = expansion.card_data_for_ML[5:]

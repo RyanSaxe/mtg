@@ -66,9 +66,9 @@ def draft_sim(
     run a draft table with 8 copies of bots
     """
     t = expansion.t
-    idx_to_name = expansion.create_mapping("idx", "name", include_basics=False)
-    name_to_idx = expansion.create_mapping("name", "idx", include_basics=False)
-    arena_mapping = expansion.create_mapping("name", "arena_id", include_basics=False)
+    idx_to_name = expansion.get_mapping("idx", "name", include_basics=False)
+    name_to_idx = expansion.get_mapping("name", "idx", include_basics=False)
+    arena_mapping = expansion.get_mapping("name", "arena_id", include_basics=False)
     cards = expansion.cards.copy()
     seats = 8
     n_packs = 3
@@ -189,9 +189,9 @@ def draft_log_ai(
                 }
     """
     t = expansion.t
-    idx_to_name = expansion.create_mapping("idx", "name", include_basics=False)
-    name_to_idx = expansion.create_mapping("name", "idx", include_basics=False)
-    arena_mapping = expansion.create_mapping("name", "arena_id", include_basics=False)
+    idx_to_name = expansion.get_mapping("idx", "name", include_basics=False)
+    name_to_idx = expansion.get_mapping("name", "idx", include_basics=False)
+    arena_mapping = expansion.get_mapping("name", "arena_id", include_basics=False)
     cards = expansion.cards.copy()
     picks = get_draft_json(draft_log_url)["picks"]
     n_picks_per_pack = t / 3
