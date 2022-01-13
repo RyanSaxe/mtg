@@ -1,7 +1,6 @@
 import pandas as pd
-import numpy as np
+import requests
 import re
-from mtg.preprocess.seventeenlands import clean_bo1_games
 
 
 def load_data(filename, cards, name=None):
@@ -167,3 +166,20 @@ def load_draft_data(filename, cards):
     )
     df = df.sort_values(by=["draft_id", "position"])
     return df
+
+
+def get_card_rating_data(expansion, endpoint=None, start=None, end=None, colors=None):
+    if endpoint is None:
+        endpoint = f"https://www.17lands.com/card_ratings/data?expansion={expansion.upper()}&format=PremierDraft"
+        if start is not None:
+            endpoint += f"&start_date={start}"
+        if end is not None:
+            endpoint += f"&end_date={end}"
+        if colors is not None:
+            endpoint += f"&colors={colors}"
+    card_json = requests.get(endpoint).json()
+    card_df = pd.DataFrame(card_json).fillna(0.0)
+    numerical_cols = card_df.columns[card_df.dtypes != object]
+    card_df["name"] = card_df["name"].str.lower()
+    card_df = card_df.set_index("name")
+    return card_df[numerical_cols]

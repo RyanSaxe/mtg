@@ -1,7 +1,6 @@
 from mtg.obj.cards import CardSet
 import pandas as pd
-from mtg.preprocess.seventeenlands import get_card_rating_data
-from mtg.utils.dataloading_utils import load_data
+from mtg.utils.dataloading_utils import load_data, get_card_rating_data
 import numpy as np
 import time
 import random
