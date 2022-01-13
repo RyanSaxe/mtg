@@ -64,7 +64,6 @@ class Trainer:
             )
         else:
             metrics = dict()
-            # put regularization here if necessary
         grads = tape.gradient(loss, self.model.trainable_variables)
         if self.clip:
             grads, _ = tf.clip_by_global_norm(grads, self.clip)
