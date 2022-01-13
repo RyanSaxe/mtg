@@ -51,10 +51,7 @@ def main():
     output_df, attention = draft_log_ai(
         "https://www.17lands.com/draft/79dcc54822204a20a88a0e68ec3f8564",
         model,
-        return_attention=True,
-        idx_to_name=model.idx_to_name,
-        t=model.t,
-        n_cards=model.n_cards,
+        expansion,
     )
     model.save(FLAGS.model_name)
 
