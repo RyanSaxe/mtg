@@ -10,7 +10,7 @@ This file contains implementations of layers, such as `Dense`, `MultiHeadedAtten
 
 This file contains implementations of module blocks that models can use such as `MLP` and `TransformerBlock`. Here is an example of building an autoencoder using the `MLP` block.
 
-```
+```python
 import tensorflow as tf
 from mtg.ml.nn import MLP
 
