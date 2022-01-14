@@ -14,7 +14,7 @@ This repository contains an algorithm for automated drafting and building for Ma
 - Step 2: create a virtual environment in whatever your favorite way to do that is (e.g. `conda create -n my_env` -> `conda activate my_env`).
 - Step 3: `pip install .` will install this repo such that you can use `from mtg.xxx.yyy import zzz`.
 
-**NOTE:** I am not currently providing a pretrained instance of the Draft AI or DeckBulder AI in this repository. That means you cannot simply install this codebase, launch Magic Arena, and use the bot like I do. If you would like to do that, you need to use this code to train it yourself following [these instructions](mtg/scripts). A non-cleaned version of the UI I use that interacts with Magic Arena can be found [here](https://github.com/RyanSaxe/MTGA_Draft_17Lands), and it will eventually be cleaned and added to this repository under mtg/app.
+**NOTE:** I am not currently providing a pretrained instance of the Draft AI or DeckBulder AI in this repository. That means you cannot simply install this codebase, launch Magic Arena, and use the bot like I do. If you would like to do that, you need to use this code to train it yourself following [these instructions](mtg/scripts). A non-cleaned version of the UI I use that interacts with Magic Arena can be found [here](https://github.com/RyanSaxe/MTGA_Draft_17Lands), and it will eventually be cleaned and added to this repository under mtg/app/.
 
 ## documentation
 
