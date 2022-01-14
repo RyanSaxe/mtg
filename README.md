@@ -14,6 +14,8 @@ This repository contains an algorithm for automated drafting and building for Ma
 - Step 2: create a virtual environment in whatever your favorite way to do that is (e.g. `conda create -n my_env` -> `conda activate my_env`).
 - Step 3: `pip install .` will install this repo such that you can use `from mtg.xxx.yyy import zzz`.
 
+For instructions on how to get started with downloading the data and training your own model instance, [click here](mtg/scripts)
+
 ## documentation
 
 Find any documentation on usage of the different sections in the README of their corresponding folders.
