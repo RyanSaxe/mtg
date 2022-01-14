@@ -33,6 +33,15 @@ class DraftBot(tf.Module):
     out_dropout:            Dropout rate to be applied to the hidden layers in the
                                 MLP that converts the output from the transformer
                                 decoder to the prediction of what card to take
+
+    Lastly, I would like to address that I know offering the ability to have different
+        numbers of heads and layers in the encoder and decoder blocks is not commonplace.
+        Generally, I use the same numbers for these, but in my experimentations looking at
+        the activations of the attention vectors, it seems like the representation of packs
+        needs less processes (heads) than the representation of picks. This packs sense
+        from my domain expertise because an overwhelming majority of the reason to make a
+        pick is from pool context, not pack context. Hence, I offer the ability to modify
+        these numbers to experiment with how attention is different across those concepts.
     """
 
     def __init__(
