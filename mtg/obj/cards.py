@@ -2,7 +2,7 @@ import requests
 import urllib
 import json as js
 import pandas as pd
-import mtg.utils.scryfall_utils as scry_utils
+import mtg.obj.scryfall_utils as scry_utils
 
 
 class CardSet:

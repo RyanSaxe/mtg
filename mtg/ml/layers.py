@@ -95,8 +95,7 @@ class LayerNormalization(tf.Module):
 
 class MultiHeadAttention(tf.Module):
     """
-    tf implementation of multi-headed attention. For the Draft bot, this will use
-    self attention only. With that in mind, the parameters mean:
+    tf implementation of multi-headed attention.
 
         d_model is the final dimension for the embedding representation post-attention
 
@@ -107,7 +106,7 @@ class MultiHeadAttention(tf.Module):
             like [0, 0, 0, 1, 1, . . ., 1]), meaning that only information at P1P1, P1P2, and
             P1P3 can be used to make a prediction.
 
-    https://www.tensorflow.org/text/tutorials/transformer
+    implementation guided via: https://www.tensorflow.org/text/tutorials/transformer
     """
 
     def __init__(self, d_model, k_dim, num_heads, v_dim=None, name=None):

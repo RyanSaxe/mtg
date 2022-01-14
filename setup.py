@@ -29,7 +29,3 @@ setup(
     packages=find_packages(),
     install_requires=install_requires,
 )
-
-import os
-import pathlib
-pathlib.Path('data/').mkdir(parents=True, exist_ok=True)
