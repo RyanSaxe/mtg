@@ -12,7 +12,7 @@ class DraftBot(tf.Module):
     """
     Custom Tensorflow Model for Magic: the Gathering Draft AI
 
-    This algorithm is a transformer that functions on draft data modified to 
+    This algorithm is a transformer that functions on draft data modified to
         work in a sequence-to-sequence manner. Given a sequence of packs and
         picks, as well as a contextual pack that determines your options, the
         goal is to select the card from the context that is best (best determined
@@ -31,9 +31,10 @@ class DraftBot(tf.Module):
     emb_dropout:            Dropout rate to be applied to card embeddings
     memory_dropout:         Dropout rate to be applied to the transformer blocks
     out_dropout:            Dropout rate to be applied to the hidden layers in the
-                                MLP that converts the output from the transformer 
-                                decoder to the prediction of what card to take 
+                                MLP that converts the output from the transformer
+                                decoder to the prediction of what card to take
     """
+
     def __init__(
         self,
         expansion,
@@ -88,7 +89,7 @@ class DraftBot(tf.Module):
         #     1. project a one_hot_vector to an embedding of dimension emb_dim//2
         #     2. use an MLP on the data about each card (self.card_data) to yield an
         #        emb_dim//2 dimension embedding
-        #     3. The embedding we use for cards is the concatenation of 1. and 2. 
+        #     3. The embedding we use for cards is the concatenation of 1. and 2.
         self.card_embedding = nn.ConcatEmbedding(
             self.n_cards + 1,
             emb_dim,
@@ -124,7 +125,10 @@ class DraftBot(tf.Module):
 
     @tf.function
     def __call__(
-        self, features, training=None, return_attention=False,
+        self,
+        features,
+        training=None,
+        return_attention=False,
     ):
         packs, picks, positions = features
         # get the positional mask, which is a lookahead mask for autoregressive predictions.
@@ -132,13 +136,13 @@ class DraftBot(tf.Module):
         #    or later
         positional_masks = tf.gather(self.positional_mask, positions)
         # to make sure the model can differentiate context of a pool and pack at different time
-        #    steps, we have positional embeddings 
+        #    steps, we have positional embeddings
         #    (e.g. representation of card A at P1P1 is different than P1P8)
         positional_embeddings = self.positional_embedding(positions, training=training)
         all_card_embeddings = self.card_embedding(
             tf.range(self.n_cards), training=training
         )
-        # TODO: represent packs as 15 indices for each card in the pack rather than a 
+        # TODO: represent packs as 15 indices for each card in the pack rather than a
         #       binary vector. It's more computationally efficient and doesn't require
         #       the step below
         pack_card_embeddings = (
@@ -165,10 +169,10 @@ class DraftBot(tf.Module):
         # we run the transformer decoder on the pick information. So, at P1P5 decision,
         #     the transformer gets passed what the human took at P1P4. Attention with a
         #     lookahead mask lets the pick information represent the whole pool, because
-        #     the algorithm attends to prior picks, so at P1P5 the decoder looks at 
+        #     the algorithm attends to prior picks, so at P1P5 the decoder looks at
         #     P1P1-P1P4, which is the pool.
-        # 
-        # NOTE: at P1P1, we represent the pick (since there's no prior info) with a 
+        #
+        # NOTE: at P1P1, we represent the pick (since there's no prior info) with a
         #       vector representationt that is meant to describe the bias at the beginning
         #       of the draft.
         # TODO: explore adding positional information to the picks here. Should it be the
@@ -182,13 +186,13 @@ class DraftBot(tf.Module):
                 dec_embs, positional_masks, encoder_output=embs, training=training
             )  # (batch_size, t, emb_dim)
 
-        # in order to remove all cards in the set not in the pack as options, we create a 
-        #     mask that will guarantee the values will be zero when applying softmax 
+        # in order to remove all cards in the set not in the pack as options, we create a
+        #     mask that will guarantee the values will be zero when applying softmax
         mask_for_softmax = 1e9 * (1 - packs)
         card_rankings = (
             self.output_decoder(dec_embs, training=training) * packs - mask_for_softmax
         )  # (batch_size, t, n_cards)
-        # compute the euclidian distance between each card embedding from the pack and 
+        # compute the euclidian distance between each card embedding from the pack and
         #     the output of the transformer decoder. This is used to regularize the network
         #     by saying "the embedding for the correct pick should be close to the output
         #     from the transformer, and far from the other cards in the pack". Conceptually
@@ -196,7 +200,7 @@ class DraftBot(tf.Module):
         # NOTE: I tested the direct implementation of this paper where, rather than using
         #       `self.output_decoder` to determine the card rankings, you just directly pick
         #       the card with the closest distance to the output of the context (transformer
-        #       decoder). This consistently lagged behind using the decoder on validation 
+        #       decoder). This consistently lagged behind using the decoder on validation
         #       performance. Still a lot to experiment with the embedding space.
         emb_dists = (
             tf.sqrt(
@@ -235,18 +239,18 @@ class DraftBot(tf.Module):
         margin:                 the minimal distance margin for triplet loss on the card embeddings
         emb_lambda:             the regularization coefficient for triplet loss on the card embeddings
         pred_lambda:            the coefficent for the main prediction task of the loss function
-        bad_behavior_lambda:    the regularization coefficient to be applied to all penalties that 
+        bad_behavior_lambda:    the regularization coefficient to be applied to all penalties that
                                     are structured as expert priors to avoid learning unwanted behavior
                                     such as rare drafting
-        rare_lambda:            the regularization coefficient for the penalty on taking rares when the 
+        rare_lambda:            the regularization coefficient for the penalty on taking rares when the
                                     bot shouldn't
-        cmc_lambda:             the regularization coefficient for the penalty that asks the model to bias 
+        cmc_lambda:             the regularization coefficient for the penalty that asks the model to bias
                                     towards cheaper cards.
         cmc_margin:             the minimal distance margin for when to incur a penalty for taking expensive
-                                    cards. For example: if cmc_margin = 1.5, the bot confidently wants to take 
-                                    a 5 drop, but the human takes a 3-drop, we incur a penalty of 0.5. If the 
+                                    cards. For example: if cmc_margin = 1.5, the bot confidently wants to take
+                                    a 5 drop, but the human takes a 3-drop, we incur a penalty of 0.5. If the
                                     bot takes a card with cmc four or less, the penalty would be zero.
-        metric_names:            a list of which metrics to use to help debug.  
+        metric_names:            a list of which metrics to use to help debug.
         """
         if optimizer is None:
             if isinstance(learning_rate, dict):
@@ -386,11 +390,11 @@ class DraftBot(tf.Module):
 
 
 class DeckBuilder(tf.Module):
-        """
+    """
     Custom Tensorflow Model for Magic: the Gathering DeckBuilder AI
 
     This algorithm is an Denoising AutoEncoder:
-        Deckbuilding in Limited is about taking a card pool, and yielding a 
+        Deckbuilding in Limited is about taking a card pool, and yielding a
         subset of that pool as a deck, which is effectively "denoising" the pool
         by removing the sideboard cards from it.
 
@@ -400,8 +404,8 @@ class DeckBuilder(tf.Module):
                 problem, and training is continuous
 
     Addressing basics:
-        Observe that adding basics to a deck is a function of the final deck, and 
-        not the direct card pool. So, let DeckBuilder(pool) -> deck_projection. Then, 
+        Observe that adding basics to a deck is a function of the final deck, and
+        not the direct card pool. So, let DeckBuilder(pool) -> deck_projection. Then,
         we want to learn an additional function F(deck_projection) -> basics.
 
     Addressing inference:
@@ -413,15 +417,15 @@ class DeckBuilder(tf.Module):
         1 and 1? It's unclear, and often yields issues (empirically it did at least).
 
         So, we modify the problem such that an iterative argmax makes sense. Rather than
-        having the input just be a pool, we pass the model the available pool, and the 
-        current deck, where the current deck can be of any size and simply represents 
+        having the input just be a pool, we pass the model the available pool, and the
+        current deck, where the current deck can be of any size and simply represents
         "cards in the pool that MUST be added to the deck at the end". This way, at
         inference, we can do the following:
 
             1. Pass a full pool and an empty deck
             2. Allocate the argmax of the output to the deck, and subtract it from the pool
             3. Run the model again, and repeat until the model says to stop adding cards
-            4. Take the final allocation, and pass it to F mentioned in Addressing basics 
+            4. Take the final allocation, and pass it to F mentioned in Addressing basics
                     section to yield the basics corresponding to the pool.
 
         In order to accomplish this, we generate deck data as follows:
@@ -440,8 +444,14 @@ class DeckBuilder(tf.Module):
     embeddings: The dimension for card embeddings. If a matrix is passed, it is
                     treated as pretrained card embeddings and frozen.
     """
+
     def __init__(
-        self, n_cards, dropout=0.0, latent_dim=32, embeddings=128, name=None,
+        self,
+        n_cards,
+        dropout=0.0,
+        latent_dim=32,
+        embeddings=128,
+        name=None,
     ):
         super().__init__(name=name)
         self.n_cards = n_cards
@@ -562,9 +572,9 @@ class DeckBuilder(tf.Module):
                                     Adam with a scheduler that warms up the LR. This is recommended.
         basic_lambda:           the coefficient for matching the basics the human chose to add
         built_lambda:           the coefficent for matching the non-basics the human chose to add
-        cmc_lambda:             the regularization coefficient for the penalty that asks the model to bias 
+        cmc_lambda:             the regularization coefficient for the penalty that asks the model to bias
                                     towards building decks with similar curves to humans (needs improvement)
-        metric_names:            a list of which metrics to use to help debug. 
+        metric_names:            a list of which metrics to use to help debug.
         """
         if optimizer is None:
             if isinstance(learning_rate, dict):
