@@ -22,6 +22,6 @@ Find any documentation on usage of the different sections in the README of their
 
 ## TODO
 
-- Integrate deckbuilder and drafter in one end-to-end pipeline
-- Create project for 17lands data visualizations and explorations
-- Add mtg/app/ as a folder to contain the application UI for running on live arena drafts
+- Integrate deckbuilder and drafter in one end-to-end pipeline.
+- Add mtg/viz/ as a folder for containing 17lands data visualizations, explorations, and useful insights.
+- Add mtg/app/ as a folder to contain the application UI for running on live arena drafts.
