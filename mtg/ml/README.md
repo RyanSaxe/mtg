@@ -15,26 +15,26 @@ import tensorflow as tf
 from mtg.ml.nn import MLP
 
 class AutoEncoder(tf.Module):
-  def __init__(self, in_dim, emb_dim, name=None):
-    super().__init__(name=name)
-    self.encoder = MLP(
-      in_dim = in_dim,
-      start_dim = in_dim // 2
-      n_h_layers = 2,
-      out_dim = emb_dim,
-      style="bottleneck",
-    )
-    self.decoder = MLP(
-      in_dim = emb_dim,
-      start_dim = emb_dim * 2,
-      n_h_layers = 2,
-      out_dim = in_dim,
-      style="reverse_bottleneck",
-    )
+    def __init__(self, in_dim, emb_dim, name=None):
+        super().__init__(name=name)
+        self.encoder = MLP(
+            in_dim = in_dim,
+            start_dim = in_dim // 2
+            n_h_layers = 2,
+            out_dim = emb_dim,
+            style="bottleneck",
+        )
+        self.decoder = MLP(
+            in_dim = emb_dim,
+            start_dim = emb_dim * 2,
+            n_h_layers = 2,
+            out_dim = in_dim,
+            style="reverse_bottleneck",
+        )
     
-  def __call__(self, x, training=None):
-    embedding = self.encoder(x, training=training)
-    return self.decoder(embedding, training=training)
+    def __call__(self, x, training=None):
+        embedding = self.encoder(x, training=training)
+        return self.decoder(embedding, training=training)
  ```
 
 ## model.py
