@@ -126,8 +126,8 @@ class DraftBot(tf.Module):
             n_h_layers=1,
             dropout=out_dropout,
             name="output_decoder",
-            start_act=tf.nn.selu,
-            middle_act=tf.nn.selu,
+            start_act=tf.nn.relu,
+            middle_act=tf.nn.relu,
             out_act=None,
             style="reverse_bottleneck",
         )
@@ -486,8 +486,8 @@ class DeckBuilder(tf.Module):
             dropout=0.0,
             name="card_decoder",
             noise=0.0,
-            start_act=tf.nn.selu,
-            middle_act=tf.nn.selu,
+            start_act=tf.nn.relu,
+            middle_act=tf.nn.relu,
             out_act=tf.nn.sigmoid,
             style="reverse_bottleneck",
         )
@@ -500,8 +500,8 @@ class DeckBuilder(tf.Module):
             dropout=0.0,
             name="basic_decoder",
             noise=0.0,
-            start_act=tf.nn.selu,
-            middle_act=tf.nn.selu,
+            start_act=tf.nn.relu,
+            middle_act=tf.nn.relu,
             out_act=tf.nn.softmax,
             style="reverse_bottleneck",
         )
