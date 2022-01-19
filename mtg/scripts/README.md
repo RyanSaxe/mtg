@@ -53,9 +53,7 @@ log_url = draft_log_ai(
     log,
     draft_model,
     expansion=expansion,
-    batch_size=1,
     token=token,
     build_model=build_model,
-    basic_prior=True,
 )
 ```
