@@ -1,6 +1,6 @@
 # mtg
 
-Collection of data science and machine learning projects for Magic: the Gathering, including a state of the art Draft and DeckBuilder AI.
+State of the art Magic: the Gathering Draft and DeckBuilder AI.
 
 ## achievements
 
