@@ -8,6 +8,12 @@ State of the art Magic: the Gathering Draft and DeckBuilder AI.
 
 This repository contains an algorithm for automated drafting and building for Magic: the Gathering. I used this algorithm to achieve the highest rank (Mythic) on Magic Arena. I did so in 23 drafts, with a 66% win-rate, which is comparable to how I perform on my normal account in which I do not use any algorithms. The highest rank within Mythic I have hit so far is #27. As far as I know, this is the first time anybody has acheived results of this caliber using an AI in Magic: the Gathering.
 
+## architecture
+
+Below is a general description of the transformer architecture for the Draft AI in order to make it easier to grok than reading through code.
+
+![transformer](https://user-images.githubusercontent.com/2286292/158926118-86d8301e-8c0e-43c2-a21b-cced4f785b97.jpg)
+
 ## installation
 
 - Step 1: clone this repository, and cd into it.
