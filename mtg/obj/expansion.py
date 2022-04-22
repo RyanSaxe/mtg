@@ -165,7 +165,7 @@ class Expansion:
         card_df = pd.DataFrame()
         for colors in all_colors:
             time.sleep(1)
-            card_data_df = get_card_rating_data("VOW", colors=colors)
+            card_data_df = get_card_rating_data(self.get_expansion_code(), colors=colors)
             extension = "" if colors is None else "_" + colors
             card_data_df.columns = [col + extension for col in card_data_df.columns]
             card_df = pd.concat([card_df, card_data_df], axis=1).fillna(0.0)
@@ -204,6 +204,9 @@ class Expansion:
             elif value == "idx":
                 mapping = {k: v - 5 for k, v in mapping.items() if v >= 5}
         return mapping
+
+    def get_expansion_code(self):
+        return "VOW"
 
 
 class VOW(Expansion):
@@ -316,9 +319,117 @@ class VOW(Expansion):
         types = super().types
         return types + ["human", "zombie", "wolf", "werewolf", "spirit", "aura"]
 
+class NEO(Expansion):
+    def __init__(
+        self,
+        bo1=None,
+        bo3=None,
+        quick=None,
+        draft=None,
+        replay=None,
+        ml_data=True,
+        idx_to_name=None,
+    ):
+        super().__init__(
+            expansion="neo",
+            bo1=bo1,
+            bo3=bo3,
+            quick=quick,
+            draft=draft,
+            replay=replay,
+            ml_data=ml_data,
+            idx_to_name=idx_to_name,
+        )
+
+    def generate_pack(self, exclude_basics=True, name_to_idx=None, return_names=False):
+        """
+        generate random pack of MTG cards
+        """
+        cards = self.cards.copy()
+        if exclude_basics:
+            cards = cards[cards["idx"] >= 5].copy()
+            cards["idx"] = cards["idx"] - 5
+        if name_to_idx is None:
+            name_to_idx = cards.set_index("name")["idx"].to_dict()
+        common_or_uncommon_flip = random.sample(
+            cards[(cards["rarity"].isin(["common", "uncommon"])) & (cards["flip"] == 1)][
+                "name"
+            ].tolist(),
+            1,
+        )[0]
+        upper_rarity = cards[cards["name"] == common_or_uncommon_flip]["rarity"].values[0]
+        if upper_rarity == "uncommon":
+            uncommons = random.sample(
+                cards[(cards["rarity"] == "uncommon") & (cards["flip"] == 0)][
+                    "name"
+                ].tolist(),
+                2,
+            ) + [common_or_uncommon_flip]
+            commons = []
+        else:
+            uncommons = random.sample(
+                cards[(cards["rarity"] == "uncommon") & (cards["flip"] == 0)][
+                    "name"
+                ].tolist(),
+                3,
+            )
+            commons = [common_or_uncommon_flip]
+        if np.random.random() < 1 / 8:
+                rare = random.sample(
+                    cards[(cards["rarity"] == "mythic") & (cards["flip"] == 0)][
+                        "name"
+                    ].tolist(),
+                    1,
+                )
+        else:
+            rare = random.sample(
+                cards[(cards["rarity"] == "rare") & (cards["flip"] == 0)][
+                    "name"
+                ].tolist(),
+                1,
+            )
+        # make sure at least one common of each color
+        for color in list("WUBRG"):
+            color_common = random.sample(
+                cards[
+                    (cards["rarity"] == "common")
+                    & (cards["flip"] == 0)
+                    & (cards["mana_cost"].str.contains(color))
+                    & (~cards["name"].isin(commons))
+                ]["name"].tolist(),
+                1,
+            )
+            commons += color_common
+        other_commons = random.sample(
+            cards[
+                ((cards["rarity"] == "common"))
+                & (cards["flip"] == 0)
+                & (~cards["name"].isin(commons))
+            ]["name"].tolist(),
+            9 - len(commons),
+        )
+        commons += other_commons
+        names = rare + uncommons + commons
+        if return_names:
+            return names
+        idxs = [name_to_idx[name] for name in names]
+        pack = np.zeros(len(cards))
+        pack[idxs] = 1
+        return pack
+
+    @property
+    def types(self):
+        types = super().types
+        return types + ["samurai", "warrior", "vehicle", "shrine", "aura", "ninja", "rogue", "dragon", "frog", "saga"]
+
+    def get_expansion_code(self):
+        return "NEO"
+
 
 def get_expansion_obj_from_name(expansion):
     if expansion.lower() == "vow":
         return VOW
+    elif expansion.lower() == "neo":
+        return NEO
     else:
         raise ValueError(f"{expansion} does not have a corresponding Expansion object.")
