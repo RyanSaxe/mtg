@@ -134,7 +134,7 @@ class DraftBot(tf.Module):
             style="reverse_bottleneck",
         )
 
-    # @tf.function
+    @tf.function
     def __call__(
         self,
         features,
@@ -552,7 +552,7 @@ class DeckBuilder(tf.Module):
 
     # TODO: change input data to not require relaxed shape, and change from
     #      vector of n_cards size to vector of size cards in pool for efficiency
-    # @tf.function(experimental_relax_shapes=True)
+    @tf.function(experimental_relax_shapes=True)
     def __call__(self, features, training=None):
         # batch x sample x n_cards
         pools, decks = features

@@ -340,7 +340,7 @@ def create_train_and_val_gens(
     include_val=True,
     **kwargs,
 ):
-    if weights:
+    if weights and "ml_weights" not in data.columns:
         data["ml_weights"] = importance_weighting(data)
     if train_p < 1.0:
         if id_col is None:
