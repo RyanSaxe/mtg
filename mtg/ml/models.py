@@ -149,33 +149,42 @@ class DraftBot(tf.Module):
         # to make sure the model can differentiate context of a pool and pack at different time
         #    steps, we have positional embeddings
         #    (e.g. representation of card A at P1P1 is different than P1P8)
-        positional_embeddings = self.positional_embedding(positions, training=training)
-        all_card_embeddings = self.card_embedding(
+        self.positional_embeddings = self.positional_embedding(
+            positions, training=training
+        )
+        self.all_card_embeddings = self.card_embedding(
             tf.range(self.n_cards), training=training
         )
         # TODO: represent packs as 15 indices for each card in the pack rather than a
         #       binary vector. It's more computationally efficient and doesn't require
         #       the step below
-        pack_card_embeddings = (
-            packs[:, :, :, None] * all_card_embeddings[None, None, :, :]
+        self.pack_card_embeddings = (
+            packs[:, :, :, None] * self.all_card_embeddings[None, None, :, :]
         )
         # get the number of cards in each pack
-        n_options = tf.reduce_sum(packs, axis=-1, keepdims=True)
+        self.n_options = tf.reduce_sum(packs, axis=-1, keepdims=True)
         # the pack_embedding is the average of the embeddings of the cards in the pack
-        pack_embeddings = tf.reduce_sum(pack_card_embeddings, axis=2) / n_options
+        self.pack_embeddings = (
+            tf.reduce_sum(self.pack_card_embeddings, axis=2) / self.n_options
+        )
         # add the positional information to the card embeddings
-        embs = pack_embeddings * tf.math.sqrt(self.emb_dim) + positional_embeddings
+        self.embs = (
+            self.pack_embeddings * tf.math.sqrt(self.emb_dim)
+            + self.positional_embeddings
+        )
 
         if training and self.dropout > 0.0:
-            embs = tf.nn.dropout(embs, rate=self.dropout)
+            self.embs = tf.nn.dropout(self.embs, rate=self.dropout)
 
         # we run the transformer encoder on the pack information. This is where the
         #     bot learns how to predict the wheel. Search for improvements on how
         #     this informs color distribution/expectation and pivots
+        self.encoder_holder = []
         for memory_layer in self.encoder_layers:
-            embs, attention_weights_pack = memory_layer(
-                embs, positional_masks, training=training
+            self.embs, attention_weights_pack = memory_layer(
+                self.embs, positional_masks, training=training
             )  # (batch_size, t, emb_dim)
+            self.encoder_holder.append((self.embs, attention_weights_pack))
 
         # we run the transformer decoder on the pick information. So, at P1P5 decision,
         #     the transformer gets passed what the human took at P1P4. Attention with a
@@ -188,20 +197,25 @@ class DraftBot(tf.Module):
         #       of the draft.
         # TODO: explore adding positional information to the picks here. Should it be the
         #       same positional embedding, or a different one?
-        dec_embs = self.card_embedding(picks, training=training)
+        self.dec_embs = self.card_embedding(picks, training=training)
         if training and self.dropout > 0.0:
-            dec_embs = tf.nn.dropout(dec_embs, rate=self.dropout)
+            self.dec_embs = tf.nn.dropout(self.dec_embs, rate=self.dropout)
 
+        self.decoder_holder = []
         for memory_layer in self.decoder_layers:
-            dec_embs, attention_weights_pick = memory_layer(
-                dec_embs, positional_masks, encoder_output=embs, training=training
+            self.dec_embs, attention_weights_pick = memory_layer(
+                self.dec_embs,
+                positional_masks,
+                encoder_output=self.embs,
+                training=training,
             )  # (batch_size, t, emb_dim)
-
+            self.decoder_holder.append((self.dec_embs, attention_weights_pick))
         # in order to remove all cards in the set not in the pack as options, we create a
         #     mask that will guarantee the values will be zero when applying softmax
-        mask_for_softmax = 1e9 * (1 - packs)
-        card_rankings = (
-            self.output_decoder(dec_embs, training=training) * packs - mask_for_softmax
+        self.mask_for_softmax = 1e9 * (1 - packs)
+        self.card_rankings = (
+            self.output_decoder(self.dec_embs, training=training) * packs
+            - self.mask_for_softmax
         )  # (batch_size, t, n_cards)
         # compute the euclidian distance between each card embedding from the pack and
         #     the output of the transformer decoder. This is used to regularize the network
@@ -213,20 +227,21 @@ class DraftBot(tf.Module):
         #       the card with the closest distance to the output of the context (transformer
         #       decoder). This consistently lagged behind using the decoder on validation
         #       performance. Still a lot to experiment with the embedding space.
-        emb_dists = (
+        self.emb_dists = (
             tf.sqrt(
                 tf.reduce_sum(
-                    tf.square(pack_card_embeddings - dec_embs[:, :, None, :]), -1
+                    tf.square(self.pack_card_embeddings - self.dec_embs[:, :, None, :]),
+                    -1,
                 )
             )
             * packs
-            + mask_for_softmax
+            + self.mask_for_softmax
         )
-        output = tf.nn.softmax(card_rankings)
+        self.output = tf.nn.softmax(self.card_rankings)
 
         if return_attention:
-            return output, (attention_weights_pack, attention_weights_pick)
-        return output, emb_dists
+            return self.output, (attention_weights_pack, attention_weights_pick)
+        return self.output, self.emb_dists
 
     def compile(
         self,
