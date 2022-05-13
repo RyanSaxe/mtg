@@ -60,7 +60,7 @@ class Trainer:
             )
             # if NaN loss ever happens, raise an error inside the gradient tape so that
             # pdb can be used for live debugging with access to the gradients
-            if tf.math.isnan(loss):
+            if tf.math.is_nan(loss):
                 raise ValueError("NaN Loss!!")
         if len(self.model.metric_names) > 0 and not only_val_metrics:
             metrics = self.model.compute_metrics(
