@@ -52,13 +52,15 @@ class DraftBot(tf.Module):
         num_decoder_heads,
         num_encoder_layers,
         num_decoder_layers,
-        pointwise_ffn_width,
+        pointwise_ffn_width=None,
         emb_dropout=0.0,
         memory_dropout=0.0,
         out_dropout=0.0,
         name=None,
     ):
         super().__init__(name=name)
+        if pointwise_ffn_width is None:
+            pointwise_ffn_width = emb_dim * 4
         # get some information from the expansion object for storage later. This is
         #     because we don't want to store the expansion object (it's big), and in
         #     case we lose it, we need to be able to initialize a new one with the
