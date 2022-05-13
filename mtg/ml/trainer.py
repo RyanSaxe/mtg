@@ -1,6 +1,6 @@
 import tensorflow as tf
 import sys
-from tqdm import tqdm
+from tqdm.auto import tqdm
 import numpy as np
 
 
