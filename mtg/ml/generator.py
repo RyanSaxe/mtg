@@ -92,7 +92,7 @@ class MTGDataGenerator(Sequence):
     def __getitem__(self, batch_number):
         """
         Generates a data mini-batch
-        param batch_number: which batch to generate  
+        param batch_number: which batch to generate
         return: X and y when fitting. X only when predicting
         """
         indices = self.indices[
@@ -197,7 +197,7 @@ class DraftGenerator(MTGDataGenerator):
             ).values.reshape(len(indices), self.t)
         else:
             weights = None
-        # convert to tensor needed for tf.function
+        # convert to tensor needed for #tf.function
         packs = tf.convert_to_tensor(packs.astype(np.float32), dtype=tf.float32)
         positions = tf.convert_to_tensor(positions.astype(np.int32), dtype=tf.int32)
         picks = tf.convert_to_tensor(picks.astype(np.float32), dtype=tf.int32)

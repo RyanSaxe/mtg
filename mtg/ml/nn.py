@@ -45,7 +45,7 @@ class MLP(tf.Module):
             Dense(last_dim, out_dim, activation=out_act, name=self.name + "_out")
         )
 
-    @tf.function
+    @#tf.function
     def __call__(self, x, training=None):
         if self.noise > 0.0 and training:
             x = tf.nn.dropout(x, rate=self.noise)
@@ -99,7 +99,7 @@ class ConcatEmbedding(tf.Module):
         )
         self.activation = activation
 
-    @tf.function
+    @#tf.function
     def __call__(self, x, training=None):
         item_embeddings = tf.gather(self.embedding, x)
         data_embeddings = tf.gather(
@@ -165,7 +165,7 @@ class TransformerBlock(tf.Module):
         x = self.expand_attention(x, training=training)
         return self.compress_expansion(x, training=training)
 
-    @tf.function
+    @#tf.function
     def __call__(self, x, mask, encoder_output=None, training=None):
         attention_emb, attention_weights = self.attention(
             x, x, x, mask, training=training
