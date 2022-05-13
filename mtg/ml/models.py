@@ -134,7 +134,7 @@ class DraftBot(tf.Module):
             style="reverse_bottleneck",
         )
 
-    #@tf.function
+    # @tf.function
     def __call__(
         self,
         features,
@@ -142,6 +142,10 @@ class DraftBot(tf.Module):
         return_attention=False,
     ):
         packs, picks, positions = features
+        # store last data batch in case specific batch of data causes an issue
+        self.last_packs = packs
+        self.last_picks = picks
+        self.last_positions = positions
         # get the positional mask, which is a lookahead mask for autoregressive predictions.
         #    effectively, to make a decision a P1P5, we make sure the model can never see P1P6
         #    or later
@@ -319,6 +323,9 @@ class DraftBot(tf.Module):
         implementation of the loss function.
         """
         pred, emb_dists = pred
+        # store inputs in case data causes an issue on specific batch
+        self.last_true = true
+        self.last_sample_weight = sample_weight
         # CategoricalCrossentropy loss applied to what the human took vs softmax output
         self.prediction_loss = self.loss_f(true, pred, sample_weight=sample_weight)
         # get the one hot representation of what the human picked
@@ -545,7 +552,7 @@ class DeckBuilder(tf.Module):
 
     # TODO: change input data to not require relaxed shape, and change from
     #      vector of n_cards size to vector of size cards in pool for efficiency
-    #@tf.function(experimental_relax_shapes=True)
+    # @tf.function(experimental_relax_shapes=True)
     def __call__(self, features, training=None):
         # batch x sample x n_cards
         pools, decks = features
