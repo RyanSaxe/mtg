@@ -58,6 +58,10 @@ class Trainer:
             loss = self.model.loss(
                 batch_target, output, sample_weight=batch_weights, training=True
             )
+            # if NaN loss ever happens, raise an error inside the gradient tape so that
+            # pdb can be used for live debugging with access to the gradients
+            if tf.math.isnan(loss):
+                raise ValueError("NaN Loss!!")
         if len(self.model.metric_names) > 0 and not only_val_metrics:
             metrics = self.model.compute_metrics(
                 batch_target, output, sample_weight=batch_weights, training=True
