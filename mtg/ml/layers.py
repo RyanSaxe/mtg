@@ -31,7 +31,7 @@ class Dense(tf.Module):
                 name=self.name + "_b",
             )
 
-    @#tf.function
+    # @tf.function
     def __call__(self, x, training=None):
         rank = x.shape.rank
         if rank == 2 or rank is None:
@@ -51,7 +51,12 @@ class Dense(tf.Module):
 
 class LayerNormalization(tf.Module):
     def __init__(
-        self, last_dim, epsilon=1e-6, center=True, scale=True, name=None,
+        self,
+        last_dim,
+        epsilon=1e-6,
+        center=True,
+        scale=True,
+        name=None,
     ):
         super().__init__(name=name)
         self.center = center
@@ -100,7 +105,7 @@ class MultiHeadAttention(tf.Module):
         d_model is the final dimension for the embedding representation post-attention
 
         num_heads is the number of contextual ways to look at the information
-    
+
         k_dim will be equal to the number of time steps in a draft
             (e.g. 45), and the mask will prevent lookahead (e.g. the mask for P1P3 will look
             like [0, 0, 0, 1, 1, . . ., 1]), meaning that only information at P1P1, P1P2, and
@@ -132,7 +137,7 @@ class MultiHeadAttention(tf.Module):
         x = tf.reshape(x, (batch_size, -1, self.num_heads, self.depth))
         return tf.transpose(x, perm=[0, 2, 1, 3])
 
-    @#tf.function
+    # @tf.function
     def __call__(self, v, k, q, mask, training=None):
         batch_size = tf.shape(q)[0]
 
@@ -221,7 +226,7 @@ class Embedding(tf.Module):
         )
         self.activation = activation
 
-    @#tf.function
+    # @tf.function
     def __call__(self, x, training=None):
         embeddings = tf.gather(self.embedding, x)
         if self.activation is not None:
