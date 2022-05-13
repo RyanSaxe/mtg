@@ -165,7 +165,7 @@ class Expansion:
         card_df = pd.DataFrame()
         for colors in all_colors:
             time.sleep(1)
-            card_data_df = get_card_rating_data("VOW", colors=colors)
+            card_data_df = get_card_rating_data(self.expansion, colors=colors)
             extension = "" if colors is None else "_" + colors
             card_data_df.columns = [col + extension for col in card_data_df.columns]
             card_df = pd.concat([card_df, card_data_df], axis=1).fillna(0.0)
@@ -332,7 +332,7 @@ class SNC(Expansion):
         idx_to_name=None,
     ):
         super().__init__(
-            expansion="vow",
+            expansion="snc",
             bo1=bo1,
             bo3=bo3,
             quick=quick,
