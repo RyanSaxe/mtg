@@ -267,12 +267,15 @@ class VOW(Expansion):
                     ].tolist(),
                     1,
                 )
-            uncommons = random.sample(
-                cards[(cards["rarity"] == "uncommon") & (cards["flip"] == 0)][
-                    "name"
-                ].tolist(),
-                2,
-            ) + [uncommon_or_rare_flip]
+            uncommons = (
+                random.sample(
+                    cards[(cards["rarity"] == "uncommon") & (cards["flip"] == 0)][
+                        "name"
+                    ].tolist(),
+                    2,
+                )
+                + [uncommon_or_rare_flip]
+            )
         else:
             uncommons = random.sample(
                 cards[(cards["rarity"] == "uncommon") & (cards["flip"] == 0)][
@@ -317,8 +320,90 @@ class VOW(Expansion):
         return types + ["human", "zombie", "wolf", "werewolf", "spirit", "aura"]
 
 
+class SNC(Expansion):
+    def __init__(
+        self,
+        bo1=None,
+        bo3=None,
+        quick=None,
+        draft=None,
+        replay=None,
+        ml_data=True,
+        idx_to_name=None,
+    ):
+        super().__init__(
+            expansion="vow",
+            bo1=bo1,
+            bo3=bo3,
+            quick=quick,
+            draft=draft,
+            replay=replay,
+            ml_data=ml_data,
+            idx_to_name=idx_to_name,
+        )
+
+    def generate_pack(self, exclude_basics=True, name_to_idx=None, return_names=False):
+        """
+        generate random pack of MTG cards
+        """
+        cards = self.cards.copy()
+        if exclude_basics:
+            cards = cards[cards["idx"] >= 5].copy()
+            cards["idx"] = cards["idx"] - 5
+        if name_to_idx is None:
+            name_to_idx = cards.set_index("name")["idx"].to_dict()
+        if np.random.random() < 1 / 8:
+            rare = random.sample(
+                cards[(cards["rarity"] == "mythic")]["name"].tolist(),
+                1,
+            )
+        else:
+            rare = random.sample(
+                cards[(cards["rarity"] == "rare")]["name"].tolist(),
+                1,
+            )
+        uncommons = random.sample(
+            cards[(cards["rarity"] == "uncommon")]["name"].tolist(),
+            3,
+        )
+        commons = []
+        # make sure at least one common of each color
+        for color in list("WUBRG"):
+            color_common = random.sample(
+                cards[
+                    (cards["rarity"] == "common")
+                    & (cards["mana_cost"].str.contains(color))
+                    & (~cards["name"].isin(commons))
+                ]["name"].tolist(),
+                1,
+            )
+            commons += color_common
+        other_commons = random.sample(
+            cards[((cards["rarity"] == "common")) & (~cards["name"].isin(commons))][
+                "name"
+            ].tolist(),
+            5,
+        )
+        commons += other_commons
+        names = rare + uncommons + commons
+        if return_names:
+            return names
+        idxs = [name_to_idx[name] for name in names]
+        pack = np.zeros(len(cards))
+        pack[idxs] = 1
+        return pack
+
+    @property
+    def types(self):
+        types = super().types
+        return types + ["citizen"]
+
+
+EXPANSIONS = [VOW, SNC]
+
+
 def get_expansion_obj_from_name(expansion):
-    if expansion.lower() == "vow":
-        return VOW
-    else:
-        raise ValueError(f"{expansion} does not have a corresponding Expansion object.")
+    for exp in EXPANSIONS:
+        if exp.__name__.lower() == expansion.lower():
+            return exp
+    raise ValueError(f"{expansion} does not have a corresponding Expansion object.")
