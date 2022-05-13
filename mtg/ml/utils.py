@@ -37,8 +37,11 @@ def importance_weighting(df, minim=0.1, maxim=1.0):
     # ranks such that rank and win-rate matter together
     rank_addition = df["rank"].apply(lambda x: rank_to_score.get(x, 0.5))
     scaled_win_rate = np.clip(
-        df["user_win_rate_bucket"] ** (2 - rank_addition), a_min=minim, a_max=maxim,
+        df["user_win_rate_bucket"].fillna(0.5) ** (2 - rank_addition),
+        a_min=minim,
+        a_max=maxim,
     )
+    scaled_win_rate = scaled_win_rate.fillna(scaled_win_rate.mean())
 
     last = df["date"].max()
     # increase importance factor for recent data points according to number of weeks from most recent data point
