@@ -8,19 +8,19 @@ import mtg.obj.scryfall_utils as scry_utils
 class CardSet:
     """
     Run a scryfall search for list of cards according to a query:
-    
+
     parameters:
-    
+
         query_args: a list of queries to hit the scryfall api with
-        
+
     usage:
-    
+
         KHM_expensive = Cards([
             "set=khm",
             "cmc>=4",
         ])
         #this gets you all kaldheim cards with cmc 4 or greater
-        
+
     """
 
     def __init__(self, query_args, json_files=[]):
@@ -73,7 +73,8 @@ class CardSet:
         return df
 
     def scryfall_modifications(self, df):
-        df = df.apply(scry_utils.merge_card_faces, axis=1)
+        if "card_faces" in df.columns:
+            df = df.apply(scry_utils.merge_card_faces, axis=1)
         df["produces_for_splash"] = df.apply(scry_utils.produce_for_splash, axis=1)
         df["name"] = df["name"].apply(lambda x: x.split("//")[0].strip().lower())
         return df
