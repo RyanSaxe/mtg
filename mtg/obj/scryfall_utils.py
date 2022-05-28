@@ -1,6 +1,6 @@
 def merge_card_faces(row):
     nans = row.isna()
-    if nans["card_faces"]:
+    if not "card_faces" in row.index or nans["card_faces"]:
         return row
     card_faces = row["card_faces"]
     face_1_keys = card_faces[0].keys()

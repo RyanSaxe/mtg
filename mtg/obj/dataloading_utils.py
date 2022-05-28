@@ -32,7 +32,7 @@ def sort_cols_by_card_idxs(df, card_col_prefixes, cards):
 
 def load_bo1_data(filename, cards):
     COLUMN_REGEXES = {
-        re.compile(r"user_win_rate_bucket"): "float16",
+        re.compile(r"user_game_win_rate_bucket"): "float16",
         re.compile(r"rank"): "str",
         re.compile(r"draft_id"): "str",
         re.compile(r"draft_time"): "str",
@@ -71,7 +71,7 @@ def load_bo1_data(filename, cards):
             "draft_id",
             "draft_time",
             "won",
-            "user_win_rate_bucket",
+            "user_game_win_rate_bucket",
             "rank",
             "on_play",
             "num_turns",
@@ -81,6 +81,8 @@ def load_bo1_data(filename, cards):
         ]
         + draft_cols,
     )
+    #looks like 17lands export defect outputs number with too many extraneous extra decimal places fopr the float size we're using
+    df["user_game_win_rate_bucket"] = df["user_game_win_rate_bucket"].fillna(0.7)
     rename_cols = {"draft_time": "date"}
     df.columns = [
         x.lower() if x not in rename_cols else rename_cols[x] for x in df.columns
@@ -94,8 +96,8 @@ def load_bo1_data(filename, cards):
 
 def load_draft_data(filename, cards):
     COLUMN_REGEXES = {
-        re.compile(r"user_match_win_rate_bucket"): "float16",
-        re.compile(r"user_n_matches_bucket"): "int8",
+        re.compile(r"user_game_win_rate_bucket"): "float16",
+        re.compile(r"user_n_games_bucket"): "int8",
         re.compile(r"user_rank"): "str",
         re.compile(r"draft_id"): "str",
         re.compile(r"draft_time"): "str",
@@ -135,18 +137,20 @@ def load_draft_data(filename, cards):
             "event_match_wins",
             "pack_number",
             "pick_number",
-            "user_n_matches_bucket",
-            "user_match_win_rate_bucket",
-            "user_rank"
+            "user_n_games_bucket",
+            "user_game_win_rate_bucket",
+            "rank"
             # ...
         ]
         + draft_cols,
     )
     rename_cols = {
         "user_rank": "rank",
-        "user_match_win_rate_bucket": "user_win_rate_bucket",
+        "user_game_win_rate_bucket": "user_game_win_rate_bucket",
         "draft_time": "date",
     }
+    #looks like 17lands export defect outputs number with too many extraneous extra decimal places fopr the float size we're using
+    df["user_game_win_rate_bucket"] = df["user_game_win_rate_bucket"].fillna(0.7)
     df.columns = [
         x.lower() if x not in rename_cols else rename_cols[x] for x in df.columns
     ]
