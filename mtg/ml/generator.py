@@ -1,9 +1,10 @@
-from tensorflow.keras.utils import Sequence
+import gc
+
 import numpy as np
 import pandas as pd
 import tensorflow as tf
 from mtg.ml.utils import importance_weighting
-import gc
+from tensorflow.keras.utils import Sequence
 
 
 class MTGDataGenerator(Sequence):
@@ -59,11 +60,7 @@ class MTGDataGenerator(Sequence):
         return self.cards[self.cards["idx"] == card_idx]["name"].iloc[0]
 
     def generate_global_data(self, data):
-        self.all_cards = [
-            col.split("_", 1)[-1]
-            for col in data.columns
-            if col.startswith(self.card_col_prefixes[0])
-        ]
+        self.all_cards = [col.split("_", 1)[-1] for col in data.columns if col.startswith(self.card_col_prefixes[0])]
         basics = ["plains", "island", "swamp", "mountain", "forest"]
         if self.exclude_basics:
             exclude_cards = basics
@@ -73,16 +70,11 @@ class MTGDataGenerator(Sequence):
             cols = [
                 col
                 for col in data.columns
-                if col.startswith(prefix + "_")
-                and not any([x in col for x in exclude_cards])
+                if col.startswith(prefix + "_") and not any([x == col.lstrip(prefix + "_") for x in exclude_cards])
             ]
             setattr(self, prefix, data[cols].values)
             if self.store_basics:
-                basic_cols = [
-                    col
-                    for col in data.columns
-                    if any([prefix + "_" + x == col for x in basics])
-                ]
+                basic_cols = [col for col in data.columns if any([x == col.lstrip(prefix + "_") for x in basics])]
                 setattr(self, prefix + "_basics", data[basic_cols].values)
         if "ml_weights" in data.columns:
             self.weights = data["ml_weights"].values
@@ -95,9 +87,7 @@ class MTGDataGenerator(Sequence):
         param batch_number: which batch to generate
         return: X and y when fitting. X only when predicting
         """
-        indices = self.indices[
-            batch_number * self.batch_size : (batch_number + 1) * self.batch_size
-        ]
+        indices = self.indices[batch_number * self.batch_size : (batch_number + 1) * self.batch_size]
         X, y, weights = self.generate_data(indices)
 
         if self.to_fit:
@@ -138,11 +128,10 @@ class DraftGenerator(MTGDataGenerator):
         self.draft_ids = data["draft_id"].unique()
         self.t = data["position"].max() + 1
         data = data.set_index(["draft_id", "position"])
-        self.all_cards = [
-            col.split("_", 1)[-1]
-            for col in data.columns
-            if col.startswith(self.card_col_prefixes[0])
-        ]
+        # NOTE: the next chunk of lines is close to identical to the super() call of this
+        #       function. There is a difference in accessing .values instead of the dataframe
+        #       directly. In the future, clean this up such that it can just call super
+        self.all_cards = [col.split("_", 1)[-1] for col in data.columns if col.startswith(self.card_col_prefixes[0])]
         basics = ["plains", "island", "swamp", "mountain", "forest"]
         if self.exclude_basics:
             exclude_cards = basics
@@ -152,58 +141,44 @@ class DraftGenerator(MTGDataGenerator):
             cols = [
                 col
                 for col in data.columns
-                if col.startswith(prefix + "_")
-                and not any([x in col for x in exclude_cards])
+                if col.startswith(prefix + "_") and not any([x == col.lstrip(prefix + "_") for x in exclude_cards])
             ]
             setattr(self, prefix, data[cols])
             if self.store_basics:
-                basic_cols = [
-                    col
-                    for col in data.columns
-                    if any([prefix + "_" + x == col for x in basics])
-                ]
+                basic_cols = [col for col in data.columns if any([x == col.lstrip(prefix + "_") for x in basics])]
                 setattr(self, prefix + "_basics", data[basic_cols])
         if "ml_weights" in data.columns:
             self.weights = data["ml_weights"]
         else:
             self.weights = None
         name_to_idx_mapping = {
-            k.split("//")[0].strip().lower(): v
-            for k, v in self.cards.set_index("name")["idx"].to_dict().items()
+            k.split("//")[0].strip().lower(): v for k, v in self.cards.set_index("name")["idx"].to_dict().items()
         }
         self.pick = data["pick"].apply(lambda x: name_to_idx_mapping[x])
         self.shifted_pick = self.pick.groupby(level=0).shift(1).fillna(self.n_cards)
-        self.position = (
-            data["pack_number"] * (data["pick_number"].max() + 1) + data["pick_number"]
-        )
+        self.position = data["pack_number"] * (data["pick_number"].max() + 1) + data["pick_number"]
 
     def generate_data(self, indices):
         draft_ids = self.draft_ids[indices]
-        packs = self.pack_card.loc[draft_ids].values.reshape(
-            len(indices), self.t, len(self.pack_card.columns)
-        )
+        packs = self.pack_card.loc[draft_ids].values.reshape(len(indices), self.t, len(self.pack_card.columns))
         # pools = self.pool.loc[draft_ids].values.reshape(len(indices), self.t, len(self.pack_card.columns))
         picks = self.pick.loc[draft_ids].values.reshape(len(indices), self.t)
-        shifted_picks = self.shifted_pick.loc[draft_ids].values.reshape(
-            len(indices), self.t
-        )
+        shifted_picks = self.shifted_pick.loc[draft_ids].values.reshape(len(indices), self.t)
         positions = self.position.loc[draft_ids].values.reshape(len(indices), self.t)
         # draft_info = np.concatenate([packs, pools], axis=-1)
         if self.weights is not None:
             # comment below is if weights sum to 1 for each draft rather than for each batch
             # weights = (self.weights.loc[draft_ids]/self.weights.loc[draft_ids].groupby(level=0).sum()).values.reshape(len(indices), self.t)
-            weights = (
-                self.weights.loc[draft_ids] / self.weights.loc[draft_ids].sum()
-            ).values.reshape(len(indices), self.t)
+            weights = (self.weights.loc[draft_ids] / self.weights.loc[draft_ids].sum()).values.reshape(
+                len(indices), self.t
+            )
         else:
             weights = None
         # convert to tensor needed for #tf.function
         packs = tf.convert_to_tensor(packs.astype(np.float32), dtype=tf.float32)
         positions = tf.convert_to_tensor(positions.astype(np.int32), dtype=tf.int32)
         picks = tf.convert_to_tensor(picks.astype(np.float32), dtype=tf.int32)
-        shifted_picks = tf.convert_to_tensor(
-            shifted_picks.astype(np.float32), dtype=tf.int32
-        )
+        shifted_picks = tf.convert_to_tensor(shifted_picks.astype(np.float32), dtype=tf.int32)
         return (packs, shifted_picks, positions), picks, weights
 
 
@@ -248,9 +223,7 @@ class DeckGenerator(MTGDataGenerator):
             masked_decks[:, -1, :] = decks
             masked_decks = masked_decks.astype(np.float32)
             cards_to_add = (decks[:, None, :] - masked_decks).astype(np.float32)
-            modified_sideboards = (sideboards[:, None, :] + cards_to_add).astype(
-                np.float32
-            )
+            modified_sideboards = (sideboards[:, None, :] + cards_to_add).astype(np.float32)
             X = (modified_sideboards, masked_decks)
             Y = (basics.astype(np.float32), cards_to_add)
         else:
@@ -272,14 +245,10 @@ class DeckGenerator(MTGDataGenerator):
     def create_masked_objects(self, decks, n):
         masked_decks = np.zeros((decks.shape[0], n, decks.shape[1]))
         for i in range(1, n):
-            masked_decks[:, i, :] = self.get_vectorized_sample(
-                decks.copy(), n=i, uniform=True
-            )
+            masked_decks[:, i, :] = self.get_vectorized_sample(decks.copy(), n=i, uniform=True)
         return masked_decks
 
-    def get_vectorized_sample(
-        self, mtx, n=1, uniform=True, return_mtx=True, modify_mtx=True
-    ):
+    def get_vectorized_sample(self, mtx, n=1, uniform=True, return_mtx=True, modify_mtx=True):
         if uniform:
             clip_mtx = np.clip(mtx, 0, 1)
             probabilities = clip_mtx / (clip_mtx.sum(1, keepdims=True) + 1e-9)
@@ -292,9 +261,7 @@ class DeckGenerator(MTGDataGenerator):
         if modify_mtx:
             mtx[live_idxs, sample[live_idxs]] -= 1
         if n > 1:
-            cts_sample = self.get_vectorized_sample(
-                mtx, n=n - 1, uniform=uniform, return_mtx=False
-            )
+            cts_sample = self.get_vectorized_sample(mtx, n=n - 1, uniform=uniform, return_mtx=False)
             if len(cts_sample.shape) == 1:
                 cts_sample = np.expand_dims(cts_sample, 1)
             sample = np.concatenate([sample[:, None], cts_sample], axis=1)
@@ -303,9 +270,7 @@ class DeckGenerator(MTGDataGenerator):
         return sample
 
     def sample_card_pairs(self, decks, sideboards):
-        anchors = self.get_vectorized_sample(
-            decks, uniform=False, return_mtx=False, modify_mtx=False
-        )
+        anchors = self.get_vectorized_sample(decks, uniform=False, return_mtx=False, modify_mtx=False)
 
         # never sample the same card as the anchor as the positive or negative axample
         decks_without_anchors = decks.copy()
@@ -346,9 +311,7 @@ def create_train_and_val_gens(
         if id_col is None:
             idxs = np.arange(data.shape[0])
             train_idxs = np.random.choice(idxs, int(len(idxs) * train_p), replace=False)
-            test_idxs = np.asarray(
-                list(set(idxs.flatten()) - set(train_idxs.flatten()))
-            )
+            test_idxs = np.asarray(list(set(idxs.flatten()) - set(train_idxs.flatten())))
             train_data = data[train_idxs, :]
             test_data = data[test_idxs, :]
         else:
