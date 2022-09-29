@@ -67,14 +67,15 @@ class MTGDataGenerator(Sequence):
         else:
             exclude_cards = []
         for prefix in self.card_col_prefixes:
+            prefix_size = len(prefix + "_")
             cols = [
                 col
                 for col in data.columns
-                if col.startswith(prefix + "_") and not any([x == col.lstrip(prefix + "_") for x in exclude_cards])
+                if col.startswith(prefix + "_") and not any([x == col[prefix_size:] for x in exclude_cards])
             ]
             setattr(self, prefix, data[cols].values)
             if self.store_basics:
-                basic_cols = [col for col in data.columns if any([x == col.lstrip(prefix + "_") for x in basics])]
+                basic_cols = [col for col in data.columns if any([x == col[prefix_size:] for x in basics])]
                 setattr(self, prefix + "_basics", data[basic_cols].values)
         if "ml_weights" in data.columns:
             self.weights = data["ml_weights"].values
@@ -138,14 +139,15 @@ class DraftGenerator(MTGDataGenerator):
         else:
             exclude_cards = []
         for prefix in self.card_col_prefixes:
+            prefix_size = len(prefix + "_")
             cols = [
                 col
                 for col in data.columns
-                if col.startswith(prefix + "_") and not any([x == col.lstrip(prefix + "_") for x in exclude_cards])
+                if col.startswith(prefix + "_") and not any([x == col[prefix_size:] for x in exclude_cards])
             ]
             setattr(self, prefix, data[cols])
             if self.store_basics:
-                basic_cols = [col for col in data.columns if any([x == col.lstrip(prefix + "_") for x in basics])]
+                basic_cols = [col for col in data.columns if any([x == col[prefix_size:] for x in basics])]
                 setattr(self, prefix + "_basics", data[basic_cols])
         if "ml_weights" in data.columns:
             self.weights = data["ml_weights"]
