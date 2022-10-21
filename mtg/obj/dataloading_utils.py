@@ -32,7 +32,7 @@ def sort_cols_by_card_idxs(df, card_col_prefixes, cards):
 
 def load_bo1_data(filename, cards):
     COLUMN_REGEXES = {
-        re.compile(r"user_win_rate_bucket"): "float16",
+        re.compile(r"user_game_win_rate_bucket"): "float16",
         re.compile(r"rank"): "str",
         re.compile(r"draft_id"): "str",
         re.compile(r"draft_time"): "str",
@@ -71,7 +71,7 @@ def load_bo1_data(filename, cards):
             "draft_id",
             "draft_time",
             "won",
-            "user_win_rate_bucket",
+            "user_game_win_rate_bucket",
             "rank",
             "on_play",
             "num_turns",
