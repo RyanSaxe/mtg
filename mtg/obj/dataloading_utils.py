@@ -81,7 +81,10 @@ def load_bo1_data(filename, cards):
         ]
         + draft_cols,
     )
-    rename_cols = {"draft_time": "date"}
+    rename_cols = {
+        "user_game_win_rate_bucket": "user_win_rate_bucket",
+        "draft_time": "date",
+    }
     df.columns = [
         x.lower() if x not in rename_cols else rename_cols[x] for x in df.columns
     ]
