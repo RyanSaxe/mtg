@@ -1,10 +1,11 @@
+import os
+import pathlib
+import pickle
+
+import numpy as np
 import tensorflow as tf
 from mtg.ml import nn
 from mtg.ml.layers import Embedding
-import numpy as np
-import pathlib
-import os
-import pickle
 from mtg.ml.utils import CustomSchedule
 
 
@@ -72,14 +73,10 @@ class DraftBot(tf.Module):
         # the first five elements will be card data on basics, which is irrelevant
         #     for drafting, so we get rid of them
         self.card_data = expansion.card_data_for_ML[5:]
-        self.emb_dim = tf.Variable(
-            emb_dim, dtype=tf.float32, trainable=False, name="emb_dim"
-        )
+        self.emb_dim = tf.Variable(emb_dim, dtype=tf.float32, trainable=False, name="emb_dim")
         self.dropout = emb_dropout
         # positional embedding allows deviation given temporal context
-        self.positional_embedding = Embedding(
-            self.t, emb_dim, name="positional_embedding"
-        )
+        self.positional_embedding = Embedding(self.t, emb_dim, name="positional_embedding")
         # lookahead mask to prevent the algorithm from seeing information it isn't
         #     allowed to (e.g. at P1P5 you cannot look at P1P6-P3P14)
         self.positional_mask = 1 - tf.linalg.band_part(tf.ones((self.t, self.t)), -1, 0)
@@ -153,29 +150,18 @@ class DraftBot(tf.Module):
         # to make sure the model can differentiate context of a pool and pack at different time
         #    steps, we have positional embeddings
         #    (e.g. representation of card A at P1P1 is different than P1P8)
-        self.positional_embeddings = self.positional_embedding(
-            positions, training=training
-        )
-        self.all_card_embeddings = self.card_embedding(
-            tf.range(self.n_cards), training=training
-        )
+        self.positional_embeddings = self.positional_embedding(positions, training=training)
+        self.all_card_embeddings = self.card_embedding(tf.range(self.n_cards), training=training)
         # TODO: represent packs as 15 indices for each card in the pack rather than a
         #       binary vector. It's more computationally efficient and doesn't require
         #       the step below
-        self.pack_card_embeddings = (
-            packs[:, :, :, None] * self.all_card_embeddings[None, None, :, :]
-        )
+        self.pack_card_embeddings = packs[:, :, :, None] * self.all_card_embeddings[None, None, :, :]
         # get the number of cards in each pack
         self.n_options = tf.reduce_sum(packs, axis=-1, keepdims=True)
         # the pack_embedding is the average of the embeddings of the cards in the pack
-        self.pack_embeddings = (
-            tf.reduce_sum(self.pack_card_embeddings, axis=2) / self.n_options
-        )
+        self.pack_embeddings = tf.reduce_sum(self.pack_card_embeddings, axis=2) / self.n_options
         # add the positional information to the card embeddings
-        self.embs = (
-            self.pack_embeddings * tf.math.sqrt(self.emb_dim)
-            + self.positional_embeddings
-        )
+        self.embs = self.pack_embeddings * tf.math.sqrt(self.emb_dim) + self.positional_embeddings
 
         if training and self.dropout > 0.0:
             self.embs = tf.nn.dropout(self.embs, rate=self.dropout)
@@ -218,8 +204,7 @@ class DraftBot(tf.Module):
         #     mask that will guarantee the values will be zero when applying softmax
         self.mask_for_softmax = 1e9 * (1 - packs)
         self.card_rankings = (
-            self.output_decoder(self.dec_embs, training=training) * packs
-            - self.mask_for_softmax
+            self.output_decoder(self.dec_embs, training=training) * packs - self.mask_for_softmax
         )  # (batch_size, t, n_cards)
         # compute the euclidian distance between each card embedding from the pack and
         #     the output of the transformer decoder. This is used to regularize the network
@@ -294,9 +279,7 @@ class DraftBot(tf.Module):
         else:
             self.optimizer = optimizer
         # because our output is softmax, CategoricalCrossentropy is the proper loss function
-        self.loss_f = tf.keras.losses.SparseCategoricalCrossentropy(
-            reduction=tf.keras.losses.Reduction.SUM
-        )
+        self.loss_f = tf.keras.losses.SparseCategoricalCrossentropy(reduction=tf.keras.losses.Reduction.SUM)
         self.margin = margin
         self.emb_lambda = emb_lambda
         self.pred_lambda = pred_lambda
@@ -333,9 +316,7 @@ class DraftBot(tf.Module):
         # get the distance between the incorrect picks and the transformer output
         dist_of_not_correct = emb_dists * (1 - correct_one_hot)
         # get the distance between the correct pick and the transformer output
-        dist_of_correct = tf.reduce_sum(
-            emb_dists * correct_one_hot, axis=-1, keepdims=True
-        )
+        dist_of_correct = tf.reduce_sum(emb_dists * correct_one_hot, axis=-1, keepdims=True)
         # we want the distance from the correct pick to transformer output to be smaller
         #    than the incorrect picks to the transformer output. So we do the following
         #    subtraction because `dist_loss` will be negative in that case. This is where
@@ -344,13 +325,10 @@ class DraftBot(tf.Module):
         dist_loss = dist_of_correct - dist_of_not_correct
         sample_weight = 1 if sample_weight is None else sample_weight
         self.embedding_loss = tf.reduce_sum(
-            tf.reduce_sum(tf.maximum(dist_loss + self.margin, 0.0), axis=-1)
-            * sample_weight
+            tf.reduce_sum(tf.maximum(dist_loss + self.margin, 0.0), axis=-1) * sample_weight
         )
         # compute loss from expert priors (e.g. no rare drafting, take cheaper cards)
-        self.bad_behavior_loss = self.determine_bad_behavior(
-            true, pred, sample_weight=sample_weight
-        )
+        self.bad_behavior_loss = self.determine_bad_behavior(true, pred, sample_weight=sample_weight)
 
         return (
             self.pred_lambda * self.prediction_loss
@@ -364,9 +342,7 @@ class DraftBot(tf.Module):
         #    basically, if you're going to make a mistake, bias to low cmc cards
         true_cmc = tf.reduce_sum(true_one_hot * self.cmc, axis=-1)
         pred_cmc = tf.reduce_sum(pred * self.cmc, axis=-1)
-        cmc_loss = (
-            tf.maximum(pred_cmc - true_cmc + self.cmc_margin, 0.0) * self.cmc_lambda
-        )
+        cmc_loss = tf.maximum(pred_cmc - true_cmc + self.cmc_margin, 0.0) * self.cmc_lambda
         self.cmc_loss = tf.reduce_sum(cmc_loss * sample_weight)
         # penalize taking rares when the human doesn't. This helps for generalization. Think
         #    about it like this: people *love* taking rares. This means, when they choose not
@@ -386,20 +362,12 @@ class DraftBot(tf.Module):
         """
         if sample_weight is None:
             sample_weight = tf.ones_like(true.shape) / (true.shape[0] * true.shape[1])
-        sample_weight = sample_weight.flatten()
+        # TODO: this caused a shape error, but didn't previously. Look into in detail later, comment out for now.
+        # sample_weight = sample_weight.flatten()
         pred, _ = pred
-        top1 = tf.reduce_sum(
-            tf.keras.metrics.sparse_top_k_categorical_accuracy(true, pred, 1)
-            * sample_weight
-        )
-        top2 = tf.reduce_sum(
-            tf.keras.metrics.sparse_top_k_categorical_accuracy(true, pred, 2)
-            * sample_weight
-        )
-        top3 = tf.reduce_sum(
-            tf.keras.metrics.sparse_top_k_categorical_accuracy(true, pred, 3)
-            * sample_weight
-        )
+        top1 = tf.reduce_sum(tf.keras.metrics.sparse_top_k_categorical_accuracy(true, pred, 1) * sample_weight)
+        top2 = tf.reduce_sum(tf.keras.metrics.sparse_top_k_categorical_accuracy(true, pred, 2) * sample_weight)
+        top3 = tf.reduce_sum(tf.keras.metrics.sparse_top_k_categorical_accuracy(true, pred, 3) * sample_weight)
         return {"top1": top1, "top2": top2, "top3": top3}
 
     def save(self, location):
@@ -415,9 +383,7 @@ class DraftBot(tf.Module):
                 "t": self.t,
                 "idx_to_name": self.idx_to_name,
                 "n_cards": self.n_cards,
-                "embeddings": self.card_embedding(
-                    tf.range(self.n_cards), training=False
-                ),
+                "embeddings": self.card_embedding(tf.range(self.n_cards), training=False),
             }
             pickle.dump(attrs, f)
 
@@ -545,9 +511,7 @@ class DeckBuilder(tf.Module):
         )
         # Dense layer that takes the concatenated pool and partial deck embeddings and
         #     projects it to the latent representation of the deck
-        self.merge_deck_and_pool = nn.Dense(
-            concat_dim, latent_dim, activation=None, name="merge_deck_and_pool"
-        )
+        self.merge_deck_and_pool = nn.Dense(concat_dim, latent_dim, activation=None, name="merge_deck_and_pool")
         self.dropout = dropout
 
     # TODO: change input data to not require relaxed shape, and change from
@@ -558,12 +522,8 @@ class DeckBuilder(tf.Module):
         pools, decks = features
         # project pool and partial deck to their respective latent space as sums of
         #     card embeddings
-        self.latent_rep_pool = tf.reduce_sum(
-            pools[:, :, :, None] * self.card_embeddings[None, None, :, :], axis=2
-        )
-        self.latent_rep_deck = tf.reduce_sum(
-            decks[:, :, :, None] * self.card_embeddings[None, None, :, :], axis=2
-        )
+        self.latent_rep_pool = tf.reduce_sum(pools[:, :, :, None] * self.card_embeddings[None, None, :, :], axis=2)
+        self.latent_rep_deck = tf.reduce_sum(decks[:, :, :, None] * self.card_embeddings[None, None, :, :], axis=2)
         # concatenate representation of pool and partial deck
         concat_emb = tf.concat([self.latent_rep_deck, self.latent_rep_pool], axis=-1)
         if self.dropout > 0.0 and training:
@@ -571,9 +531,7 @@ class DeckBuilder(tf.Module):
         # yield final latent representation of deck
         self.latent_rep = self.merge_deck_and_pool(concat_emb, training=training)
         # compute the cards to add from the available pool
-        self.cards_to_add = (
-            self.card_decoder(self.latent_rep, training=training) * pools
-        )
+        self.cards_to_add = self.card_decoder(self.latent_rep, training=training) * pools
         # the final built deck is equal to the cards we want to allocate from the pool
         #     added to the partial deck input of cards already allocated to the deck
         built_deck = self.cards_to_add + decks
@@ -581,9 +539,7 @@ class DeckBuilder(tf.Module):
         self.n_non_basics = self.determine_n_non_basics(built_deck, training=training)
         n_basics = 40 - self.n_non_basics
         # finally, add the basics to the deck!
-        self.basics_to_add = (
-            self.basic_decoder(built_deck, training=training) * n_basics
-        )
+        self.basics_to_add = self.basic_decoder(built_deck, training=training) * n_basics
 
         return self.basics_to_add, self.cards_to_add, self.n_non_basics
 
@@ -648,14 +604,10 @@ class DeckBuilder(tf.Module):
         pred_basics, pred_built, _ = pred
         # penalize the model for improperly allocating basic lands
         self.basic_loss = tf.reduce_sum(
-            tf.reduce_sum(tf.math.square(pred_basics - true_basics), axis=-1)
-            * sample_weight
+            tf.reduce_sum(tf.math.square(pred_basics - true_basics), axis=-1) * sample_weight
         )
         # penalize the model for impoperly allocating non-basic-lands and spells
-        self.built_loss = tf.reduce_sum(
-            tf.reduce_sum(tf.math.square(pred_built - true_built), axis=-1)
-            * sample_weight
-        )
+        self.built_loss = tf.reduce_sum(tf.reduce_sum(tf.math.square(pred_built - true_built), axis=-1) * sample_weight)
         # penalize the model for deviating from the average curve of the deck a person built
         if self.cmc_lambda > 0:
             # TODO: test replacing this with KL-Divergence on the distribution of the curve
@@ -667,9 +619,7 @@ class DeckBuilder(tf.Module):
             self.true_curve_average = tf.reduce_mean(
                 tf.multiply(true_built, tf.expand_dims(self.cmc_map[5:], 0)), axis=-1
             )
-            self.curve_incentive = tf.reduce_sum(
-                abs(self.pred_curve_average - self.true_curve_average) * sample_weight
-            )
+            self.curve_incentive = tf.reduce_sum(abs(self.pred_curve_average - self.true_curve_average) * sample_weight)
         else:
             self.curve_incentive = 0.0
 
@@ -685,14 +635,9 @@ class DeckBuilder(tf.Module):
         if sample_weight is None:
             sample_weight = 1.0 / true_decks.shape[0]
         # compute the average number of basics off the model is from human builds
-        basic_diff = tf.reduce_sum(
-            tf.reduce_sum(tf.math.abs(pred_basics - true_basics), axis=-1)
-            * sample_weight
-        )
+        basic_diff = tf.reduce_sum(tf.reduce_sum(tf.math.abs(pred_basics - true_basics), axis=-1) * sample_weight)
         # compute the average number of non-basics and spells off the model is from human builds
-        deck_diff = tf.reduce_sum(
-            tf.reduce_sum(tf.math.abs(pred_built - true_decks), axis=-1) * sample_weight
-        )
+        deck_diff = tf.reduce_sum(tf.reduce_sum(tf.math.abs(pred_built - true_decks), axis=-1) * sample_weight)
         return {"basics_off": basic_diff, "spells_off": deck_diff}
 
     def save(self, cards, location):
