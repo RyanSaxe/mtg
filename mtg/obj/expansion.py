@@ -20,7 +20,7 @@ class Expansion:
         idx_to_name=None,
     ):
         self.expansion = expansion
-        self.cards = CardSet([f"set={self.expansion}", "is:booster"]).to_dataframe()
+        self.cards = self.get_cards_from_scryfall()
         self.clean_card_df(idx_to_name)
         self.bo1 = self.process_data(bo1, name="bo1")
         self.bo3 = self.process_data(bo3, name="bo3")
@@ -32,6 +32,9 @@ class Expansion:
         else:
             self.card_data_for_ML = None
         self.create_data_dependent_attributes()
+        
+    def get_cards_from_scryfall(self):
+        return CardSet([f"set={self.expansion}", "is:booster"]).to_dataframe()
 
     @property
     def types(self):
