@@ -400,7 +400,44 @@ class DMU(Expansion):
         return types + ["citizen"]
 
 
-EXPANSIONS = [VOW, SNC, DMU]
+class BRO(Expansion):
+    def __init__(
+        self,
+        bo1=None,
+        bo3=None,
+        quick=None,
+        draft=None,
+        replay=None,
+        ml_data=True,
+        idx_to_name=None,
+    ):
+        super().__init__(
+            expansion="bro",
+            bo1=bo1,
+            bo3=bo3,
+            quick=quick,
+            draft=draft,
+            replay=replay,
+            ml_data=ml_data,
+            idx_to_name=idx_to_name,
+        )
+
+    def get_cards_from_scryfall(self):
+        cardset_bro = CardSet([f"set=bro",
+            "is:booster",
+            "-name:\"urza, planeswalker\"",
+            "-name:\"titania, gaea incarnate\"",
+            "-name:\"mishra, lost to phyrexia\""]).to_dataframe()
+        cardset_brr = CardSet([f"set=brr"]).to_dataframe()
+        return pd.concat([cardset_bro, cardset_brr], ignore_index=True)
+
+    @property
+    def types(self):
+        types = super().types
+        return types + ["citizen"]
+
+
+EXPANSIONS = [VOW, SNC, DMU, BRO]
 
 
 def get_expansion_obj_from_name(expansion):
