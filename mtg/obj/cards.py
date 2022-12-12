@@ -65,7 +65,7 @@ class CardSet:
         basics = ["plains", "island", "swamp", "mountain", "forest"]
         card_names = [x for x in df["name"].unique()]
         for basic in basics:
-            card_names.remove(basic)
+            if basic in card_names: card_names.remove(basic)
         card_names = basics + card_names
         id_to_name = {i: card_name for i, card_name in enumerate(card_names)}
         name_to_id = {name: idx for idx, name in id_to_name.items()}
