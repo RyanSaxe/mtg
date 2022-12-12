@@ -423,18 +423,22 @@ class BRO(Expansion):
         )
 
     def get_cards_from_scryfall(self):
-        cardset_bro = CardSet([f"set=bro",
+        bro = CardSet([f"set=bro",
             "is:booster",
             "-name:\"urza, planeswalker\"",
             "-name:\"titania, gaea incarnate\"",
-            "-name:\"mishra, lost to phyrexia\""]).to_dataframe()
-        cardset_brr = CardSet([f"set=brr"]).to_dataframe()
-        return pd.concat([cardset_bro, cardset_brr], ignore_index=True)
+            "-name:\"mishra, lost to phyrexia\""])
+        brr = CardSet([f"set=brr"])
+        all_cards = bro.union(brr)
+        # overwrite cards in bro to be the Union 
+        # NOTE: allow creating a cardset from a set of cards in the future
+        bro.cards = all_cards
+        return bro.to_dataframe()
 
     @property
     def types(self):
         types = super().types
-        return types + ["citizen"]
+        return types
 
 
 EXPANSIONS = [VOW, SNC, DMU, BRO]
