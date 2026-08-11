@@ -32,6 +32,22 @@ cards in and the first cards out, the cut list, and the mana split. Click any
 row to lock it in or out and hit **Rebuild**; **Copy list** yields an
 Arena-importable decklist.
 
+### a set that released today
+
+17lands publishes nothing for weeks and Scryfall has no `arena_id` yet, so
+neither the vocab nor the grpId bridge can come from the usual places. Build
+them from the Arena client's own card database instead:
+
+```bash
+uv run python -m draftbot.data.day0 --set HOB
+uv run python -m draftbot.hud --ui window --stats none
+```
+
+Stats come out all-NaN → zeroed with missing-masks on, which is the
+stat-dropout condition the trunk was pretrained under. These artifacts are
+provisional (a `.day0` marker flags them) and are rebuilt with new card ids
+once 17lands publishes; see docs/JOURNAL.md 2026-08-11.
+
 Defaults are the corpus-pretrained production trunks — `EXP-033` drafting
 (`--models`), `EXP-126` building with `EXP-116` for lock-and-rebuild
 (`--deck-models`, or `--no-deck` to skip the builder). They ship over the

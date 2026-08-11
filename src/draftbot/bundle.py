@@ -17,6 +17,8 @@ import sys
 import tarfile
 from pathlib import Path
 
+from draftbot.data.cards import DAY0_MARKER, SOURCES_JSON
+
 # Production set as of 2026-08-01 (journal: joint program closed):
 # draft advisor, deck lock-and-rebuild, deck trunk, deck MSH fine-tune,
 # joint draft+sealed trunk (P5.S joint; supersedes the sealed-only EXP-134).
@@ -40,6 +42,12 @@ def bundle_paths(set_codes: list[str], checkpoints: list[str]) -> list[Path]:
             paths.append(proc / name)
         if (proc / "decks.parquet").exists():  # absent pre-extraction is fine
             paths.append(proc / "decks.parquet")
+        # Day-0 sets carry two more files: sources.json names the bonus sheets
+        # (the target machine's grpId bridge and art map both read it), and the
+        # .day0 marker keeps the vocab flagged provisional over there too.
+        for name in (SOURCES_JSON, DAY0_MARKER):
+            if (proc / name).exists():
+                paths.append(proc / name)
         splits = Path("data/splits") / f"{code}.json"
         if splits.exists():
             paths.append(splits)

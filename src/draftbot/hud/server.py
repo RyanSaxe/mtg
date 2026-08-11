@@ -30,11 +30,11 @@ def art_url_map(set_code: str) -> dict[int, str]:
     """our card id → scryfall art_crop URL, via the cached set JSONs."""
     import pandas as pd
 
-    from draftbot.data.cards import COMPANION_SHEETS, PROCESSED_DIR, name_to_id, norm_name
+    from draftbot.data.cards import PROCESSED_DIR, name_to_id, norm_name, source_sets
     cards = pd.read_parquet(PROCESSED_DIR / set_code / "cards.parquet")
     nti = name_to_id(cards)
     out: dict[int, str] = {}
-    for code in [set_code] + COMPANION_SHEETS.get(set_code.upper(), []):
+    for code in source_sets(set_code):
         cache = SCRYFALL_CACHE_DIR / f"{code.lower()}.json"
         if not cache.exists():
             continue

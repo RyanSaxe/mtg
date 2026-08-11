@@ -14,8 +14,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from draftbot.data.cards import (COMPANION_SHEETS, PROCESSED_DIR,
-                                 SCRYFALL_CACHE_DIR, name_to_id, norm_name)
+from draftbot.data.cards import (PROCESSED_DIR, SCRYFALL_CACHE_DIR, name_to_id,
+                                 norm_name, source_sets)
 from draftbot.data.dataset import PAD
 from draftbot.hud.follower import (DraftCompleted, DraftJoined, PackSeen,
                                    PickMade, SealedPool, set_code_from_event)
@@ -54,11 +54,20 @@ def infer_set(card_ids: list[int]) -> str | None:
 
 
 def grp_to_vocab(set_code: str) -> dict[int, int]:
-    """arena grpId → our card id, via the cached Scryfall set JSONs."""
+    """arena grpId → our card id, via the cached Scryfall set JSONs, with
+    Arena's own card database as the backstop.
+
+    Scryfall is authoritative where it has an `arena_id`, but it backfills
+    those days after a set goes live — on release day every card in the set
+    has `arena_id: null` (observed for all 193 HOB + 103 HOC cards on
+    2026-08-11), which would leave the HUD unable to read a single pack. The
+    Arena client's local database always knows the grpIds it is about to
+    write into Player.log, so it fills the gaps here (and, incidentally, the
+    alternate printings Scryfall's `unique=cards` search collapses away)."""
     cards = pd.read_parquet(PROCESSED_DIR / set_code / "cards.parquet")
     nti = name_to_id(cards)
     mapping: dict[int, int] = {}
-    sources = [set_code] + COMPANION_SHEETS.get(set_code.upper(), [])
+    sources = source_sets(set_code)
     for code in sources:
         cache = SCRYFALL_CACHE_DIR / f"{code.lower()}.json"
         if not cache.exists():
@@ -74,7 +83,29 @@ def grp_to_vocab(set_code: str) -> dict[int, int]:
         vid = nti.get(norm_name(card.get("name", "")))
         if arena and vid is not None:
             mapping.setdefault(int(arena), vid)
+    mapping.update(_arena_db_grps(sources, nti, mapping))
     return mapping
+
+
+def _arena_db_grps(sources: list[str], nti: dict[str, int],
+                   known: dict[int, int]) -> dict[int, int]:
+    """grpIds Scryfall could not supply, read from the local Arena client.
+
+    Absent/unreadable is normal (CI, a machine without Arena) — the Scryfall
+    mapping stands alone there, which is every set past its first week."""
+    import sqlite3
+
+    from draftbot.data import arena_db
+    try:
+        names = arena_db.grp_names(sources)
+    except (FileNotFoundError, sqlite3.Error, OSError):
+        return {}
+    extra = {}
+    for grp, name in names.items():
+        vid = nti.get(norm_name(name))
+        if vid is not None and grp not in known:
+            extra[int(grp)] = vid
+    return extra
 
 
 @dataclass

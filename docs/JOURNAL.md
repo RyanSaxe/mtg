@@ -912,3 +912,72 @@ every spell casts off WU — Suki ({G/W}{G/W}) and Messenger Hawk ({U/B})
 contribute phantom G/B pip mass to the static features, and the pip-aware
 basics allocation obliges. Owner registered 8P/8I (correct). Fix candidates
 when worth it: hybrid-aware pip features, or a castability check in decode.
+
+## 2026-08-11 — Day-0 onboarding: HOB drafted on release day, zero 17lands data (P4.T3)
+
+The Hobbit went live on Arena and the HUD could not see it. Three gaps, all
+load-bearing, none of them previously exercised — every set we had ever
+onboarded already had 17lands data by the time we touched it:
+
+1. `build_cards` derives the vocab from the `pack_card_*` columns of the
+   17lands CSV. `probe("HOB", "PremierDraft")` → None; no CSV, no vocab.
+2. `scorer_from_checkpoint(..., stats="none")` still calls
+   `assemble(set, "full")` to get the stat block's SHAPE before zeroing it —
+   so day-0 mode needed a snapshot that by definition cannot be computed.
+3. `grp_to_vocab` bridges Arena grpIds via Scryfall `arena_id`. Scryfall had
+   all 193 HOB + 103 HOC cards listed as `games: [..., arena]` with
+   `arena_id: null` — the backfill lags the Arena release. The
+   `/cards/arena/<id>` fallback 404s for the same reason. Not one pack would
+   have parsed.
+
+HUD_PLAN's "static-only mode still works via Scryfall + `none` stats" was
+therefore aspirational. It is real now.
+
+**Source of truth for day 0 is the Arena client itself.** It ships a SQLite
+card database (`Downloads/Raw/Raw_CardDatabase_<hash>.mtga`); `Cards` ⋈
+`Localizations_enUS` is grpId → name for every set the client has downloaded —
+i.e. available strictly before anything else in the world knows the set exists.
+New `draftbot.data.arena_db` reads it `mode=ro`; `draftbot.data.day0` turns it
+into the standard artifacts:
+
+    uv run python -m draftbot.data.day0 --set HOB
+
+vocab (Arena names → Scryfall card objects) → static features → an all-NaN
+stat snapshot registered under both `full` and `week1`. NaN is the point:
+`apply_scaler(add_masks=True)` maps it to 0 with every missing-mask on, which
+is exactly the stat-dropout condition the trunk was pretrained under. Day-0 is
+a trained-for condition, not a degraded one.
+
+Two Arena-DB gotchas, both caught by validating against MSH's known-good
+339-card vocab before trusting anything:
+- **`DraftContent` is not draftability.** Basics carry 0, and so does every
+  one of HOC's 104 cards. Filtering on it silently produced a 167-card vocab.
+  The filter is `IsToken = 0 AND IsPrimaryCard = 1`, which covers 339/339 of
+  MSH at the cost of 36 bonus-sheet cards that never reach a pack — the right
+  way round, since an over-wide vocab costs nothing at inference and a missing
+  card is a hole in the pack.
+- **Names carry display markup.** Arena wraps hyphenated names to prevent line
+  breaks (`<nobr>Lake-town</nobr> Lookout`); unstripped, 26 HOB names missed
+  Scryfall entirely.
+
+HOB result: **296 cards** (= Scryfall's 193 HOB + 103 HOC exactly), 308 grpIds,
+zero unresolved names, static feature columns identical to MSH's. Bonus sheet
+discovered from Scryfall's `parent_set_code` graph rather than the hardcoded
+`COMPANION_SHEETS`, and persisted to `sources.json`, which now overrides that
+registry everywhere (`source_sets()`) — the next set needs no code edit.
+Verified end to end: EXP-033 ranks a P1P1 (prob mass 1.0), EXP-126/116 build a
+legal 40, EXP-135 builds a legal sealed 40, `infer_set` recognises HOB from
+raw grpIds, and `--stats full` produces a bit-identical table to `--stats none`
+for a day-0 set, so the flag cannot be got wrong.
+
+Everything is PROVISIONAL and says so: a `.day0` marker sits next to
+cards.parquet, and `build_cards` now regenerates from the CSV (dropping the
+marker) the moment 17lands publishes. **Card ids change at that boundary** —
+nothing trained on day-0 ids may outlive it. No leaderboard row: HOB has no
+val split to evaluate against, and won't until 17lands publishes.
+
+Bundle now carries the day-0 sidecars (`sources.json`, `.day0`) — without
+sources.json the target machine drops the entire bonus sheet from both the
+grpId bridge and the art map. tests/test_day0.py: 13 tests, the Arena-DB half
+hermetic against a miniature fixture DB. Full suite green (11 pre-existing
+skips).
