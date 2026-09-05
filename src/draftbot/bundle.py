@@ -42,6 +42,8 @@ def bundle_paths(set_codes: list[str], checkpoints: list[str]) -> list[Path]:
             paths.append(proc / name)
         if (proc / "decks.parquet").exists():  # absent pre-extraction is fine
             paths.append(proc / "decks.parquet")
+        # oracle-text blocks (+ sha sidecars): the laptop needs no encoder
+        paths += sorted(p for p in proc.glob("features.text.*") if p.is_file())
         # Day-0 sets carry two more files: sources.json names the bonus sheets
         # (the target machine's grpId bridge and art map both read it), and the
         # .day0 marker keeps the vocab flagged provisional over there too.

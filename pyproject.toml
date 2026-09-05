@@ -18,6 +18,9 @@ dependencies = [
 dev = [
     "pytest>=8.0",
 ]
+text = [
+    "sentence-transformers>=3.0",
+]
 
 [project.scripts]
 draftbot = "draftbot.cli:main"

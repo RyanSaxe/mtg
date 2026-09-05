@@ -1,0 +1,119 @@
+{
+ "rows": [
+  {
+   "encoder": "bge-base",
+   "format": "named",
+   "features": "static",
+   "lambda": 100.0,
+   "loso_gih_mean": 0.3268325493805547,
+   "loso_gih_sd": 0.09355990858386246,
+   "HOB_gih": 0.1797220047786008,
+   "HOB_game_win_rate": 0.24527497202010556,
+   "HOB_drawn_improvement_win_rate": 0.2515831375512331,
+   "HOB_avg_seen": 0.7679549570315789,
+   "HOB_avg_pick": 0.7135472781487943
+  },
+  {
+   "encoder": "bge-base",
+   "format": "named",
+   "features": "text",
+   "lambda": 1000.0,
+   "loso_gih_mean": 0.37620952372973987,
+   "loso_gih_sd": 0.07195173273205664,
+   "HOB_gih": 0.33405060658026875,
+   "HOB_game_win_rate": 0.3266655453051613,
+   "HOB_drawn_improvement_win_rate": 0.2780276511822567,
+   "HOB_avg_seen": 0.7496703097645041,
+   "HOB_avg_pick": 0.6909759925791082
+  },
+  {
+   "encoder": "bge-base",
+   "format": "named",
+   "features": "static+text",
+   "lambda": 1000.0,
+   "loso_gih_mean": 0.414742875048405,
+   "loso_gih_sd": 0.07322815635817029,
+   "HOB_gih": 0.40045245941450996,
+   "HOB_game_win_rate": 0.38539370239397414,
+   "HOB_drawn_improvement_win_rate": 0.37251463326999956,
+   "HOB_avg_seen": 0.7940085455709041,
+   "HOB_avg_pick": 0.7384414335777436
+  },
+  {
+   "encoder": "bge-base",
+   "format": "named",
+   "features": "text-knn10",
+   "lambda": NaN,
+   "loso_gih_mean": 0.3143354813514995,
+   "loso_gih_sd": 0.08266942173788976,
+   "HOB_gih": 0.21791603921845745
+  },
+  {
+   "encoder": "bge-base",
+   "format": "named",
+   "features": "text-knn30",
+   "lambda": NaN,
+   "loso_gih_mean": 0.33692060602172247,
+   "loso_gih_sd": 0.08785103761610047,
+   "HOB_gih": 0.22338217891156936
+  },
+  {
+   "encoder": "bge-base",
+   "format": "oracle",
+   "features": "static",
+   "lambda": 100.0,
+   "loso_gih_mean": 0.3268325493805547,
+   "loso_gih_sd": 0.09355990858386246,
+   "HOB_gih": 0.1797220047786008,
+   "HOB_game_win_rate": 0.24527497202010556,
+   "HOB_drawn_improvement_win_rate": 0.2515831375512331,
+   "HOB_avg_seen": 0.7679549570315789,
+   "HOB_avg_pick": 0.7135472781487943
+  },
+  {
+   "encoder": "bge-base",
+   "format": "oracle",
+   "features": "text",
+   "lambda": 1000.0,
+   "loso_gih_mean": 0.3395087784828117,
+   "loso_gih_sd": 0.07020134129001468,
+   "HOB_gih": 0.28452491263830815,
+   "HOB_game_win_rate": 0.28784719492082955,
+   "HOB_drawn_improvement_win_rate": 0.3223181130073622,
+   "HOB_avg_seen": 0.47266880388880206,
+   "HOB_avg_pick": 0.44419949220239047
+  },
+  {
+   "encoder": "bge-base",
+   "format": "oracle",
+   "features": "static+text",
+   "lambda": 1000.0,
+   "loso_gih_mean": 0.4375622882905244,
+   "loso_gih_sd": 0.0751578813100225,
+   "HOB_gih": 0.3783052379194033,
+   "HOB_game_win_rate": 0.3783112096670651,
+   "HOB_drawn_improvement_win_rate": 0.38291542711432214,
+   "HOB_avg_seen": 0.7844378246515734,
+   "HOB_avg_pick": 0.7343746734200497
+  },
+  {
+   "encoder": "bge-base",
+   "format": "oracle",
+   "features": "text-knn10",
+   "lambda": NaN,
+   "loso_gih_mean": 0.2779422324640518,
+   "loso_gih_sd": 0.06313033775589469,
+   "HOB_gih": 0.23974787268827794
+  },
+  {
+   "encoder": "bge-base",
+   "format": "oracle",
+   "features": "text-knn30",
+   "lambda": NaN,
+   "loso_gih_mean": 0.30351359184203786,
+   "loso_gih_sd": 0.05926581377759787,
+   "HOB_gih": 0.22230239850390493
+  }
+ ],
+ "harness": []
+}

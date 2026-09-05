@@ -179,6 +179,12 @@ def onboard_day0(set_code: str, db: Path | None = None,
     cards = build_day0_cards(code, list(grps.values()), sources)
     build_static_features(code)
     build_statless_snapshot(code)
+    try:  # oracle-text block for text-trained trunks (optional extra [text])
+        from draftbot.data.text_features import build_text_features
+        build_text_features(code)
+    except ImportError:
+        print(f"{code}: sentence-transformers not installed — no text block "
+              "(only text-trained checkpoints need it)", file=sys.stderr)
     print(f"{code}: {len(cards)} cards, {len(grps)} grpIds, "
           f"sources {'+'.join(sources)} — day-0 artifacts written")
     print(f"  next: uv run python -m draftbot.bundle --set {code} --set MSH")

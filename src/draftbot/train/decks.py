@@ -156,7 +156,8 @@ class DeckTrainer:
             from draftbot.data.features import load_scaler
             pre_scaler = load_scaler(Path(cfg["scaler_from"]) / "scaler.json")
         feats, _ = feature_tensor(set_code, cfg.get("stats", "full"),
-                                  ckpt_dir=self.dir, scaler=pre_scaler)
+                                  ckpt_dir=self.dir, scaler=pre_scaler,
+                                  text=cfg.get("text_features"))
         self.model = build_deck_model(cfg, feats).to(self.device)
         if cfg.get("init_from"):  # warm-start (stage 2 / corpus-pretrained trunk)
             src = Path(cfg["init_from"])
@@ -325,14 +326,14 @@ class DeckTrainer:
         return self.best_val
 
 
-def _deck_feature_pair(code: str, scaler: dict):
+def _deck_feature_pair(code: str, scaler: dict, text: str | None = None):
     """(full, statless) feature tensors for one set, corpus-scaled, in the
     exact layout feature_tensor produces (bias row + is_bias column) so
     pretrained encoder weights transfer to the fine-tune/eval paths."""
     from draftbot.data.corpus import _statless
     from draftbot.data.features import assemble
 
-    full_df, _ = assemble(code, "full", scaler=scaler, fit=False)
+    full_df, _ = assemble(code, "full", scaler=scaler, fit=False, text=text)
 
     def tensorize(df):
         t = torch.tensor(df.to_numpy(np.float32))
@@ -387,7 +388,7 @@ class DeckCorpusTrainer:
             from draftbot.data.features import load_scaler
             scaler = load_scaler(Path(cfg["scaler_from"]) / "scaler.json")
         else:
-            scaler = fit_corpus_scaler(sorted(all_codes))
+            scaler = fit_corpus_scaler(sorted(all_codes), cfg.get("text_features"))
         save_scaler(scaler, self.dir / "scaler.json")
 
         self.bundles = []
@@ -402,7 +403,7 @@ class DeckCorpusTrainer:
                 if code not in feat_cache:
                     cards = pd.read_parquet(PROCESSED_DIR / code / "cards.parquet")
                     land_cache[code] = land_flags(cards)
-                    ff, fn = _deck_feature_pair(code, scaler)
+                    ff, fn = _deck_feature_pair(code, scaler, cfg.get("text_features"))
                     feat_cache[code] = (ff.to(self.device), fn.to(self.device))
                 f_full, f_none = feat_cache[code]
                 is_land = land_cache[code]

@@ -21,6 +21,7 @@ def scorer_from_checkpoint(ckpt: Path, set_code: str, stats: str) -> TorchScorer
     ckpt_file = ckpt if ckpt.is_file() else ckpt_dir / "best.pt"
     state = torch.load(ckpt_file, map_location="cpu", weights_only=False)
     cfg = state["cfg"]
+    text = cfg.get("text_features")  # oracle-text block the checkpoint trained with
 
     if "corpus" in cfg:  # pretrained trunk: zero-shot via swapped card context
         from draftbot.data.corpus import _statless, add_bias_row
@@ -28,7 +29,7 @@ def scorer_from_checkpoint(ckpt: Path, set_code: str, stats: str) -> TorchScorer
         from draftbot.train.pretrain import build_trunk
         scaler = load_scaler(ckpt_dir / "scaler.json")
         feats_df, _ = assemble(set_code, "full" if stats == "none" else stats,
-                               scaler=scaler)
+                               scaler=scaler, text=text)
         if stats == "none":
             feats_df = _statless(feats_df)
         table = torch.tensor(add_bias_row(feats_df))
@@ -46,12 +47,13 @@ def scorer_from_checkpoint(ckpt: Path, set_code: str, stats: str) -> TorchScorer
         # stat-trained model in day-0 mode: full-width table, stats zeroed, masks on
         from draftbot.data.corpus import _statless, add_bias_row
         from draftbot.data.features import assemble
-        feats_df, _ = assemble(set_code, "full", scaler=scaler)
+        feats_df, _ = assemble(set_code, "full", scaler=scaler, text=text)
         feats = torch.tensor(add_bias_row(_statless(feats_df)))
     elif stats != "none" and not has_stat_cols:
         raise SystemExit("model was trained without stats; use --stats-snapshot none")
     else:
-        feats, _ = feature_tensor(set_code, stats, ckpt_dir=None, scaler=scaler)
+        feats, _ = feature_tensor(set_code, stats, ckpt_dir=None, scaler=scaler,
+                                  text=text)
     cards = pd.read_parquet(PROCESSED_DIR / set_code / "cards.parquet")
     # t comes from the checkpoint itself: pos_embedding rows (minus the set-token
     # slot if present) — sets differ (MSH t=42, EOE t=39, draft boosters 45)
@@ -81,18 +83,20 @@ def deck_builder_from_checkpoint(ckpt: Path, set_code: str, stats: str):
     ckpt_file = ckpt if ckpt.is_file() else ckpt_dir / "best.pt"
     state = torch.load(ckpt_file, map_location="cpu", weights_only=False)
     cfg = state["cfg"]
+    text = cfg.get("text_features")
     scaler = load_scaler(ckpt_dir / "scaler.json")
     has_stat_cols = "avg_seen" in scaler
     if stats == "none" and has_stat_cols:
         from draftbot.data.corpus import _statless, add_bias_row
         from draftbot.data.features import assemble
-        feats_df, _ = assemble(set_code, "full", scaler=scaler)
+        feats_df, _ = assemble(set_code, "full", scaler=scaler, text=text)
         feats = torch.tensor(add_bias_row(_statless(feats_df)))
     elif stats != "none" and not has_stat_cols:
         raise SystemExit("model was trained without stats; use --stats-snapshot none")
     else:
         from draftbot.train.loop import feature_tensor
-        feats, _ = feature_tensor(set_code, stats, ckpt_dir=None, scaler=scaler)
+        feats, _ = feature_tensor(set_code, stats, ckpt_dir=None, scaler=scaler,
+                                  text=text)
     model = build_deck_model(cfg, feats)
     sd = state["model"]
     # the checkpoint buffer holds TRAIN-time features (possibly another set's,

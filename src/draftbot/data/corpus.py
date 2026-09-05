@@ -28,6 +28,7 @@ class SetBundle:
     features_full: np.ndarray    # (n_cards+1, F) scaled, stats present
     features_statless: np.ndarray  # same shape, stats zeroed + masks on
     sample_weight: float
+    columns: list[str] | None = None  # feature column names (+ "is_bias")
 
 
 def _statless(features: pd.DataFrame) -> pd.DataFrame:
@@ -39,14 +40,18 @@ def _statless(features: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
-def fit_corpus_scaler(set_codes: list[str]) -> dict:
-    """One scaler over all corpus sets' raw feature tables (static + full stats)."""
+def fit_corpus_scaler(set_codes: list[str], text: str | None = None) -> dict:
+    """One scaler over all corpus sets' raw feature tables (static [+ text] +
+    full stats). The sandbag never contributes (quarantine covers this)."""
     from draftbot.data.features import PROCESSED_DIR as PD, load_snapshot
     frames = []
     for code in set_codes:
-        static = pd.read_parquet(PD / code / "features.static.parquet")
-        stats = load_snapshot(code, "full")
-        frames.append(pd.concat([static, stats], axis=1))
+        parts = [pd.read_parquet(PD / code / "features.static.parquet")]
+        if text:
+            from draftbot.data.text_features import load_text_features
+            parts.append(load_text_features(code, text))
+        parts.append(load_snapshot(code, "full"))
+        frames.append(pd.concat(parts, axis=1))
     return fit_scaler(pd.concat(frames, axis=0, ignore_index=True))
 
 
@@ -59,7 +64,8 @@ def add_bias_row(feats: pd.DataFrame) -> np.ndarray:
 
 
 def load_corpus(manifest_path: Path, skill_filter: dict | None = None,
-                scaler: dict | None = None) -> tuple[list[SetBundle], dict]:
+                scaler: dict | None = None,
+                text: str | None = None) -> tuple[list[SetBundle], dict]:
     manifest = yaml.safe_load(Path(manifest_path).read_text())
     quarantined = set(manifest["quarantine"])
     codes = [c for c in manifest["sets"] if
@@ -67,7 +73,7 @@ def load_corpus(manifest_path: Path, skill_filter: dict | None = None,
     assert not (set(codes) & quarantined), "quarantined set in corpus!"
     cap = manifest.get("max_drafts_per_set")
     if scaler is None:
-        scaler = fit_corpus_scaler(codes)
+        scaler = fit_corpus_scaler(codes, text)
 
     bundles = []
     for code in codes:
@@ -95,12 +101,13 @@ def load_corpus(manifest_path: Path, skill_filter: dict | None = None,
                                m["event_wins"].to_numpy(np.float64),
                                m["event_losses"].to_numpy(np.float64),
                                m["draft_time"].to_numpy(), arr.t).astype(np.float32)
-        full, _ = assemble(code, "full", scaler=scaler)
+        full, _ = assemble(code, "full", scaler=scaler, text=text)
         bundles.append(SetBundle(
             code=code, arrays=arr, weights=w,
             features_full=add_bias_row(full),
             features_statless=add_bias_row(_statless(full)),
             sample_weight=float(manifest["sets"][code].get("weight", 1.0)) * arr.n_drafts,
+            columns=list(full.columns) + ["is_bias"],
         ))
         print(f"corpus: {code} {arr.n_drafts} drafts t={arr.t} P={arr.max_pack}",
               flush=True)

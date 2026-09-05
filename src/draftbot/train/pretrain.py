@@ -52,7 +52,8 @@ class ZeroShotEval:
     the tracker for EXP-030/033; it is in-corpus since pretrain_v2, so its
     "zero-shot" number is really an in-corpus fit)."""
 
-    def __init__(self, scaler: dict, device, track: str = "MSH"):
+    def __init__(self, scaler: dict, device, track: str = "MSH",
+                 text: str | None = None):
         self.track = track
         splits = load_splits(track)
         from draftbot.data.dataset import load_draft_arrays
@@ -64,10 +65,10 @@ class ZeroShotEval:
         self.tables = {}
         for mode in ("none", "week1", "full"):
             feats, _ = assemble(track, None if mode == "none" else mode,
-                                scaler={c: scaler[c] for c in scaler})
+                                scaler={c: scaler[c] for c in scaler}, text=text)
             if mode == "none":
                 # static-only table lacks stat columns; rebuild at full width
-                full, _ = assemble(track, "full", scaler=scaler)
+                full, _ = assemble(track, "full", scaler=scaler, text=text)
                 from draftbot.data.corpus import _statless
                 feats = _statless(full)
             self.tables[mode] = torch.tensor(add_bias_row(feats)).to(device)
@@ -105,12 +106,16 @@ def main(argv=None):
     scaler = None
     if args.resume and (ckpt_dir / "scaler.json").exists():
         scaler = load_scaler(ckpt_dir / "scaler.json")
+    text = cfg.get("text_features")  # P3.T5c: oracle-text block, None = off
     bundles, scaler = load_corpus(Path(cfg["corpus"]),
-                                  skill_filter=cfg.get("skill_filter"), scaler=scaler)
+                                  skill_filter=cfg.get("skill_filter"), scaler=scaler,
+                                  text=text)
     save_scaler(scaler, ckpt_dir / "scaler.json")
     feat_dim = bundles[0].features_full.shape[1]
     (ckpt_dir / "meta.json").write_text(json.dumps(
-        {"feat_dim": feat_dim, "t_max": T_MAX, "corpus": cfg["corpus"]}))
+        {"feat_dim": feat_dim, "t_max": T_MAX, "corpus": cfg["corpus"],
+         "text_features": text}))
+    (ckpt_dir / "feature_columns.json").write_text(json.dumps(bundles[0].columns))
 
     model = build_trunk(cfg, feat_dim).to(device)
     n_params = sum(p.numel() for p in model.parameters())
@@ -138,7 +143,7 @@ def main(argv=None):
     track = cfg.get("track_set", "MSH")
     assert track not in {c for c in yaml.safe_load(Path(cfg["corpus"]).read_text())["sets"]} \
         or track == "MSH", f"track_set {track} is in the corpus — not a zero-shot signal"
-    zse = ZeroShotEval(scaler, device, track)
+    zse = ZeroShotEval(scaler, device, track, text)
     writer = SummaryWriter(log_dir=str(Path("runs") / exp))
     rng = np.random.default_rng(cfg.get("seed", 17) + step)
     tables = {b.code: (torch.tensor(b.features_full).to(device),
