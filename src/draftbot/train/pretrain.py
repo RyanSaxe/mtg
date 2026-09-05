@@ -185,11 +185,17 @@ def main(argv=None):
                 writer.add_scalar(f"zeroshot_{track.lower()}_val/{m}", o, step)
                 writer.add_scalar(f"zeroshot_{track.lower()}_val/{m}_expert", e, step)
             save(ckpt_dir / "last.pt")
-            if zs["week1"][1] > best_zs:  # expert-subset week1 selects best.pt
-                best_zs = zs["week1"][1]
+            # best.pt selection (expert subset). Historical rule: week1 only —
+            # it picked EXP-034's step 44k while the day-0 axis kept rising to
+            # 52k (journal 2026-09-05). `select_on: [none, week1]` averages the
+            # listed modes so a day-0 gain is not invisible to selection.
+            sel = float(np.mean([zs[m][1] for m in cfg.get("select_on", ["week1"])]))
+            if sel > best_zs:
+                best_zs = sel
                 save(ckpt_dir / "best.pt")
     writer.close()
-    print(f"done: best zero-shot(week1) {track} val top-1 = {best_zs:.4f}")
+    print(f"done: best zero-shot({'+'.join(cfg.get('select_on', ['week1']))}) "
+          f"{track} val expert top-1 = {best_zs:.4f}")
     return 0
 
 

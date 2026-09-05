@@ -4,6 +4,7 @@
 exp: EXP-037
 corpus: configs/corpus/pretrain_v2.yaml
 track_set: HOB
+select_on: [none, week1]   # two-axis selection (journal 2026-09-05)
 seed: 17
 batch_drafts: 64
 total_steps: 60000

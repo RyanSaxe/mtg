@@ -1122,3 +1122,24 @@ Order after EXP-034 lands: EXP-035 → text implementation (½ day) → EXP-050
   drafter this project has measured on any set (EXP-013 MSH val .7020,
   EXP-031 .7047). Production HOB drafter candidate alongside EXP-138 for decks:
   `--models checkpoints/EXP-036 --deck-models checkpoints/EXP-138`.
+
+## 2026-09-05 — EXP-034 (60k steps) NEGATIVE: training length is not the draft-trunk lever; selection signal fixed
+
+EXP-034 = EXP-033 recipe × 3 steps (60k, 306 min), tracked on HOB. Harness,
+HOB val expert top-1 (EXP-033 in brackets): none .5391 (.5387), week1 .6831
+(.6801), full .6889 (.6855) — +0.0 / +0.3 / +0.3, all under the +0.5 promote
+bar. EXP-033 stays the production trunk. The curve says why: every stats mode
+plateaued by step 16k (≈ 1 epoch of the filtered corpus) — week1 .6828@16k
+vs .6831@44k (best) vs .6804@60k. The trunk saturates on the corpus AS
+FILTERED, which is exactly the EXP-035 question (light cut = 1.8× the
+drafts). Two lessons kept:
+1. **Longer pretraining moved the day-0 axis, not the stats axes** — the same
+   shape as the deck probe (EXP-124): `none` rose .5327@16k → .5451@52k
+   (+1.2 in-run), while week1/full sat flat. But best.pt is chosen on week1
+   expert, so it landed on step 44k and the harness reads none .5391; the
+   final checkpoint reads **.5421** (row added as EXP-034@last). Selection was
+   blind to the axis that moved. `select_on: [none, week1]` (mean of expert
+   top-1 over the listed modes) is now a config key — default stays the
+   historical week1 rule for provenance; EXP-035/037 use the two-axis rule.
+2. Eval noise at this scale: 2,202 val drafts, ±0.3 between adjacent 2k-step
+   evals; promote bars of +0.5 are the right size, ±0.3 results are ties.
