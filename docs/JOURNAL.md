@@ -1206,3 +1206,24 @@ tracker included). week1/full then run the EXP-033 pathway exactly; text is
 a day-0 fallback. EXP-053 = 051 + that; EXP-052 (text_dropout .1, the
 pre-registered soft regulariser) runs after it as the comparison. Launched
 053 → 052 chained with the same evals + row watcher.
+
+## 2026-09-05 — Why the text block memorises: it is a card id. Control + noise queued (EXP-054/055)
+
+Owner: "I was imagining the embedding space to be small and that the model
+would cluster on semantic distance — in reality the dimensionality is enough
+to just give us an identity per card." Measured on the 9,210 corpus cards
+(8,665 names, 545 reprints): random-pair cosine .66 (sd .06), nearest
+DIFFERENT card .90 — every card sits ~4 sd from anything it is not. PCA-32
+keeps 58% of the variance and still separates (nearest .83 vs random .00):
+any smooth injective projection keeps identity; only lossiness or noise
+removes it. The semantic structure is there (probe kNN/ridge), but nothing
+makes the trunk prefer it over the id when both are on offer and the id fits
+the corpus better. Not a capacity problem — scale failed twice here already;
+a bigger trunk memorises more.
+Queued behind the 053/052 chain: **EXP-054** = EXP-050 with the text block
+replaced by a fixed random unit vector per card name (all identity, no
+semantics): if it reproduces 050's in-corpus gain and holdout loss with
+stats, the effect is identity; its `none` axis says how much of the +1.2 was
+semantic. **EXP-055** = EXP-053 + `text_noise 1.0` (per-dim jitter of 1 sd
+on every text-present batch): smoothness by force. Also possible later:
+coarse quantisation (K prototypes) and paraphrase views.

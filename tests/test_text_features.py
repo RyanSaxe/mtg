@@ -92,3 +92,14 @@ def test_statless_leaves_the_text_block_alone(two_sets):
     assert (s[[c for c in s.columns if c.startswith("text_")]].to_numpy()
             == a[[c for c in a.columns if c.startswith("text_")]].to_numpy()).all()
     assert s["ever_drawn_win_rate__miss"].iloc[0] == 1.0 and s["ever_drawn_win_rate"].iloc[0] == 0.0
+
+
+def test_random_control_encoder_is_identity_without_semantics(two_sets, monkeypatch):
+    """`text_features: random` — a fixed unit vector per card NAME: same name
+    in two sets → same vector (like shared text); different names → unrelated."""
+    monkeypatch.setattr(tf, "RANDOM_DIM", 16)
+    a = tf.build_text_features("AAA", "random")
+    b = tf.build_text_features("BBB", "random")
+    assert a.shape == (3, 16) and np.allclose(np.linalg.norm(a.to_numpy(), axis=1), 1.0)
+    assert np.allclose(a.to_numpy(), b.to_numpy())          # same names, same vectors
+    assert abs(float(a.iloc[0] @ a.iloc[1])) < 0.6           # different names: unrelated

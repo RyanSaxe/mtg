@@ -1,0 +1,31 @@
+# EXP-055: = EXP-053 + `text_noise: 1.0` — per-dim Gaussian jitter (1 sd of
+# the z-scored text block) on every batch where text is present, so the
+# trunk can only use functions that are smooth over the embedding space and
+# an unseen card inherits its neighbourhood rather than a memorised id.
+# One lever vs EXP-053. Bar: none > EXP-053's none by ≥ 0.5, week1/full
+# unchanged by construction (text_when: statless).
+exp: EXP-055
+text_features: bge-base
+text_when: statless
+text_noise: 1.0
+stat_aux_lambda: 0.1
+corpus: configs/corpus/pretrain_v2.yaml
+track_set: HOB
+select_on: [none, week1]
+seed: 17
+batch_drafts: 64
+total_steps: 20000
+emb_dim: 256
+layers: 8
+heads: 8
+dropout: 0.1
+stat_dropout: 0.25
+label_smoothing: 0.05
+skill_filter:
+  min_win_rate: 0.54
+  min_games: 50
+peak_lr: 2.0e-4
+lr_warmup: 1000
+weight_decay: 0.01
+grad_clip: 1.0
+eval_every: 1000

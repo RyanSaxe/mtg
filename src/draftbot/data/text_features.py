@@ -31,8 +31,23 @@ ENCODERS = {
     "bge-base": "BAAI/bge-base-en-v1.5",                   # 768-d, 110M — default
     "bge-large": "BAAI/bge-large-en-v1.5",                 # 1024-d, 335M
     "minilm": "sentence-transformers/all-MiniLM-L6-v2",    # 384-d, 22M
+    # Control (journal 2026-09-05): a fixed random unit vector per card NAME —
+    # all the identity of a text embedding, none of the semantics. Reprints
+    # share a vector, as they share text.
+    "random": "random-unit-vector-control",
 }
 DEFAULT_ENCODER = "bge-base"
+RANDOM_DIM = 768  # matches bge-base so the trunk is the same size
+
+
+def random_vectors(names: list[str], dim: int | None = None) -> np.ndarray:
+    dim = dim or RANDOM_DIM  # read at call time (tests shrink it)
+    out = np.zeros((len(names), dim), np.float32)
+    for i, n in enumerate(names):
+        key = n.split("//")[0].strip().lower().encode()
+        v = np.random.default_rng(int(hashlib.sha1(key).hexdigest()[:8], 16)).standard_normal(dim)
+        out[i] = v / np.linalg.norm(v)
+    return out
 # Probe ablation (plan §3): `masked` = header without the name and the name
 # replaced by "this card" inside the rules text (the CARDNAME convention);
 # `named` = name kept everywhere; `oracle` = rules text only.
@@ -98,7 +113,8 @@ def build_text_features(set_code: str, encoder: str = DEFAULT_ENCODER,
     path, meta = text_path(set_code, encoder), text_path(set_code, encoder).with_suffix(".json")
     if path.exists() and meta.exists() and json.loads(meta.read_text()).get("sha") == sha:
         return pd.read_parquet(path)
-    vecs = embed(texts, encoder)
+    vecs = (random_vectors(list(cards["name"])) if encoder == "random"
+            else embed(texts, encoder))
     cols = [f"text_{encoder}_{i:03d}" for i in range(vecs.shape[1])]
     df = pd.DataFrame(vecs, index=cards["id"].values, columns=cols)
     df.index.name = "id"

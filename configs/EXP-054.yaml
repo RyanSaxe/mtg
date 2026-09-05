@@ -1,0 +1,31 @@
+# EXP-054: RANDOM-VECTOR CONTROL for the text block (journal 2026-09-05).
+# = EXP-050 exactly (text always on, no policy, no aux) with each card's text
+# embedding replaced by a fixed random unit vector keyed on its name: all the
+# identity, none of the semantics (nearest different card cos .90 vs random
+# .66 in bge-base — every card is separable). If this reproduces EXP-050's
+# in-corpus gain (MSH full +0.3) and holdout loss with stats (HOB −1.2),
+# that effect is identity; its `none` axis says how much of EXP-050's +1.2
+# at day 0 was semantic (a random vector for an unseen HOB card carries
+# nothing → expect ≈ EXP-033's .5387).
+exp: EXP-054
+text_features: random
+corpus: configs/corpus/pretrain_v2.yaml
+track_set: HOB
+select_on: [none, week1]
+seed: 17
+batch_drafts: 64
+total_steps: 20000
+emb_dim: 256
+layers: 8
+heads: 8
+dropout: 0.1
+stat_dropout: 0.25
+label_smoothing: 0.05
+skill_filter:
+  min_win_rate: 0.54
+  min_games: 50
+peak_lr: 2.0e-4
+lr_warmup: 1000
+weight_decay: 0.01
+grad_clip: 1.0
+eval_every: 1000

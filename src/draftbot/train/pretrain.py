@@ -185,6 +185,11 @@ def main(argv=None):
     # day-0 fallback, and the stats pathway is exactly the no-text one.
     # EXP-050/051 (text always on) paid ~1pt with stats on the holdout.
     text_when = cfg.get("text_when")
+    # `text_noise: σ` — per-dim Gaussian jitter on the (z-scored) text block
+    # per batch, so the model can only learn functions smooth over the
+    # embedding space (a card's fingerprint must wander past its neighbours;
+    # journal 2026-09-05: nearest different card cos .90 vs random .66).
+    text_noise = float(cfg.get("text_noise", 0.0))
     text_idx = [i for i, c in enumerate(bundles[0].columns or []) if c.startswith("text_")]
     it = batch_iterator(bundles, cfg.get("batch_drafts", 64), rng)
     model.train()
@@ -203,6 +208,10 @@ def main(argv=None):
         if text_idx and drop_text(statless_batch, text_when, text_dropout, rng):
             table = table.clone()
             table[:, text_idx] = 0.0
+        elif text_idx and text_noise:
+            table = table.clone()
+            table[:-1, text_idx] += torch.randn(table.shape[0] - 1, len(text_idx),
+                                                device=table.device) * text_noise
         model.embedding.set_context(table)
         packs = torch.from_numpy(bundle.arrays.packs[idx].astype(np.int64)).to(device)
         prev = torch.from_numpy(bundle.arrays.prev_picks[idx].astype(np.int64)).to(device)
