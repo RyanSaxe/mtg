@@ -32,6 +32,9 @@ def scorer_from_checkpoint(ckpt: Path, set_code: str, stats: str) -> TorchScorer
                                scaler=scaler, text=text)
         if stats == "none":
             feats_df = _statless(feats_df)
+        elif text and cfg.get("text_when") == "statless":
+            from draftbot.data.features import zero_text_block
+            feats_df = zero_text_block(feats_df)  # text is a day-0 fallback only
         table = torch.tensor(add_bias_row(feats_df))
         model = build_trunk(cfg, table.shape[1])
         model.load_state_dict(state["model"])
@@ -53,7 +56,7 @@ def scorer_from_checkpoint(ckpt: Path, set_code: str, stats: str) -> TorchScorer
         raise SystemExit("model was trained without stats; use --stats-snapshot none")
     else:
         feats, _ = feature_tensor(set_code, stats, ckpt_dir=None, scaler=scaler,
-                                  text=text)
+                                  text=text, text_when=cfg.get("text_when"))
     cards = pd.read_parquet(PROCESSED_DIR / set_code / "cards.parquet")
     # t comes from the checkpoint itself: pos_embedding rows (minus the set-token
     # slot if present) — sets differ (MSH t=42, EOE t=39, draft boosters 45)
@@ -96,7 +99,7 @@ def deck_builder_from_checkpoint(ckpt: Path, set_code: str, stats: str):
     else:
         from draftbot.train.loop import feature_tensor
         feats, _ = feature_tensor(set_code, stats, ckpt_dir=None, scaler=scaler,
-                                  text=text)
+                                  text=text, text_when=cfg.get("text_when"))
     model = build_deck_model(cfg, feats)
     sd = state["model"]
     # the checkpoint buffer holds TRAIN-time features (possibly another set's,

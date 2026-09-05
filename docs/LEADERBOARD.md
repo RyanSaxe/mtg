@@ -176,6 +176,14 @@ EXP-033 provenance gap flagged on 2026-07-31 (MSH is IN-corpus for EXP-033).
 | EXP-034 | EXP-034-zeroshot@best | HOB | val | week1 | 0.6672 | 0.9411 | 0.6831 | +0.0181 | 0.8752 | configs/EXP-034.yaml | a6d9786 | 306min | 2026-09-05 |
 | EXP-034 | EXP-034-zeroshot@best | HOB | val | full | 0.6699 | 0.9421 | 0.6889 | +0.0215 | 0.8709 | configs/EXP-034.yaml | a6d9786 | 306min | 2026-09-05 |
 | EXP-034 | EXP-034-zeroshot@last | HOB | val | none | 0.5499 | 0.8799 | 0.5421 | -0.0083 | 1.1447 | configs/EXP-034.yaml | a6d9786 | 306min | 2026-09-05 |
+| EXP-050 | EXP-050-zeroshot@best | HOB | val | none | 0.5543 | 0.8755 | 0.5513 | -0.0001 | 1.1723 | configs/EXP-050.yaml | 7bd48ca | 108min | 2026-09-05 |
+| EXP-050 | EXP-050-zeroshot@best | HOB | val | week1 | 0.6579 | 0.9393 | 0.6686 | +0.0133 | 0.8947 | configs/EXP-050.yaml | 7bd48ca | 108min | 2026-09-05 |
+| EXP-050 | EXP-050-zeroshot@best | HOB | val | full | 0.6609 | 0.9405 | 0.6737 | +0.0161 | 0.8862 | configs/EXP-050.yaml | 7bd48ca | 108min | 2026-09-05 |
+| EXP-050 | EXP-050-zeroshot@best | MSH | val | full | 0.6727 | 0.9410 | 0.6989 | +0.0405 | 0.8589 | configs/EXP-050.yaml | 7bd48ca | 108min | 2026-09-05 |
+| EXP-051 | EXP-051-zeroshot@best | HOB | val | none | 0.5536 | 0.8755 | 0.5509 | -0.0016 | 1.1775 | configs/EXP-051.yaml | 7bd48ca | 108min | 2026-09-05 |
+| EXP-051 | EXP-051-zeroshot@best | HOB | val | week1 | 0.6566 | 0.9385 | 0.6732 | +0.0189 | 0.8964 | configs/EXP-051.yaml | 7bd48ca | 108min | 2026-09-05 |
+| EXP-051 | EXP-051-zeroshot@best | HOB | val | full | 0.6594 | 0.9395 | 0.6780 | +0.0228 | 0.8884 | configs/EXP-051.yaml | 7bd48ca | 108min | 2026-09-05 |
+| EXP-051 | EXP-051-zeroshot@best | MSH | val | full | 0.6687 | 0.9388 | 0.6945 | +0.0399 | 0.8707 | configs/EXP-051.yaml | 7bd48ca | 108min | 2026-09-05 |
 
 ### HOB deck builder (draft decks, then sealed)
 

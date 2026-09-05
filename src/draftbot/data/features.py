@@ -300,6 +300,17 @@ def apply_scaler(df: pd.DataFrame, scaler: dict, add_masks: bool) -> pd.DataFram
     return pd.DataFrame(out, index=df.index)
 
 
+def zero_text_block(feats: pd.DataFrame) -> pd.DataFrame:
+    """`text_when: statless` policy at inference: with stats present the text
+    block is switched off (z-scored zero = the corpus mean), so the model runs
+    the plain static+stats pathway it trained on for that condition."""
+    cols = [c for c in feats.columns if c.startswith("text_")]
+    if cols:
+        feats = feats.copy()
+        feats[cols] = np.float32(0.0)
+    return feats
+
+
 def assemble(set_code: str, stats: str | None, scaler: dict | None = None,
              fit: bool = False, text: str | None = None) -> tuple[pd.DataFrame, dict]:
     """Full feature table for a set: static ∥ [text] ∥ (stat snapshot ∥ masks).

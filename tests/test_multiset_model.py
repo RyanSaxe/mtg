@@ -80,3 +80,21 @@ def test_stat_aux_head_masked_mse_ignores_missing_and_is_optional():
     assert model.stat_aux_loss(feats, tgt, torch.zeros(40, 3)).item() == 0.0
     assert build().stat_head is None
     assert not any(k.startswith("stat_head") for k in build().state_dict())
+
+
+def test_text_when_statless_policy():
+    """`text_when: statless` zeroes the text block whenever stats are present;
+    plain text_dropout is unchanged; no policy + no dropout never touches it."""
+    import numpy as np
+    from draftbot.train.pretrain import drop_text
+    rng = np.random.default_rng(0)
+    assert drop_text(statless_batch=False, text_when="statless", text_dropout=0.0, rng=rng)
+    assert not drop_text(statless_batch=True, text_when="statless", text_dropout=0.0, rng=rng)
+    assert not any(drop_text(False, None, 0.0, rng) for _ in range(20))
+    hits = sum(drop_text(True, "statless", 0.5, rng) for _ in range(400))
+    assert 150 < hits < 250  # dropout still applies inside statless batches
+    import pandas as pd
+    from draftbot.data.features import zero_text_block
+    df = pd.DataFrame({"cmc": [1.0, 2.0], "text_x_000": [0.3, -0.2], "gih": [0.5, 0.6]})
+    z = zero_text_block(df)
+    assert (z["text_x_000"] == 0).all() and (z["cmc"] == df["cmc"]).all() and (df["text_x_000"] != 0).all()

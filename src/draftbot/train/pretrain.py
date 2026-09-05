@@ -38,6 +38,14 @@ T_MAX = 45  # draft-booster era: 3×15; play boosters: 3×14
 STAT_AUX_TARGETS = ["ever_drawn_win_rate", "game_win_rate", "drawn_improvement_win_rate"]
 
 
+def drop_text(statless_batch: bool, text_when: str | None, text_dropout: float,
+              rng: np.random.Generator) -> bool:
+    """Whether this batch sees the text block zeroed (policy + dropout)."""
+    if text_when == "statless" and not statless_batch:
+        return True
+    return bool(text_dropout) and rng.random() < text_dropout
+
+
 def build_trunk(cfg: dict, feat_dim: int) -> ModernDraftBot:
     dummy = torch.zeros(1, feat_dim)
     n_aux = (len(cfg.get("stat_aux_targets", STAT_AUX_TARGETS))
@@ -59,7 +67,7 @@ class ZeroShotEval:
     "zero-shot" number is really an in-corpus fit)."""
 
     def __init__(self, scaler: dict, device, track: str = "MSH",
-                 text: str | None = None):
+                 text: str | None = None, text_when: str | None = None):
         self.track = track
         splits = load_splits(track)
         from draftbot.data.dataset import load_draft_arrays
@@ -77,6 +85,9 @@ class ZeroShotEval:
                 full, _ = assemble(track, "full", scaler=scaler, text=text)
                 from draftbot.data.corpus import _statless
                 feats = _statless(full)
+            elif text and text_when == "statless":  # text is a day-0 fallback only
+                from draftbot.data.features import zero_text_block
+                feats = zero_text_block(feats)
             self.tables[mode] = torch.tensor(add_bias_row(feats)).to(device)
 
     @torch.no_grad()
@@ -149,7 +160,7 @@ def main(argv=None):
     track = cfg.get("track_set", "MSH")
     assert track not in {c for c in yaml.safe_load(Path(cfg["corpus"]).read_text())["sets"]} \
         or track == "MSH", f"track_set {track} is in the corpus — not a zero-shot signal"
-    zse = ZeroShotEval(scaler, device, track, text)
+    zse = ZeroShotEval(scaler, device, track, text, cfg.get("text_when"))
     writer = SummaryWriter(log_dir=str(Path("runs") / exp))
     rng = np.random.default_rng(cfg.get("seed", 17) + step)
     tables = {b.code: (torch.tensor(b.features_full).to(device),
@@ -169,6 +180,11 @@ def main(argv=None):
     # whole-block text dropout per batch (regulariser against memorising
     # corpus card text; docs/TEXT_EMBED_PLAN.md §D1)
     text_dropout = float(cfg.get("text_dropout", 0.0))
+    # `text_when: statless` — the text block is present ONLY in stat-dropout
+    # batches (and, at inference, only when stats are missing): text is a
+    # day-0 fallback, and the stats pathway is exactly the no-text one.
+    # EXP-050/051 (text always on) paid ~1pt with stats on the holdout.
+    text_when = cfg.get("text_when")
     text_idx = [i for i, c in enumerate(bundles[0].columns or []) if c.startswith("text_")]
     it = batch_iterator(bundles, cfg.get("batch_drafts", 64), rng)
     model.train()
@@ -182,8 +198,9 @@ def main(argv=None):
         if step >= total_steps:
             break
         full_tab, statless_tab = tables[bundle.code]
-        table = statless_tab if rng.random() < stat_dropout else full_tab
-        if text_dropout and text_idx and rng.random() < text_dropout:
+        statless_batch = rng.random() < stat_dropout
+        table = statless_tab if statless_batch else full_tab
+        if text_idx and drop_text(statless_batch, text_when, text_dropout, rng):
             table = table.clone()
             table[:, text_idx] = 0.0
         model.embedding.set_context(table)

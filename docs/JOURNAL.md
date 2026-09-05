@@ -1178,3 +1178,31 @@ EXP-139 after the draft verdict. EXP-035 (curation) still queued.
 - **Launched** (owner: "are we going to do 050?"): EXP-050 → EXP-051 chained
   (logs/, caffeinate), each followed by HOB val none/week1/full + MSH val
   full (the in-corpus guard); rows land via the watcher.
+
+## 2026-09-05 — EXP-050/051: text buys +1.2 at day 0 and costs ~1 with stats on the holdout; EXP-053 makes text a day-0 fallback
+
+HOB val expert top-1 (EXP-033 in brackets); MSH full = the in-corpus guard:
+
+| | none | week1 | full | MSH full |
+|---|---|---|---|---|
+| EXP-050 text block | .5513 (+1.26) | .6686 (−1.15) | .6737 (−1.18) | .6989 (+0.34) |
+| EXP-051 + aux head λ .1 | .5509 (+1.22) | .6732 (−0.69) | .6780 (−0.75) | .6945 (−0.10) |
+
+Reading: the day-0 gain is real and replicated (+1.2 twice — inside the
+probe's "+2 realistic" band, at its low end). The stats-mode loss on the
+never-seen set is the memorisation signature the plan flagged: in-corpus MSH
+with stats goes UP while held-out HOB with stats goes DOWN — the model learns
+text×stats combinations that fit corpus cards and do not transfer. The aux
+head halves that loss (−0.7) at no day-0 cost. Bars: none ✓ (≥ +0.5),
+week1/full ✗ (not within 0.2). Neither promotes. Side readings at day 0:
+skill-gap −.0001 vs −.0085 (text closes half the expert-taste gap — the
+hypothesis from 2026-08-11 holds), rare-take 1.47×/1.41× vs 1.52×, but ECE
+.075 vs .013 — text makes the day-0 model over-confident.
+
+Fix by construction rather than by regularisation: `text_when: statless` —
+the text block is present only in stat-dropout batches and, at inference,
+only when stats are missing (`zero_text_block` in every loader path, the
+tracker included). week1/full then run the EXP-033 pathway exactly; text is
+a day-0 fallback. EXP-053 = 051 + that; EXP-052 (text_dropout .1, the
+pre-registered soft regulariser) runs after it as the comparison. Launched
+053 → 052 chained with the same evals + row watcher.

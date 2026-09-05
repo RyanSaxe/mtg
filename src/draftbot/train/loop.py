@@ -39,10 +39,14 @@ def set_seed(seed: int):
 
 
 def feature_tensor(set_code: str, stats: str | None, ckpt_dir: Path | None = None,
-                   scaler: dict | None = None,
-                   text: str | None = None) -> tuple[torch.Tensor, dict]:
-    feats, scaler = assemble(set_code, stats if stats not in (None, "none") else None,
+                   scaler: dict | None = None, text: str | None = None,
+                   text_when: str | None = None) -> tuple[torch.Tensor, dict]:
+    have_stats = stats not in (None, "none")
+    feats, scaler = assemble(set_code, stats if have_stats else None,
                              scaler=scaler, fit=scaler is None, text=text)
+    if text and text_when == "statless" and have_stats:
+        from draftbot.data.features import zero_text_block
+        feats = zero_text_block(feats)
     tensor = torch.tensor(feats.to_numpy(np.float32))
     # bias token row: zeros + is_bias flag column
     tensor = torch.cat([tensor, torch.zeros(1, tensor.shape[1])], 0)
@@ -142,7 +146,8 @@ class Trainer:
             pre_scaler = load_scaler(Path(cfg["scaler_from"]) / "scaler.json")
         feats, _ = feature_tensor(set_code, cfg.get("stats", "full"),
                                   ckpt_dir=self.dir, scaler=pre_scaler,
-                                  text=cfg.get("text_features"))
+                                  text=cfg.get("text_features"),
+                                  text_when=cfg.get("text_when"))
         self.model = build_model(cfg, self.n_cards, feats, self.t).to(self.device)
         if cfg.get("init_from"):  # warm-start from a pretrained trunk
             src = Path(cfg["init_from"])
