@@ -171,6 +171,7 @@ EXP-033 provenance gap flagged on 2026-07-31 (MSH is IN-corpus for EXP-033).
 | EXP-033 | EXP-033-zeroshot@best | HOB | val | day3 | 0.6536 | 0.9358 | 0.6644 | +0.0114 | 0.9041 | configs/EXP-033.yaml | 3f7449b | 0 (zero-shot) | 2026-09-05 |
 | EXP-033 | EXP-033-zeroshot@best | HOB | val | week1 | 0.6636 | 0.9408 | 0.6801 | +0.0188 | 0.8793 | configs/EXP-033.yaml | 3f7449b | 0 (zero-shot) | 2026-09-05 |
 | EXP-033 | EXP-033-zeroshot@best | HOB | val | full | 0.6675 | 0.9420 | 0.6855 | +0.0217 | 0.8732 | configs/EXP-033.yaml | 3f7449b | 0 (zero-shot) | 2026-09-05 |
+| EXP-036 | EXP-036@best | HOB | val | full | 0.6905 | 0.9518 | 0.7100 | +0.0229 | 0.8092 | configs/EXP-036.yaml | 3fa7641 | 16min | 2026-09-05 |
 
 ### HOB deck builder (draft decks, then sealed)
 

@@ -1116,3 +1116,9 @@ control. Cap stays 40k so 034/035/037 are equal-volume; raising the cap is
 the next lever if the light cut wins (more sets would then hit it).
 Order after EXP-034 lands: EXP-035 → text implementation (½ day) → EXP-050
 → EXP-037 / EXP-051 as overnight slots allow.
+- **EXP-036 done (16 min, early stop epoch 5):** HOB val top-1 **0.6905 /
+  expert 0.7100**, NLL 0.809, ECE 0.006, rare-take 1.04× expert, colors 2.25
+  (human 2.31). +2.45 expert over EXP-033 zero-shot full (.6855); above every
+  drafter this project has measured on any set (EXP-013 MSH val .7020,
+  EXP-031 .7047). Production HOB drafter candidate alongside EXP-138 for decks:
+  `--models checkpoints/EXP-036 --deck-models checkpoints/EXP-138`.
