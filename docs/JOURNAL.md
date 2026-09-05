@@ -1175,3 +1175,6 @@ EXP-050 text block; EXP-051 + aux head λ 0.1; EXP-052 + text dropout 0.1
 5-h runs: encoder (base), format (masked). Left for the runs: aux λ (0.1 vs
 0.3) and PCA-128 vs raw 768, both only if 051 is positive. Deck side
 EXP-139 after the draft verdict. EXP-035 (curation) still queued.
+- **Launched** (owner: "are we going to do 050?"): EXP-050 → EXP-051 chained
+  (logs/, caffeinate), each followed by HOB val none/week1/full + MSH val
+  full (the in-corpus guard); rows land via the watcher.
