@@ -1,12 +1,13 @@
-# EXP-055: = EXP-053 + `text_noise: 1.0` — per-dim Gaussian jitter (1 sd of
-# the z-scored text block) on every batch where text is present, so the
-# trunk can only use functions that are smooth over the embedding space and
-# an unseen card inherits its neighbourhood rather than a memorised id.
-# One lever vs EXP-053. Bar: none > EXP-053's none by ≥ 0.5, week1/full
-# unchanged by construction (text_when: statless).
+# EXP-055: = EXP-051 (text ALWAYS on + aux head) + `text_noise: 1.0` — per-dim
+# Gaussian jitter (1 sd of the z-scored text block) on every batch. Revised
+# 2026-09-05 after EXP-053: confining text to stat-dropout batches erased the
+# day-0 gain entirely (.5384 vs .5387), so the +1.2 of 050/051 is learned in
+# the stats batches — stats teach the text pathway. Noise is the mechanism
+# that keeps that teaching while denying the memorisable card id (nearest
+# different card cos .90 vs random .66). One lever vs EXP-051.
+# Bars: none ≥ .5509 (051); week1/full within 0.2 of .6801/.6855 (033).
 exp: EXP-055
 text_features: bge-base
-text_when: statless
 text_noise: 1.0
 stat_aux_lambda: 0.1
 corpus: configs/corpus/pretrain_v2.yaml

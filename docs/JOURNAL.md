@@ -1227,3 +1227,20 @@ stats, the effect is identity; its `none` axis says how much of the +1.2 was
 semantic. **EXP-055** = EXP-053 + `text_noise 1.0` (per-dim jitter of 1 sd
 on every text-present batch): smoothness by force. Also possible later:
 coarse quantisation (K prototypes) and paraphrase views.
+
+## 2026-09-05 — EXP-053 (text only when stats are missing): day-0 gain GONE; the stats batches are where text learns
+
+HOB val expert (EXP-033 / EXP-051 in brackets): none **.5384** (.5387 /
+.5509), week1 .6739 (.6801 / .6732), full .6832 (.6855 / .6780), MSH full
+.6938 (.6955 / .6945). Bars: week1/full ✓ (within noise of 033), none ✗ —
+the whole +1.2 evaporated. Reading: confining the text block to the 25% of
+batches that have no stats starves it. In 050/051 the text dims sit next to
+the stats on every batch, and the shared card MLP learns text↔strength
+alignment with the stats as teacher; that alignment is what transfers to an
+unseen set at day 0. The aux head alone (present every step in 053) did not
+substitute for it. So the design must keep text in every batch and stop the
+id from being memorisable instead — EXP-055 revised to EXP-051 + text_noise
+1.0 (was 053 + noise; the queued chain reads the config at start). EXP-054
+(random-vector control) unchanged: it tells whether the +1.2 was semantic.
+EXP-052 (051 + text_dropout .1) at step 13k reads .5498 / .6749 / .6799 —
+051-like; whole-block dropout is not the fix either, as predicted.
