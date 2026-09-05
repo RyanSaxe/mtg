@@ -1143,3 +1143,35 @@ drafts). Two lessons kept:
    historical week1 rule for provenance; EXP-035/037 use the two-axis rule.
 2. Eval noise at this scale: 2,202 val drafts, ±0.3 between adjacent 2k-step
    evals; promote bars of +0.5 are the right size, ±0.3 results are ties.
+
+## 2026-09-05 — P3.T5c built and calibrated: text block + aux head land; probe says +2 realistic, not +10
+
+Owner: "get cracking on the card text plan… any estimates, or quick
+experiments to calibrate? Any ablations?" Built D1 and D2 in one pass
+(commits 00aa40e + this): `data/text_features.py` (frozen bge encoders,
+name-masked card strings, sha-cached parquet), `assemble(text=)` threaded
+through train / corpus / loading / deck / day0 / bundle, `stat_aux_lambda`
+(GIH/GP/IWD reconstruction head on the statless feature half) and
+`text_dropout` in the pretrain loop, hermetic tests, and a smoke run of the
+whole path (feat_dim 1539, head saved, loads through the standard eval).
+sentence-transformers is the optional `[text]` extra; the laptop needs it
+only to onboard a set on day 0 (the bundle ships the parquet).
+
+Calibration (docs/TEXT_EMBED_PLAN.md §6, 15 min of CPU): text roughly
+doubles what the model can know about a card's strength before anyone plays
+it — ridge → GIH ρ on HOB .18 static → .40 static+text (LOSO .33 → .45) —
+but the channel is bounded: the MLP read does not beat ridge, kNN is weaker,
+bge-large is WORSE than bge-base (.33 vs .40), masked format wins. Two
+negatives worth keeping: a text-GIH greedy bot drafts at .29 (below
+rarity-first), and imputing predicted stats into EXP-033's stat block costs
+1.2 pts with rare-take 2.2× — the trunk trusts stats; text must come in
+through the embedding with masks honest, which is D1+D2's design.
+**Estimate: +2 expert top-1 at day 0 realistic, +4 optimistic; < +0.5 is a
+negative.** The unmeasured upside is pool-context reading in picks 5+.
+
+Runs (configs written; EXP-033's 20k recipe so each is ~2h and one lever):
+EXP-050 text block; EXP-051 + aux head λ 0.1; EXP-052 + text dropout 0.1
+(only if 050/051 diverge on `none`). Ablations settled by the probe, not by
+5-h runs: encoder (base), format (masked). Left for the runs: aux λ (0.1 vs
+0.3) and PCA-128 vs raw 768, both only if 051 is positive. Deck side
+EXP-139 after the draft verdict. EXP-035 (curation) still queued.

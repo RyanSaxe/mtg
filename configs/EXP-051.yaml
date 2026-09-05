@@ -1,0 +1,27 @@
+# EXP-051: = EXP-050 + the STAT-RECONSTRUCTION AUX HEAD (plan D2): the
+# feature half of the card embedding, read from the STATLESS table, predicts
+# GIH / GP / IWD (corpus-z-scored, NaN-masked MSE) every step — ~9k direct
+# (text → measured strength) pairs across 30 solved sets. One lever vs 050.
+exp: EXP-051
+text_features: bge-base
+stat_aux_lambda: 0.1
+corpus: configs/corpus/pretrain_v2.yaml
+track_set: HOB
+select_on: [none, week1]
+seed: 17
+batch_drafts: 64
+total_steps: 20000
+emb_dim: 256
+layers: 8
+heads: 8
+dropout: 0.1
+stat_dropout: 0.25
+label_smoothing: 0.05
+skill_filter:
+  min_win_rate: 0.54
+  min_games: 50
+peak_lr: 2.0e-4
+lr_warmup: 1000
+weight_decay: 0.01
+grad_clip: 1.0
+eval_every: 1000

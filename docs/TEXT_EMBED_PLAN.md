@@ -107,3 +107,41 @@ reliance); day-0 skill-gap (negative today).
 Fine-tuning the encoder or the LLM route: 43–66% in the literature vs our .68
 with stats, and it does not fit the MPS budget. Frozen encoder + the card
 MLP as a learned adapter captures the useful part.
+
+## 6. Calibration — measured 2026-09-05 (`python -m draftbot.eval.text_probe`)
+
+Ridge card → full-season GIH WR, fit on the 30 corpus sets; Spearman ρ on
+HOB (never seen) and leave-one-set-out over the corpus. Scorecards under
+docs/scorecards/text_probe/.
+
+| features (bge-base, masked) | HOB ρ | LOSO ρ (29 folds) |
+|---|---|---|
+| static (today's 58 columns) | .180 | .327 ± .094 |
+| text only | .370 | .425 ± .076 |
+| static + text | **.399** | **.446 ± .077** |
+| static + text, 2-layer MLP | .328 | .439 ± .068 |
+| text kNN-30 (similar card ⇒ similar strength) | .206 | .383 ± .079 |
+
+Ablations (static+text, HOB ρ): encoder bge-small .353 / **bge-base .399** /
+bge-large .329 — bigger is not better here; text format masked .399 ≥ named
+.400 ≈ > oracle-only .378 (the header carries cost/type/rarity the encoder
+uses). Pick order is easy from static alone (ALSA ρ .77, ATA .71 → .80/.75
+with text); strength is the hard part, and text doubles it.
+
+Two negative harness readouts, both informative:
+- A greedy bot on text-predicted GIH: expert top-1 .29 (rarity-first .33,
+  real gih-greedy .38, trunk day-0 .54). ρ .4 is too noisy to drive picks
+  alone.
+- The trunk with predicted GIH/GP/IWD/ALSA/ATA imputed into its stat block
+  (masks off): .527 vs .539 with honest masks, rare-take 2.2×. The trunk
+  trusts its stat columns; pseudo-stats presented as real stats hurt. Text
+  must enter through the card embedding with masks honest — D1 + D2.
+
+Reading: the frozen-text strength channel is real but bounded (ρ ≈ .40–.45
+linear; the MLP does not beat ridge, so a nonlinear read of the frozen
+embedding buys nothing extra on 9k labels). Estimate for the trunk at day 0:
+realistic **+2 pts** expert top-1 (.539 → ~.56), optimistic +4 by linear
+interpolation between static-only (.539, ρ .18) and full-stats (.686, ρ 1);
+anything under +0.5 is a negative. Not measured here and the upside case:
+context reading in picks 5+ (a card that "cares about artifacts" against a
+pool with artifacts) — only the trunk runs can show it.

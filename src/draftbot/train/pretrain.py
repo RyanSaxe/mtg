@@ -33,15 +33,21 @@ from draftbot.models.modern import ModernDraftBot
 from draftbot.train.loop import CKPT_ROOT, cosine_lr, set_seed
 
 T_MAX = 45  # draft-booster era: 3×15; play boosters: 3×14
+# D2 aux targets: the STRENGTH stats the pick loss under-teaches (the probe
+# reads pick order — ALSA/ATA — at ρ≈.8 from static alone, GIH at .18).
+STAT_AUX_TARGETS = ["ever_drawn_win_rate", "game_win_rate", "drawn_improvement_win_rate"]
 
 
 def build_trunk(cfg: dict, feat_dim: int) -> ModernDraftBot:
     dummy = torch.zeros(1, feat_dim)
+    n_aux = (len(cfg.get("stat_aux_targets", STAT_AUX_TARGETS))
+             if cfg.get("stat_aux_lambda", 0) else 0)
     return ModernDraftBot(
         0, dummy, t=T_MAX, emb_dim=cfg.get("emb_dim", 256),
         layers=cfg.get("layers", 6), heads=cfg.get("heads", 8),
         dropout=cfg.get("dropout", 0.1), use_set_encoder=True,
-        pointer_head=True, feature_only=True, use_set_token=True)
+        pointer_head=True, feature_only=True, use_set_token=True,
+        stat_targets=n_aux)
 
 
 class ZeroShotEval:
@@ -149,6 +155,21 @@ def main(argv=None):
     tables = {b.code: (torch.tensor(b.features_full).to(device),
                        torch.tensor(b.features_statless).to(device))
               for b in bundles}
+    # D2: per-set aux targets (z-scored strength stats) + validity from the
+    # full table's missing-masks; the head reads the STATLESS table.
+    aux_lambda = float(cfg.get("stat_aux_lambda", 0.0))
+    aux = {}
+    if aux_lambda:
+        names = cfg.get("stat_aux_targets", STAT_AUX_TARGETS)
+        for b in bundles:
+            ti = [b.columns.index(n) for n in names]
+            mi = [b.columns.index(f"{n}__miss") for n in names]
+            full_t = tables[b.code][0]
+            aux[b.code] = (full_t[:-1, ti], 1.0 - full_t[:-1, mi])
+    # whole-block text dropout per batch (regulariser against memorising
+    # corpus card text; docs/TEXT_EMBED_PLAN.md §D1)
+    text_dropout = float(cfg.get("text_dropout", 0.0))
+    text_idx = [i for i, c in enumerate(bundles[0].columns or []) if c.startswith("text_")]
     it = batch_iterator(bundles, cfg.get("batch_drafts", 64), rng)
     model.train()
     start = time.time()
@@ -162,6 +183,9 @@ def main(argv=None):
             break
         full_tab, statless_tab = tables[bundle.code]
         table = statless_tab if rng.random() < stat_dropout else full_tab
+        if text_dropout and text_idx and rng.random() < text_dropout:
+            table = table.clone()
+            table[:, text_idx] = 0.0
         model.embedding.set_context(table)
         packs = torch.from_numpy(bundle.arrays.packs[idx].astype(np.int64)).to(device)
         prev = torch.from_numpy(bundle.arrays.prev_picks[idx].astype(np.int64)).to(device)
@@ -173,6 +197,10 @@ def main(argv=None):
         optim.zero_grad(set_to_none=True)
         logits = model(packs, prev)
         loss = slot_nll(logits, packs, picks, w, smoothing)
+        if aux_lambda:
+            tgt, valid = aux[bundle.code]
+            aux_loss = model.stat_aux_loss(statless_tab, tgt, valid)
+            loss = loss + aux_lambda * aux_loss
         loss.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), cfg.get("grad_clip", 1.0))
         optim.step()
@@ -180,6 +208,8 @@ def main(argv=None):
         if step % 100 == 0:
             writer.add_scalar("pretrain/loss", float(loss.detach()), step)
             writer.add_scalar("pretrain/lr", lr, step)
+            if aux_lambda:
+                writer.add_scalar("pretrain/aux_mse", float(aux_loss.detach()), step)
         if step % eval_every == 0 or step == total_steps:
             zs = {m: zse.top1(model, m, device) for m in ("none", "week1", "full")}
             mins = (time.time() - start) / 60

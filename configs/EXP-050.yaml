@@ -1,0 +1,28 @@
+# EXP-050: P3.T5c lever — ORACLE-TEXT BLOCK (docs/TEXT_EMBED_PLAN.md D1).
+# EXP-033 recipe exactly (20k steps ≈ 98 min; EXP-034 showed length is not
+# the lever) + the frozen bge-base text block (768-d; probe 2026-09-05: base
+# beats small AND large on HOB, ρ .40 vs .35/.33). One lever vs EXP-033.
+# Bars (HOB val expert): none > .5387 by ≥ 0.5; week1/full within 0.2 of
+# .6801/.6855; MSH in-corpus full ≥ .6955.
+exp: EXP-050
+text_features: bge-base
+corpus: configs/corpus/pretrain_v2.yaml
+track_set: HOB
+select_on: [none, week1]
+seed: 17
+batch_drafts: 64
+total_steps: 20000
+emb_dim: 256
+layers: 8
+heads: 8
+dropout: 0.1
+stat_dropout: 0.25
+label_smoothing: 0.05
+skill_filter:
+  min_win_rate: 0.54
+  min_games: 50
+peak_lr: 2.0e-4
+lr_warmup: 1000
+weight_decay: 0.01
+grad_clip: 1.0
+eval_every: 1000

@@ -4,8 +4,8 @@
  "split": "val",
  "stats": "text-imputed",
  "scheme": "random",
- "git_sha": "3088e2e",
- "generated_at": "2026-09-05T16:09:54+00:00",
+ "git_sha": "00aa40e",
+ "generated_at": "2026-09-05T16:28:46+00:00",
  "n_drafts": 2202,
  "n_picks": 92484,
  "expert_subset": {

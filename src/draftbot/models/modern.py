@@ -134,12 +134,18 @@ class ModernDraftBot(nn.Module):
                  emb_dim: int = 128, layers: int = 4, heads: int = 8,
                  dropout: float = 0.0, use_set_encoder: bool = True,
                  pointer_head: bool = True, feature_only: bool = False,
-                 use_set_token: bool = False):
+                 use_set_token: bool = False, stat_targets: int = 0):
         super().__init__()
         self.n_cards, self.t, self.emb_dim = n_cards, t, emb_dim
         assert card_features.shape[0] == n_cards + 1  # + start-of-draft bias token
         self.embedding = CardEncoder(n_cards + 1, emb_dim, card_features,
                                      feature_only)
+        # P3.T5c D2: stat-reconstruction head on the FEATURE half of the card
+        # embedding — predicts a card's measured strength from its stat-less
+        # features (text + static), giving the text pathway direct supervision
+        # (docs/TEXT_EMBED_PLAN.md). Discarded at inference; None keeps every
+        # earlier checkpoint loadable unchanged.
+        self.stat_head = nn.Linear(emb_dim // 2, stat_targets) if stat_targets else None
         self.use_set_token = use_set_token
         if use_set_token:  # summary token prepended at position 0
             self.set_token_mlp = nn.Sequential(
@@ -164,6 +170,14 @@ class ModernDraftBot(nn.Module):
                 nn.Linear(emb_dim, emb_dim * 2), nn.SiLU(),
                 nn.Linear(emb_dim * 2, n_cards))
         self.drop = nn.Dropout(dropout)
+
+    def stat_aux_loss(self, statless_features: torch.Tensor, targets: torch.Tensor,
+                      valid: torch.Tensor) -> torch.Tensor:
+        """Masked MSE of predicted vs measured (corpus-z-scored) stats over one
+        set's card table. statless_features: (n+1, F) incl. the bias row;
+        targets / valid: (n, k), valid = 1 − missing-mask."""
+        pred = self.stat_head(self.embedding.mlp(statless_features[:-1]))
+        return ((pred - targets) ** 2 * valid).sum() / valid.sum().clamp(min=1.0)
 
     def forward(self, packs: torch.Tensor, prev_picks: torch.Tensor):
         B, t, P = packs.shape
