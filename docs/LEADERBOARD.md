@@ -185,3 +185,4 @@ EXP-033 provenance gap flagged on 2026-07-31 (MSH is IN-corpus for EXP-033).
 | — | gih-in-lane-build | HOB/sealed | val | full | 0.5270 | 0.4985 | 0.5617 | 0.500 | 0.5521 | 3.120 | 13.937 | baseline | 3f7449b | <1min | 2026-09-05 |
 | EXP-135 | EXP-135@best | HOB/sealed | val | none | 0.5043 | 0.4667 | 0.4957 | 0.477 | 0.4997 | 0.112 | 13.335 | configs/EXP-135.yaml | 3f7449b | 0 (zero-shot) | 2026-09-05 |
 | EXP-135 | EXP-135@best | HOB/sealed | val | full | 0.6260 | 0.6033 | 0.6809 | 0.455 | 0.6646 | 0.114 | 10.348 | configs/EXP-135.yaml | 3f7449b | 0 (zero-shot) | 2026-09-05 |
+| EXP-138 | EXP-138@best | HOB | val | full | 0.9059 | 0.8792 | 0.9140 | 0.522 | 0.9117 | 0.192 | 1.582 | configs/EXP-138.yaml | e2d25ed | 2min | 2026-09-05 |

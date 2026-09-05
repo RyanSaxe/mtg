@@ -1091,3 +1091,7 @@ EXP-034 gets the three zero-shot modes. Leaderboard rows follow from those
 JSONs. Bars: EXP-138 > .8855 trophy-F1 (EXP-126 zero-shot); EXP-036 > .6855
 expert (EXP-033 zero-shot full); EXP-034 vs EXP-033 on HOB val, all modes
 (none .5387 / week1 .6801 / full .6855).
+- **EXP-138 done (2 min):** HOB val trophy-F1 **0.9140** vs EXP-126 zero-shot
+  0.8855 (+2.85; ceiling 0.9590), basics-L1 1.58 vs 2.33. Bigger lift than the
+  MSH gap-window estimate (+1.3) — HOB's stats-armed zero-shot started lower.
+  Production HOB deck builder candidate; bundle after EXP-036.
