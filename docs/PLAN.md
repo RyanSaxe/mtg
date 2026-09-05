@@ -18,7 +18,7 @@ Read this section at the start of every session. It overrides convenience.
 5. Update checkboxes in this file as tasks complete. Do not reorder or delete tasks; add new ones to the backlog section with rationale.
 
 ### Hard guardrails (never violate)
-- **Quarantine:** the sandbagged set (initially **MSH**; promoted to corpus 2026-07-29 by owner ruling after the Phase-3 gate — the NEXT Arena release becomes the sandbag on announcement day) must NEVER appear in any pretraining corpus, warm-start source, feature-normalization statistics, or hyperparameter selection signal for the pretrained model. Enforced by `tests/test_quarantine.py` — that test failing is a stop-the-world event.
+- **Quarantine:** the sandbagged set (initially **MSH**; promoted to corpus 2026-07-29 by owner ruling after the Phase-3 gate; **HOB** since 2026-09-05, its 17lands drop day — quarantined in pretrain_v2 / decks_v2 / sealed_v1) must NEVER appear in any pretraining corpus, warm-start source, feature-normalization statistics, or hyperparameter selection signal for the pretrained model. Enforced by `tests/test_quarantine.py` — that test failing is a stop-the-world event.
 - **Split hygiene:** splits are by `draft_id`, persisted to disk once (`data/splits/<SET>.json`), and never regenerated. Test splits are evaluated only at declared gates, not during hill-climbing (use val).
 - **Never edit a test fixture or golden file to make a failing test pass.** Fix the code, or escalate.
 - **No metric laundering:** every leaderboard row must come from `python -m draftbot.eval` output, not hand-computed numbers.

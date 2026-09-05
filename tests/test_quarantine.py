@@ -6,7 +6,7 @@ Phase-3 gate passed (owner ruling, see journal) and it joined the corpus in
 pretrain_v2. pretrain_v1 is frozen as EXP-030's training manifest and must keep
 its MSH quarantine for provenance. The next Arena release becomes the new
 sandbag: add its code to the LATEST manifest's `quarantine` on announcement day
-— test_latest_manifest_has_sandbag will remind us it is empty until then.
+(HOB, 2026-09-05) — test_latest_manifest_has_sandbag fails while it is empty.
 """
 
 from pathlib import Path
@@ -39,10 +39,9 @@ def test_v1_keeps_historical_msh_quarantine():
     assert "MSH" not in m.get("sets", {})
 
 
-@pytest.mark.xfail(reason="next Arena release not announced yet — add its code "
-                          "to the latest manifest's quarantine on day 0",
-                   strict=False)
 def test_latest_manifest_has_sandbag():
+    """HOB became the sandbag on 2026-09-05 (its 17lands drop day); the xfail
+    that waited for it is gone. A future empty quarantine is a real failure."""
     ms = manifests()
     latest = sorted(ms)[-1]
     assert ms[latest].get("quarantine"), f"{latest}: no sandbag declared"

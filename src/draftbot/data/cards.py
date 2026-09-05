@@ -144,6 +144,28 @@ def source_sets(set_code: str) -> list[str]:
     return [set_code] + COMPANION_SHEETS.get(set_code.upper(), [])
 
 
+def _discard_day0_artifacts(set_code: str) -> None:
+    """Drop everything keyed on the provisional day-0 card ids.
+
+    The marker, the static feature table (`onboard()` rebuilds it only when
+    ABSENT — a stale one would silently mis-index every feature row) and the
+    all-NaN placeholder snapshot with its registry. `sources.json` stays: the
+    Scryfall pool it names is still the right place to resolve CSV names.
+    """
+    from draftbot.data.features import SNAPSHOT_DIR  # lazy: features imports cards
+
+    proc = PROCESSED_DIR / set_code
+    for name in (DAY0_MARKER, "features.static.parquet"):
+        (proc / name).unlink(missing_ok=True)
+    reg = SNAPSHOT_DIR / set_code / "registry.json"
+    if reg.exists():
+        for fname in set(json.loads(reg.read_text()).values()):
+            start, _, end = Path(fname).stem.partition("_")
+            if start == end:  # day-0 placeholder: an empty [release, release] window
+                (reg.parent / fname).unlink(missing_ok=True)
+        reg.unlink()
+
+
 def build_cards(set_code: str, event: str = "PremierDraft") -> pd.DataFrame:
     """Build (or load, if already built) data/processed/<SET>/cards.parquet."""
     out_path = PROCESSED_DIR / set_code / "cards.parquet"
@@ -157,7 +179,7 @@ def build_cards(set_code: str, event: str = "PremierDraft") -> pd.DataFrame:
         # 17lands has published: the provisional day-0 vocab is superseded by
         # the CSV's authoritative universe. Ids change here — see day0's
         # docstring for why nothing may be carried across that boundary.
-        day0.unlink()
+        _discard_day0_artifacts(set_code)
 
     pool: dict[str, dict] = {}
     for code in source_sets(set_code):

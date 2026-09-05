@@ -1,0 +1,27 @@
+# EXP-034: P3.T5 lever 1 — TRAINING LENGTH (journal 2026-09-05, proposed).
+# EXP-033 recipe unchanged except total_steps 20k → 60k (≈1.2 → 3.6 epochs of
+# the 1.07M-draft used corpus). EXP-033's zero-shot curve was still rising when
+# its 20k cosine reached zero; the deck trunk got +0.32 day-1 from 12 → 24
+# epochs. Tracker = HOB (the quarantined sandbag; MSH is in-corpus, so its
+# "zero-shot" is an in-corpus fit). ~5h at EXP-033's 98min/20k; resumable.
+# Bars (HOB val, expert): none > .5387, week1 > .6801, full > .6855.
+exp: EXP-034
+corpus: configs/corpus/pretrain_v2.yaml
+track_set: HOB
+seed: 17
+batch_drafts: 64
+total_steps: 60000
+emb_dim: 256
+layers: 8
+heads: 8
+dropout: 0.1
+stat_dropout: 0.25
+label_smoothing: 0.05
+skill_filter:
+  min_win_rate: 0.54
+  min_games: 50
+peak_lr: 2.0e-4
+lr_warmup: 1000
+weight_decay: 0.01
+grad_clip: 1.0
+eval_every: 2000

@@ -3,7 +3,8 @@
 # weight. The NEXT Arena release becomes the sandbag — add its code to
 # `quarantine` the day it is announced, BEFORE downloading any of its data.
 # v1 is frozen as the manifest EXP-030 trained under.
-quarantine: []
+quarantine:  # HOB = the sandbag (17lands drop 2026-09-05; PLAN §0 / Appendix D)
+  - HOB
 max_drafts_per_set: 40000
 sets:
   MKM:

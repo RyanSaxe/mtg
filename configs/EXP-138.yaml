@@ -1,0 +1,25 @@
+# EXP-138: the current-set HOB deck builder — EXP-127 recipe (EXP-126 trunk +
+# short fine-tune, ~8 min on MSH). Worth +1.3pt in the release → next-refresh
+# window per EXP-120 → 121; zero-shot EXP-126 on HOB val = .8855 trophy-F1.
+exp: EXP-138
+task: deck
+model: builder
+set: HOB
+stats: full
+seed: 17
+init_from: checkpoints/EXP-126
+scaler_from: checkpoints/EXP-126
+batch_builds: 256
+epochs: 30
+patience: 4
+emb_dim: 128
+heads: 8
+blocks: 3
+dropout: 0.1
+weighting: uniform
+land_lambda: 0.2
+basics_lambda: 0.5
+peak_lr: 1.5e-4
+lr_warmup: 300
+weight_decay: 0.01
+grad_clip: 1.0

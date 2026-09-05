@@ -147,3 +147,41 @@ Rows are on the curated extraction (deck 40-43, pool-consistent rebuilds;
 | EXP-137 | EXP-137@best | TLA/sealed | val | full | 0.7267 | 0.7153 | 0.7551 | 0.321 | 0.7464 | 0.307 | 7.799 | configs/EXP-137.yaml | b79aa9d | 14min | 2026-08-01 |
 | EXP-137 | EXP-137@best | EOE/sealed | val | full | 0.5976 | 0.5815 | 0.6321 | 0.611 | 0.6153 | 0.146 | 12.140 | configs/EXP-137.yaml | b79aa9d | 14min | 2026-08-01 |
 | EXP-137 | EXP-137@best | EOE/sealed | val | none | 0.5190 | 0.4778 | 0.5333 | 0.556 | 0.5292 | 0.146 | 13.407 | configs/EXP-137.yaml | b79aa9d | 14min | 2026-08-01 |
+
+## HOB — the sandbag (2026-09-05): zero-shot on a never-seen set
+
+17lands dropped HOB on 2026-09-05; HOB is quarantined from every corpus, so
+every model row here is a true holdout (journal 2026-09-05). `day3` = the
+first three days of data (2026-08-11..13). The three MSH rows close the
+EXP-033 provenance gap flagged on 2026-07-31 (MSH is IN-corpus for EXP-033).
+
+| EXP | Model | Set(s) | Split | Stats | Top-1 | Top-3 | Expert Top-1 | Skill-gap | NLL | Config | SHA | Wall-clock | Date |
+|-----|-------|--------|-------|-------|-------|-------|--------------|-----------|-----|--------|-----|------------|------|
+| EXP-033 | EXP-033-zeroshot@best | MSH | val | none | 0.5391 | 0.8644 | 0.5366 | -0.0015 | 1.1744 | configs/EXP-033.yaml | 3f7449b | 98min | 2026-09-05 |
+| EXP-033 | EXP-033-zeroshot@best | MSH | val | week1 | 0.6620 | 0.9353 | 0.6858 | +0.0366 | 0.8919 | configs/EXP-033.yaml | 3f7449b | 98min | 2026-09-05 |
+| EXP-033 | EXP-033-zeroshot@best | MSH | val | full | 0.6691 | 0.9386 | 0.6955 | +0.0403 | 0.8678 | configs/EXP-033.yaml | 3f7449b | 98min | 2026-09-05 |
+| — | rarity-first | HOB | val | none | 0.3238 | 0.6435 | 0.3255 | +0.0028 | 12.9846 | baseline | 3f7449b | <1min | 2026-09-05 |
+| — | gih-greedy | HOB | val | week1 | 0.3561 | 0.7184 | 0.3844 | +0.0409 | 1.7869 | baseline | 3f7449b | <1min | 2026-09-05 |
+| — | gih-greedy | HOB | val | full | 0.3555 | 0.7144 | 0.3848 | +0.0412 | 1.7874 | baseline | 3f7449b | <1min | 2026-09-05 |
+| — | gih-in-lane | HOB | val | full | 0.4182 | 0.7958 | 0.4448 | +0.0358 | 2.6827 | baseline | 3f7449b | <1min | 2026-09-05 |
+| — | alsa-greedy | HOB | val | full | 0.4511 | 0.7908 | 0.4637 | +0.0115 | 1.5177 | baseline | 3f7449b | <1min | 2026-09-05 |
+| EXP-030 | EXP-030-zeroshot@best | HOB | val | none | 0.5435 | 0.8770 | 0.5358 | -0.0115 | 1.1572 | configs/EXP-030.yaml | 3f7449b | 0 (zero-shot) | 2026-09-05 |
+| EXP-030 | EXP-030-zeroshot@best | HOB | val | week1 | 0.6595 | 0.9389 | 0.6754 | +0.0193 | 0.8897 | configs/EXP-030.yaml | 3f7449b | 0 (zero-shot) | 2026-09-05 |
+| EXP-033 | EXP-033-zeroshot@best | HOB | val | none | 0.5453 | 0.8766 | 0.5387 | -0.0085 | 1.1548 | configs/EXP-033.yaml | 3f7449b | 0 (zero-shot) | 2026-09-05 |
+| EXP-033 | EXP-033-zeroshot@best | HOB | val | day3 | 0.6536 | 0.9358 | 0.6644 | +0.0114 | 0.9041 | configs/EXP-033.yaml | 3f7449b | 0 (zero-shot) | 2026-09-05 |
+| EXP-033 | EXP-033-zeroshot@best | HOB | val | week1 | 0.6636 | 0.9408 | 0.6801 | +0.0188 | 0.8793 | configs/EXP-033.yaml | 3f7449b | 0 (zero-shot) | 2026-09-05 |
+| EXP-033 | EXP-033-zeroshot@best | HOB | val | full | 0.6675 | 0.9420 | 0.6855 | +0.0217 | 0.8732 | configs/EXP-033.yaml | 3f7449b | 0 (zero-shot) | 2026-09-05 |
+
+### HOB deck builder (draft decks, then sealed)
+
+| EXP | Model | Set | Split | Stats | F1 | NB-F1 | Trophy-F1v2 | Win-pref | Win-wtd F1 | Lands-MAE | Basics-L1 | Config | SHA | Wall-clock | Date |
+|-----|-------|-----|-------|-------|----|-------|-------------|----------|------------|-----------|-----------|--------|-----|------------|------|
+| — | rebuild-ceiling | HOB | val | full | 0.9607 | 0.9499 | 0.9590 | nan | 0.9624 | 0.179 | 0.683 | baseline | 3f7449b | <1min | 2026-09-05 |
+| — | gih-in-lane-build | HOB | val | full | 0.8214 | 0.7990 | 0.8291 | 0.567 | 0.8262 | 1.991 | 4.693 | baseline | 3f7449b | <1min | 2026-09-05 |
+| EXP-126 | EXP-126@best | HOB | val | none | 0.8424 | 0.7898 | 0.8477 | 0.522 | 0.8452 | 0.205 | 2.255 | configs/EXP-126.yaml | 3f7449b | 0 (zero-shot) | 2026-09-05 |
+| EXP-126 | EXP-126@best | HOB | val | full | 0.8794 | 0.8513 | 0.8855 | 0.589 | 0.8846 | 0.203 | 2.327 | configs/EXP-126.yaml | 3f7449b | 0 (zero-shot) | 2026-09-05 |
+| EXP-135 | EXP-135@best | HOB | val | full | 0.8821 | 0.8546 | 0.8887 | 0.567 | 0.8872 | 0.217 | 2.273 | configs/EXP-135.yaml | 3f7449b | 0 (zero-shot) | 2026-09-05 |
+| — | rebuild-ceiling | HOB/sealed | val | full | 0.8147 | 0.8085 | 0.8949 | nan | 0.8631 | 0.137 | 5.342 | baseline | 3f7449b | <1min | 2026-09-05 |
+| — | gih-in-lane-build | HOB/sealed | val | full | 0.5270 | 0.4985 | 0.5617 | 0.500 | 0.5521 | 3.120 | 13.937 | baseline | 3f7449b | <1min | 2026-09-05 |
+| EXP-135 | EXP-135@best | HOB/sealed | val | none | 0.5043 | 0.4667 | 0.4957 | 0.477 | 0.4997 | 0.112 | 13.335 | configs/EXP-135.yaml | 3f7449b | 0 (zero-shot) | 2026-09-05 |
+| EXP-135 | EXP-135@best | HOB/sealed | val | full | 0.6260 | 0.6033 | 0.6809 | 0.455 | 0.6646 | 0.114 | 10.348 | configs/EXP-135.yaml | 3f7449b | 0 (zero-shot) | 2026-09-05 |

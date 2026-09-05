@@ -1,0 +1,25 @@
+# EXP-035: P3.T5 lever 2 — DROP THE HARD SKILL FILTER (journal 2026-09-05,
+# proposed). Identical to EXP-034 except skill_filter off: soft importance
+# weighting (rank × WR × recency × position) is the only skill signal, as on
+# the deck trunk. Both halves of the project found soft weighting beats hard
+# curation (EXP-013; EXP-105) but the pretrain configs never absorbed it: the
+# 0.54/50 filter discards 1.47M of 3.07M train drafts. Same 40k cap, so this
+# is the equal-volume test. Compare to EXP-034 on HOB val (expert, all modes).
+exp: EXP-035
+corpus: configs/corpus/pretrain_v2.yaml
+track_set: HOB
+seed: 17
+batch_drafts: 64
+total_steps: 60000
+emb_dim: 256
+layers: 8
+heads: 8
+dropout: 0.1
+stat_dropout: 0.25
+label_smoothing: 0.05
+skill_filter: null
+peak_lr: 2.0e-4
+lr_warmup: 1000
+weight_decay: 0.01
+grad_clip: 1.0
+eval_every: 2000

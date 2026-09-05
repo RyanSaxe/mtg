@@ -5,9 +5,11 @@
 The trunk is a feature-only ModernDraftBot with a set-summary token, built with
 a dummy home vocab; every batch swaps in its set's card context. Stat-dropout
 (p per batch) swaps the statless feature table so day-0 inference is a trained
-condition. Zero-shot MSH-val top-1 is logged every eval_every steps — the
-hill-climb signal. MSH data NEVER enters training; its snapshots are used at
-eval time only (quarantine discipline; see tests/test_quarantine.py).
+condition. Zero-shot <track_set>-val top-1 is logged every eval_every steps — the
+hill-climb signal (`track_set` in the config; default MSH for the historical
+runs, HOB — the current sandbag — for anything new). The tracker's data NEVER
+enters training; its snapshots are used at eval time only (quarantine
+discipline; see tests/test_quarantine.py).
 """
 
 import argparse
@@ -43,23 +45,29 @@ def build_trunk(cfg: dict, feat_dim: int) -> ModernDraftBot:
 
 
 class ZeroShotEval:
-    """Frozen MSH-val pack sequences + feature tables in all three stat modes."""
+    """Frozen <track>-val pack sequences + feature tables in all three stat modes.
 
-    def __init__(self, scaler: dict, device):
-        splits = load_splits("MSH")
+    `track` is the hill-climb signal set — the CURRENT sandbag once it has val
+    data (HOB from 2026-09-05), else the most recently promoted set (MSH was
+    the tracker for EXP-030/033; it is in-corpus since pretrain_v2, so its
+    "zero-shot" number is really an in-corpus fit)."""
+
+    def __init__(self, scaler: dict, device, track: str = "MSH"):
+        self.track = track
+        splits = load_splits(track)
         from draftbot.data.dataset import load_draft_arrays
-        self.arr = load_draft_arrays("MSH", draft_ids=set(splits["random"]["val"]))
+        self.arr = load_draft_arrays(track, draft_ids=set(splits["random"]["val"]))
         es = splits["expert_subset"]
         m = self.arr.meta
         self.expert_mask = ((m["user_win_rate"].fillna(0) >= es["min_win_rate"])
                             & (m["user_n_games"] >= es["min_games"])).to_numpy()
         self.tables = {}
         for mode in ("none", "week1", "full"):
-            feats, _ = assemble("MSH", None if mode == "none" else mode,
+            feats, _ = assemble(track, None if mode == "none" else mode,
                                 scaler={c: scaler[c] for c in scaler})
             if mode == "none":
                 # static-only table lacks stat columns; rebuild at full width
-                full, _ = assemble("MSH", "full", scaler=scaler)
+                full, _ = assemble(track, "full", scaler=scaler)
                 from draftbot.data.corpus import _statless
                 feats = _statless(full)
             self.tables[mode] = torch.tensor(add_bias_row(feats)).to(device)
@@ -67,7 +75,7 @@ class ZeroShotEval:
     @torch.no_grad()
     def top1(self, model: ModernDraftBot, mode: str, device,
              batch: int = 512) -> tuple[float, float]:
-        """(overall, expert-subset) MSH-val top-1; expert drives best.pt."""
+        """(overall, expert-subset) <track>-val top-1; expert drives best.pt."""
         model.eval()
         model.embedding.set_context(self.tables[mode])
         rows = []
@@ -127,7 +135,10 @@ def main(argv=None):
         step, best_zs = state["step"], state["best_zs"]
         print(f"resumed at step {step} (best zs {best_zs:.4f})", flush=True)
 
-    zse = ZeroShotEval(scaler, device)
+    track = cfg.get("track_set", "MSH")
+    assert track not in {c for c in yaml.safe_load(Path(cfg["corpus"]).read_text())["sets"]} \
+        or track == "MSH", f"track_set {track} is in the corpus — not a zero-shot signal"
+    zse = ZeroShotEval(scaler, device, track)
     writer = SummaryWriter(log_dir=str(Path("runs") / exp))
     rng = np.random.default_rng(cfg.get("seed", 17) + step)
     tables = {b.code: (torch.tensor(b.features_full).to(device),
@@ -171,14 +182,14 @@ def main(argv=None):
                   + " ".join(f"{m} {o:.4f}/exp {e:.4f}" for m, (o, e) in zs.items())
                   + f" ({mins:.1f} min)", flush=True)
             for m, (o, e) in zs.items():
-                writer.add_scalar(f"zeroshot_msh_val/{m}", o, step)
-                writer.add_scalar(f"zeroshot_msh_val/{m}_expert", e, step)
+                writer.add_scalar(f"zeroshot_{track.lower()}_val/{m}", o, step)
+                writer.add_scalar(f"zeroshot_{track.lower()}_val/{m}_expert", e, step)
             save(ckpt_dir / "last.pt")
             if zs["week1"][1] > best_zs:  # expert-subset week1 selects best.pt
                 best_zs = zs["week1"][1]
                 save(ckpt_dir / "best.pt")
     writer.close()
-    print(f"done: best zero-shot(week1) MSH val top-1 = {best_zs:.4f}")
+    print(f"done: best zero-shot(week1) {track} val top-1 = {best_zs:.4f}")
     return 0
 
 

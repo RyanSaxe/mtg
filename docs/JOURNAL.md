@@ -981,3 +981,104 @@ sources.json the target machine drops the entire bonus sheet from both the
 grpId bridge and the art map. tests/test_day0.py: 13 tests, the Arena-DB half
 hermetic against a miniature fixture DB. Full suite green (11 pre-existing
 skips).
+
+## 2026-09-05 — HOB data landed: the day-0 claim measured for real; recipe review before the HOB runs
+
+17lands published HOB (PremierDraft 43,639 drafts / 1,832,838 picks, t=42,
+dates 2026-08-11 → 08-29; game data for Premier/Trad/Sealed/TradSealed).
+Protocol followed in order: HOB → `quarantine` in pretrain_v2 / decks_v2 /
+sealed_v1 (test_latest_manifest_has_sandbag is no longer xfail; PLAN §0 names
+HOB), THEN download, THEN `onboard_set --set HOB --base EXP-033
+--skip-finetune`. HOB is the first set to cross the day-0 → CSV boundary, and
+crossing it found two bugs in last month's day-0 path:
+- **Stale static features survived the id change.** `onboard()` rebuilds
+  `features.static.parquet` only when absent; `build_cards` dropped the
+  `.day0` marker but left the table keyed on day-0 ids — every feature row
+  would have been silently mis-indexed. `build_cards` now sweeps the marker,
+  the static table and the placeholder snapshot/registry
+  (`_discard_day0_artifacts`, hermetic test).
+- **HOC is not a bonus sheet.** The CSV has exactly 193 pack names =
+  Scryfall's HOB; HOC ("The Hobbit Eternal", `set_type: eternal`) is the
+  Commander companion Arena downloads for Brawl. `discover_sources` now keeps
+  only `masterpiece`-type children (BRR/EOS/FCA/MUL/STA/WOT all are). Day-0
+  impact: 103 non-draft cards in the vocab, so the set-summary token averaged
+  the wrong universe; pack ranking itself was unaffected (the pointer head
+  scores in-pack cards only).
+
+**The ultimate eval** (PLAN Phase 3: "on next-set release day the day-0 claim
+gets tested for real"). HOB val, 2,202 drafts; nothing below has seen an HOB
+pick (scorecards docs/scorecards/onboard/HOB/, leaderboard rows added):
+
+| expert top-1 (top-1)        | none = day 0    | day3            | week1           | full            |
+|-----------------------------|-----------------|-----------------|-----------------|-----------------|
+| EXP-033 (production trunk)  | .5387 (.5453)   | .6644 (.6536)   | .6801 (.6636)   | .6855 (.6675)   |
+| EXP-030 (v1 trunk)          | .5358 (.5435)   | —               | .6754 (.6595)   | —               |
+| best heuristic              | rarity .3255    | —               | gih-greedy .3844| alsa .4637      |
+
+Reference: EXP-033 on MSH (in corpus) full .6955 expert (harness; the
+tracker printed .6962); EXP-013 (MSH-only
+best) .6985 on test. Reading: the day-0 claim holds — .54 with zero stats
+beats every stats-armed heuristic by ≥ 8 pts and matches MSH's day-0
+(.5239 test / .537 val). Three days of data recover 12.5 of the 15-pt gap;
+week-1 stats are essentially final for a popular set (GIH-WR corr .991 with
+full-season, median 4,025 games/card at week 1, 2,497 at day 3). Zero-shot
+full sits 1.1 pt under MSH-in-corpus — that gap is the fine-tune's job.
+Watchdogs: rare-take 1.52× expert at day 0 (1.07× by week 1 — without stats
+the trunk leans on rarity), ECE ≤ .025 throughout, skill-gap −.009 at day 0
+(same sign as MSH day-0 −.011: without stats the trunk cannot separate expert
+taste — the text lever's job, §3 below).
+
+Deck builder, HOB val draft decks (53,242 builds extracted): EXP-126 trophy-F1
+none .8477 / full .8855; EXP-135 full .8887; gih-in-lane-build .8291; rebuild
+ceiling .9590. Third holdout, same shape as EOE (.8347 / .8981) and MSH
+(.8298 / .8871). Sealed (15,152 builds, 552 val): EXP-135 full .6809 / none
+.4957 vs ceiling .8949 and gih-in-lane .5617 (TLA .7576, EOE .6328).
+
+**Recipe review** (owner ask: anything big we're getting wrong, or quick wins,
+before the HOB runs). Solid and not worth touching: the v2 architecture, the
+eval suite with its skill slices and watchdogs, split/quarantine hygiene,
+stat masks + stat-dropout (day-0 is demonstrably a trained condition), soft
+weighting on the deck side, LoRA ≈ full-FT, the deck recipe probed to plateau.
+What is not:
+1. **The draft trunk was never hill-climbed.** P3.T5 is still unchecked;
+   EXP-033 is the P3.T4 "pretrain-small" recipe run once more on corpus v2.
+   Its tensorboard curve was still rising when the 20k-step cosine reached
+   zero (MSH expert none .5324@13k → .5370@20k, full .6942 → .6962, week1
+   .6832 → .6852). 20k × 64 = 1.28M draft-samples ≈ **1.2 epochs** of the
+   1.07M-draft used corpus, against 24 epochs for the deck trunk — where
+   epochs 12 → 24 bought +0.32 day-1 (EXP-124). Lever: total_steps 60k
+   (~5h, resumable). The tracker is now configurable (`track_set`, default
+   MSH for provenance); new runs track HOB — MSH is in-corpus, so EXP-033's
+   "zero-shot" MSH signal was an in-corpus fit.
+2. **The pretrain still hard-filters by skill, against the project's own
+   repeated finding.** `skill_filter 0.54/50` discards 1.47M of the 3.07M
+   train drafts, then the 40k cap discards 0.53M more: the trunk trains on
+   35% of the corpus. Both halves of the project found soft weighting beats
+   hard curation (EXP-013 vs the filtered runs; EXP-105 on decks), the deck
+   trunk trains unfiltered, and the production-lock entry recorded it as a
+   lesson — but the pretrain configs never absorbed it. Lever: drop
+   skill_filter (importance weights stay). At the same 40k cap this is the
+   clean equal-volume test of the hypothesis.
+3. **Card text is invisible, and that is the entire day-0 gap.** none → day3
+   is 12.5 pts. No static feature separates Thranduil's Decree from Sound
+   the Trumpets (2026-08-11 analysis); the P3.T5 "ceiling-raiser" lever
+   (frozen sentence embedding of oracle text appended to the static block)
+   was never run. Literature check: arXiv 2607.04782 (Jul 2026) builds
+   set-contextualised card embeddings from oracle text with a 768-d text
+   encoder; UrzaGPT (arXiv 2508.08382, LLM + LoRA on draft logs) reports 66%
+   fine-tuned and GPT-4o 43% zero-shot — under our supervised numbers, so the
+   LLM route is unattractive and the feature route is the one to take. HOB is
+   now an honest yardstick for it (day-0 .5387 to beat).
+4. Minor: no bf16 autocast despite the P2 design note (throughput only);
+   `MIN_GAMES_FOR_WR = 5` is generous; EXP-033 had no leaderboard row (its
+   MSH rows are added below). Not a lever: stat-noise augmentation — week-1
+   stats are near-final (above) and day-3 costs only 1.6 pt.
+
+Proposed next runs — configs written, NOT launched, owner picks the order:
+EXP-034 (EXP-033 recipe, 60k steps, track HOB), EXP-035 (= 034 minus the
+skill filter), EXP-036 (full-FT EXP-033 → HOB: the current-set drafter;
+expect ≥ .69 expert from the MSH FT curves), EXP-138 (EXP-127 recipe:
+EXP-126 → HOB deck fine-tune, ~8 min). The text-embedding lever is a P3.T5
+proposal: a new static-feature block + scaler + a pretrain (~1 day). After
+any of these ship: rebuild the laptop bundle — the day-0 HOB artifacts over
+there are dead (296 → 193 cards, new ids).

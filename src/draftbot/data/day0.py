@@ -72,8 +72,14 @@ def discover_sources(set_code: str, db: Path | None = None,
     """
     code = set_code.upper()
     present = arena_db.expansion_codes(db)
+    # Only masterpiece-type children are booster bonus sheets (BRR, EOS, FCA,
+    # MUL, STA, WOT…). A set's Commander / "Eternal" companion (LTC, HOC) is
+    # also a parent_set_code child and Arena downloads it for Brawl — but none
+    # of its cards is ever in a draft pack (HOB's 17lands CSV: 193 names, zero
+    # HOC; the day-0 vocab had carried 103 of them).
     children = [s["code"].upper() for s in _all_sets()
-                if (s.get("parent_set_code") or "").upper() == code]
+                if (s.get("parent_set_code") or "").upper() == code
+                and s.get("set_type") == "masterpiece"]
     out = [code]
     for c in children + [e.upper() for e in (extra or [])]:
         if c not in out and c in present:

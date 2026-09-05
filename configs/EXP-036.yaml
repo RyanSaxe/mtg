@@ -1,0 +1,32 @@
+# EXP-036: the current-set HOB drafter — full fine-tune of the production trunk
+# (EXP-031 recipe, which tied the MSH-only best). Fresh zero-init HOB card
+# table on top of the feature pathway; corpus scaler reused. Expect ≥ .69
+# expert on HOB val from the MSH FT curves (zero-shot full = .6855).
+# LoRA alternative (default for onboard-set adapters, P4.T2):
+#   uv run python -m draftbot.onboard_set --set HOB --base checkpoints/EXP-033
+exp: EXP-036
+model: modern
+set: HOB
+stats: full
+seed: 17
+batch_drafts: 64
+epochs: 15
+patience: 3
+emb_dim: 256
+layers: 8
+heads: 8
+t_max: 45
+dropout: 0.1
+use_set_encoder: true
+pointer_head: true
+feature_only: true
+use_set_token: true
+init_from: checkpoints/EXP-033
+scaler_from: checkpoints/EXP-033
+weighting: importance
+priors: false
+label_smoothing: 0.05
+peak_lr: 1.0e-4
+lr_warmup: 300
+weight_decay: 0.01
+grad_clip: 1.0

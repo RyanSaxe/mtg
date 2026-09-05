@@ -5,7 +5,8 @@
 # (40-43 deck size, pool-consistent rebuilds; drop rates logged at extract).
 # Next Arena set joins `quarantine` on announcement day.
 source: sealed
-quarantine: []
+quarantine:  # HOB = the sandbag (17lands drop 2026-09-05; PLAN §0 / Appendix D)
+  - HOB
 holdout:
   - EOE
 sets:

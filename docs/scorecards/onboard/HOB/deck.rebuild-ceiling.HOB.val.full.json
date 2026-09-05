@@ -1,0 +1,40 @@
+{
+ "model": "rebuild-ceiling",
+ "set": "HOB",
+ "split": "val",
+ "stats": "full",
+ "scheme": "random",
+ "task": "deck",
+ "event": "draft",
+ "trophy_view": "winningest-build v2 (owner refinement 2026-07-30)",
+ "git_sha": "3f7449b",
+ "generated_at": "2026-09-05T07:49:46+00:00",
+ "n_builds": 441,
+ "n_trophy": 45,
+ "metrics": {
+  "deck_f1": 0.9607291479808282,
+  "nonbasic_f1": 0.9499400076525727,
+  "trophy_f1": 0.9590180529954261,
+  "trophy7_f1": 0.9405859802847754,
+  "trophy_lands_mae": 0.08888888888888889,
+  "win_weighted_f1": 0.9623950516336234,
+  "lands_mae": 0.17913832199546487,
+  "basics_l1": 0.6825396825396826,
+  "curve_l1": 1.7052154195011338,
+  "legal_rate": 0.9259259259259259,
+  "winner_pref": NaN
+ },
+ "slices": {
+  "f1_by_wins": {
+   "0": 0.9622118053012362,
+   "1": 0.9580908338123784,
+   "2": 0.9587840483552679,
+   "3": 0.9653579865219619,
+   "4": 0.9646681084996153,
+   "5": 0.9563513408703112,
+   "6": 0.9558013937282231,
+   "7": 0.9647562034973752
+  }
+ },
+ "n_winner_pairs": 0
+}

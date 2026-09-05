@@ -3,7 +3,8 @@
 # out as the next-set stand-in (day-1 replication on a second set).
 # AFR still excluded (0.3% draft-log join). Next Arena set joins
 # `quarantine` on announcement day.
-quarantine: []
+quarantine:  # HOB = the sandbag (17lands drop 2026-09-05; PLAN §0 / Appendix D)
+  - HOB
 holdout:
   - EOE
 sets:

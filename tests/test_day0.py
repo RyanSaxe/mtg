@@ -177,3 +177,62 @@ def test_every_arena_grpid_resolves_to_the_vocab(cards):
     nti = {norm_name(n): i for n, i in zip(cards["name"], cards["id"])}
     unmapped = [n for g, n in names.items() if g not in mapping and norm_name(n) in nti]
     assert not unmapped, f"known cards with no grpId route: {unmapped[:5]}"
+
+
+# --- the day-0 → 17lands transition ---------------------------------------
+
+def test_csv_publication_discards_every_day0_artifact(tmp_path, monkeypatch):
+    """`onboard()` rebuilds features.static.parquet only when it is ABSENT, and
+    the day-0 table is keyed on ids that stop existing the moment build_cards
+    regenerates from the CSV — a stale table would mis-index every feature row
+    without any error. So the CSV path must sweep the day-0 artifacts itself."""
+    from draftbot.data import cards as cards_mod
+    from draftbot.data import features as feats_mod
+
+    proc, snaps = tmp_path / "processed", tmp_path / "snapshots"
+    monkeypatch.setattr(cards_mod, "PROCESSED_DIR", proc)
+    monkeypatch.setattr(feats_mod, "SNAPSHOT_DIR", snaps)
+    d = proc / "XXX"
+    d.mkdir(parents=True)
+    pd.DataFrame({"id": [0, 1], "name": ["Aardvark", "Zebra"]}).to_parquet(d / "cards.parquet")
+    (d / DAY0_MARKER).write_text("provisional")
+    (d / SOURCES_JSON).write_text('["XXX", "XXC"]')
+    pd.DataFrame({"cmc": [1.0, 2.0]}, index=[0, 1]).to_parquet(d / "features.static.parquet")
+    s = snaps / "XXX"
+    s.mkdir(parents=True)
+    placeholder = "2026-01-01_2026-01-01.parquet"
+    (s / placeholder).write_bytes(b"")
+    (s / "registry.json").write_text(json.dumps({"full": placeholder, "week1": placeholder}))
+
+    # 17lands publishes: the CSV universe is just Zebra (say XXC was a Commander
+    # set Arena had downloaded, not a bonus sheet)
+    monkeypatch.setattr(cards_mod, "csv_pack_names", lambda code, event="PremierDraft": ["Zebra"])
+    monkeypatch.setattr(cards_mod, "fetch_set_cards",
+                        lambda code: [{"name": "Zebra", "set": "xxx", "rarity": "common",
+                                       "cmc": 2.0, "type_line": "Creature"}])
+    df = cards_mod.build_cards("XXX")
+
+    assert list(df["name"]) == ["Zebra"] and list(df["id"]) == [0]
+    assert not (d / DAY0_MARKER).exists()
+    assert not (d / "features.static.parquet").exists(), "stale day-0 ids would survive"
+    assert (d / SOURCES_JSON).exists(), "the Scryfall pool is still right"
+    assert not (s / "registry.json").exists() and not (s / placeholder).exists()
+
+
+def test_discover_sources_keeps_only_masterpiece_children(monkeypatch):
+    """HOB's parent_set_code children include HOC ("The Hobbit Eternal", the
+    Commander companion): Arena downloads it for Brawl, 17lands never packs it.
+    Only masterpiece-type children (BRR, EOS, FCA, MUL, STA, WOT…) are sheets."""
+    from draftbot.data import day0
+
+    monkeypatch.setattr(day0, "_all_sets", lambda: [
+        {"code": "hob", "set_type": "expansion", "parent_set_code": None},
+        {"code": "hoc", "set_type": "eternal", "parent_set_code": "hob"},
+        {"code": "hox", "set_type": "masterpiece", "parent_set_code": "hob"},
+        {"code": "hoy", "set_type": "masterpiece", "parent_set_code": "hob"},
+        {"code": "ltc", "set_type": "commander", "parent_set_code": "ltr"},
+    ])
+    monkeypatch.setattr(arena_db, "expansion_codes",
+                        lambda db=None: {"HOB": 193, "HOC": 104, "HOX": 30})
+    assert day0.discover_sources("HOB") == ["HOB", "HOX"]   # HOC: eternal; HOY: not on Arena
+    assert day0.discover_sources("HOB", extra=["HOC"]) == ["HOB", "HOX", "HOC"]  # manual override
