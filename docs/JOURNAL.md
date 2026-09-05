@@ -1082,3 +1082,12 @@ EXP-126 → HOB deck fine-tune, ~8 min). The text-embedding lever is a P3.T5
 proposal: a new static-feature block + scaler + a pretrain (~1 day). After
 any of these ship: rebuild the laptop bundle — the day-0 HOB artifacts over
 there are dead (296 → 193 cards, new ids).
+
+## 2026-09-05 — Launched: EXP-138 → EXP-036 → EXP-034 (owner: "kick off 138 and 036, queue 034 overnight")
+
+Chained on the single MPS device in that order (logs/<EXP>.log, caffeinate).
+Each run is followed by its HOB val eval into docs/scorecards/onboard/HOB/;
+EXP-034 gets the three zero-shot modes. Leaderboard rows follow from those
+JSONs. Bars: EXP-138 > .8855 trophy-F1 (EXP-126 zero-shot); EXP-036 > .6855
+expert (EXP-033 zero-shot full); EXP-034 vs EXP-033 on HOB val, all modes
+(none .5387 / week1 .6801 / full .6855).
