@@ -1,0 +1,21 @@
+# EXP-037: curation ladder control — NO hard skill filter (soft weights only,
+# as the deck trunk trains). Run after EXP-035: if 035 > 034 this says whether
+# even the light cut matters. Otherwise identical to EXP-034/035.
+exp: EXP-037
+corpus: configs/corpus/pretrain_v2.yaml
+track_set: HOB
+seed: 17
+batch_drafts: 64
+total_steps: 60000
+emb_dim: 256
+layers: 8
+heads: 8
+dropout: 0.1
+stat_dropout: 0.25
+label_smoothing: 0.05
+skill_filter: null
+peak_lr: 2.0e-4
+lr_warmup: 1000
+weight_decay: 0.01
+grad_clip: 1.0
+eval_every: 2000

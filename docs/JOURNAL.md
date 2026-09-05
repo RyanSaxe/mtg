@@ -1095,3 +1095,24 @@ expert (EXP-033 zero-shot full); EXP-034 vs EXP-033 on HOB val, all modes
   0.8855 (+2.85; ceiling 0.9590), basics-L1 1.58 vs 2.33. Bigger lift than the
   MSH gap-window estimate (+1.3) — HOB's stats-armed zero-shot started lower.
   Production HOB deck builder candidate; bundle after EXP-036.
+
+## 2026-09-05 — Next steps for the three recipe changes (owner discussion)
+
+Owner: the text lever "would capture quite a bit of alpha for day-0 drafts
+next set" — proposal written: **docs/TEXT_EMBED_PLAN.md** (frozen bge-base
+oracle-text block in the static features + a stat-reconstruction auxiliary
+head so the text pathway is trained directly on 30 sets of measured card
+strength; EXP-050/051/052 + EXP-139 for decks; HOB val `none` is the bar).
+Training length: EXP-034 (60k) is in the overnight slot; read its curve at
+2k-step resolution — still rising at 60k → EXP-034b at 120k; promote at
+≥ +0.5 on any HOB mode with the others within 0.2.
+Curation: owner ruling — "17lands players are mostly self-selecting good
+players; we only need to reject the bottom of the barrel." Measured over the
+2.81M v2 train drafts with skill metadata: the median drafter is ≈ .54 game
+WR, so the 0.54/50 filter keeps 48% — it rejects the bottom HALF of an
+already-selected population. EXP-035 is now that light cut (WR ≥ .46,
+≥ 10 games; keeps 87%; soft weights stay); EXP-037 = no filter, the ladder's
+control. Cap stays 40k so 034/035/037 are equal-volume; raising the cap is
+the next lever if the light cut wins (more sets would then hit it).
+Order after EXP-034 lands: EXP-035 → text implementation (½ day) → EXP-050
+→ EXP-037 / EXP-051 as overnight slots allow.

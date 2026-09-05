@@ -1,10 +1,10 @@
-# EXP-035: P3.T5 lever 2 — DROP THE HARD SKILL FILTER (journal 2026-09-05,
-# proposed). Identical to EXP-034 except skill_filter off: soft importance
-# weighting (rank × WR × recency × position) is the only skill signal, as on
-# the deck trunk. Both halves of the project found soft weighting beats hard
-# curation (EXP-013; EXP-105) but the pretrain configs never absorbed it: the
-# 0.54/50 filter discards 1.47M of 3.07M train drafts. Same 40k cap, so this
-# is the equal-volume test. Compare to EXP-034 on HOB val (expert, all modes).
+# EXP-035: P3.T5 lever 2 — CURATION STRENGTH (journal 2026-09-05). Owner:
+# "17lands players are mostly self-selecting good players, so we only need
+# to reject the bottom of the barrel." The 0.54/50 filter rejects the BOTTOM
+# HALF of that population (median drafter ≈ .54; keeps 48%). This cut keeps
+# 87% of drafts with skill metadata (win rate ≥ .46, ≥ 10 games); soft
+# importance weighting stays. Identical to EXP-034 otherwise (same 40k cap:
+# equal-volume test). Compare to EXP-034 on HOB val, all modes.
 exp: EXP-035
 corpus: configs/corpus/pretrain_v2.yaml
 track_set: HOB
@@ -17,7 +17,9 @@ heads: 8
 dropout: 0.1
 stat_dropout: 0.25
 label_smoothing: 0.05
-skill_filter: null
+skill_filter:
+  min_win_rate: 0.46
+  min_games: 10
 peak_lr: 2.0e-4
 lr_warmup: 1000
 weight_decay: 0.01
