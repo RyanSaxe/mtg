@@ -124,11 +124,27 @@ def build_text_features(set_code: str, encoder: str = DEFAULT_ENCODER,
     return df
 
 
+class TextBlockUnavailable(RuntimeError):
+    """A text-trained checkpoint needs `features.text.<encoder>.parquet` for
+    this set; it is missing and the encoder cannot be loaded here."""
+
+
 def load_text_features(set_code: str, encoder: str = DEFAULT_ENCODER) -> pd.DataFrame:
     """Cached table if present (the bundle ships it — no encoder needed on the
-    laptop), else build it."""
+    laptop), else build it — with a clear failure when that is impossible
+    (day-0 onboarding on a machine without the optional [text] extra)."""
     path = text_path(set_code, encoder)
-    return pd.read_parquet(path) if path.exists() else build_text_features(set_code, encoder)
+    if path.exists():
+        return pd.read_parquet(path)
+    try:
+        return build_text_features(set_code, encoder)
+    except ImportError as e:
+        raise TextBlockUnavailable(
+            f"{set_code}: no {path.name} and sentence-transformers is not installed, "
+            f"so it cannot be built here. Either `uv sync --extra dev --extra text` "
+            f"and re-run, copy the file from a machine that has it, or use a "
+            f"checkpoint trained without text (e.g. --models checkpoints/EXP-033)."
+        ) from e
 
 
 def main(argv=None):

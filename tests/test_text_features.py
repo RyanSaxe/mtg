@@ -103,3 +103,16 @@ def test_random_control_encoder_is_identity_without_semantics(two_sets, monkeypa
     assert a.shape == (3, 16) and np.allclose(np.linalg.norm(a.to_numpy(), axis=1), 1.0)
     assert np.allclose(a.to_numpy(), b.to_numpy())          # same names, same vectors
     assert abs(float(a.iloc[0] @ a.iloc[1])) < 0.6           # different names: unrelated
+
+
+def test_missing_block_without_encoder_fails_clearly(two_sets, monkeypatch):
+    """Day-0 on a laptop without the [text] extra: a text-trained trunk must
+    fail with instructions, not an ImportError from inside sentence-transformers."""
+    def no_encoder(texts, encoder="fake"):
+        raise ImportError("No module named 'sentence_transformers'")
+    monkeypatch.setattr(tf, "embed", no_encoder)
+    with pytest.raises(tf.TextBlockUnavailable, match="uv sync --extra dev --extra text"):
+        tf.load_text_features("AAA", "fake")
+    monkeypatch.setattr(tf, "embed", fake_embed)  # with the encoder it builds fine
+    assert tf.load_text_features("AAA", "fake").shape == (3, 8)
+    assert tf.load_text_features("AAA", "fake").shape == (3, 8)  # and now loads from disk
