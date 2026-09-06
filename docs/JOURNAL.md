@@ -1282,3 +1282,9 @@ EXP-057 noise 0.5. Text series ledger (none / week1 / full): 033
 .5387/.6801/.6855 · 050 .5513/.6686/.6737 · 051 .5509/.6732/.6780 · 052
 .5497/.6764/.6799 · 053 .5384/.6739/.6832 · 054 .5043/.6542/.6589 · **055
 .5650/.6861/.6898**.
+- **Fixture suite (Phase-3 gate condition 4 analogue), MSH scenarios:** with
+  full stats both trunks pass 17/17. In day-0 mode EXP-033 fails 4
+  (easy-best-common-p1p2, easy-common-over-trap-mythic,
+  medium-fixing-for-splash, medium-second-color-commit); **EXP-055 passes
+  17/17** — the failures were card-reading cases. Precondition (a) for the
+  production swap met; (b) EXP-058 and the overnight sweep in flight.
