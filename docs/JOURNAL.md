@@ -1244,3 +1244,11 @@ id from being memorisable instead — EXP-055 revised to EXP-051 + text_noise
 (random-vector control) unchanged: it tells whether the +1.2 was semantic.
 EXP-052 (051 + text_dropout .1) at step 13k reads .5498 / .6749 / .6799 —
 051-like; whole-block dropout is not the fix either, as predicted.
+- **EXP-052 done** (051 + text_dropout .1): none .5497 (+1.1 vs 033), week1
+  .6764 (−0.4), full .6799 (−0.6), MSH .6967 (+0.1). Best text run so far on
+  the combined bars — whole-block dropout does trim the stats-mode loss
+  (051 −0.7 → −0.4/−0.6) but not to within 0.2. Ledger of the text series,
+  HOB expert (none / week1 / full): 033 .5387/.6801/.6855 · 050
+  .5513/.6686/.6737 · 051 .5509/.6732/.6780 · 052 .5497/.6764/.6799 · 053
+  .5384/.6739/.6832. Every always-on-text run pays ~0.5–1.2 with stats on
+  the holdout; 054/055 running.
