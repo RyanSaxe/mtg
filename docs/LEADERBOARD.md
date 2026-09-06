@@ -201,6 +201,18 @@ EXP-033 provenance gap flagged on 2026-07-31 (MSH is IN-corpus for EXP-033).
 | EXP-055 | EXP-055-zeroshot@best | HOB | val | full | 0.6704 | 0.9442 | 0.6898 | +0.0213 | 0.8608 | configs/EXP-055.yaml | e4843ea | 107min | 2026-09-06 |
 | EXP-055 | EXP-055-zeroshot@best | MSH | val | full | 0.6706 | 0.9395 | 0.6965 | +0.0405 | 0.8638 | configs/EXP-055.yaml | e4843ea | 107min | 2026-09-06 |
 | EXP-058 | EXP-058@best | HOB | val | full | 0.6957 | 0.9535 | 0.7133 | +0.0233 | 0.7957 | configs/EXP-058.yaml | 66b09f7 | 28min | 2026-09-06 |
+| EXP-056 | EXP-056-zeroshot@best | HOB | val | none | 0.5718 | 0.8930 | 0.5675 | -0.0037 | 1.1019 | configs/EXP-056.yaml | 2024b6e | 107min | 2026-09-06 |
+| EXP-056 | EXP-056-zeroshot@best | HOB | val | week1 | 0.6689 | 0.9432 | 0.6869 | +0.0189 | 0.8670 | configs/EXP-056.yaml | 2024b6e | 107min | 2026-09-06 |
+| EXP-056 | EXP-056-zeroshot@best | HOB | val | full | 0.6714 | 0.9443 | 0.6930 | +0.0231 | 0.8606 | configs/EXP-056.yaml | 2024b6e | 107min | 2026-09-06 |
+| EXP-056 | EXP-056-zeroshot@best | MSH | val | full | 0.6697 | 0.9396 | 0.6965 | +0.0424 | 0.8667 | configs/EXP-056.yaml | 2024b6e | 107min | 2026-09-06 |
+| EXP-059 | EXP-059-zeroshot@best | HOB | val | none | 0.5683 | 0.8861 | 0.5678 | +0.0037 | 1.1182 | configs/EXP-059.yaml | 2024b6e | 107min | 2026-09-06 |
+| EXP-059 | EXP-059-zeroshot@best | HOB | val | week1 | 0.6679 | 0.9432 | 0.6861 | +0.0174 | 0.8682 | configs/EXP-059.yaml | 2024b6e | 107min | 2026-09-06 |
+| EXP-059 | EXP-059-zeroshot@best | HOB | val | full | 0.6706 | 0.9442 | 0.6888 | +0.0181 | 0.8602 | configs/EXP-059.yaml | 2024b6e | 107min | 2026-09-06 |
+| EXP-059 | EXP-059-zeroshot@best | MSH | val | full | 0.6717 | 0.9401 | 0.6963 | +0.0390 | 0.8610 | configs/EXP-059.yaml | 2024b6e | 107min | 2026-09-06 |
+| EXP-057 | EXP-057-zeroshot@best | HOB | val | none | 0.5606 | 0.8782 | 0.5593 | +0.0038 | 1.1484 | configs/EXP-057.yaml | 2024b6e | 107min | 2026-09-06 |
+| EXP-057 | EXP-057-zeroshot@best | HOB | val | week1 | 0.6651 | 0.9422 | 0.6823 | +0.0208 | 0.8743 | configs/EXP-057.yaml | 2024b6e | 107min | 2026-09-06 |
+| EXP-057 | EXP-057-zeroshot@best | HOB | val | full | 0.6677 | 0.9428 | 0.6857 | +0.0207 | 0.8664 | configs/EXP-057.yaml | 2024b6e | 107min | 2026-09-06 |
+| EXP-057 | EXP-057-zeroshot@best | MSH | val | full | 0.6717 | 0.9397 | 0.6977 | +0.0399 | 0.8611 | configs/EXP-057.yaml | 2024b6e | 107min | 2026-09-06 |
 
 ### HOB deck builder (draft decks, then sealed)
 

@@ -1297,3 +1297,22 @@ EXP-057 noise 0.5. Text series ledger (none / week1 / full): 033
   the noise sweep lands, then swap once — and add a clear failure when a
   text-trained trunk meets a set with no text block and no encoder
   installed (day-0 on the laptop without the [text] extra).
+
+## 2026-09-06 — Noise sweep: more noise is better up to 2.0; the aux head is redundant once noise is in
+
+HOB val expert (none / week1 / full), MSH full; EXP-055 = σ 1.0 + aux:
+
+| | none | week1 | full | MSH full | day-0 ECE |
+|---|---|---|---|---|---|
+| EXP-057 σ 0.5 + aux | .5593 | .6823 | .6857 | .6977 | .062 |
+| EXP-055 σ 1.0 + aux | .5650 | .6861 | .6898 | .6965 | .049 |
+| EXP-059 σ 1.0, no aux | .5678 | .6861 | .6888 | .6963 | .052 |
+| **EXP-056 σ 2.0 + aux** | **.5675** | **.6869** | **.6930** | .6965 | **.029** |
+
+σ 0.5 loses 0.6 at day 0 vs 1.0; 2.0 gains +0.25 / +0.1 / +0.3 over 1.0 —
+under the +0.5 promote bar, so a tie by the rule, but monotone on every
+mode and day-0 ECE halves (.049 → .029; EXP-033 .013). Dropping the aux head
+at σ 1.0 changes nothing (059 ≈ 055): the head was a second route to the same
+smoothness and noise makes it redundant. Two flat probes toward the plateau
+rule (3 × < 0.3); one more on the noise axis: **EXP-060 = 056 + σ 4.0**,
+launched now (machine idle). Production pick after it: the best of 056/060.

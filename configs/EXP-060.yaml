@@ -1,0 +1,27 @@
+# EXP-060: = EXP-056 with text_noise 4.0 — third point on the noise axis
+# (0.5 < 1.0 < 2.0 so far, monotone on every HOB mode). If flat vs 056, the
+# noise axis is at plateau (3 probes < 0.3).
+exp: EXP-060
+text_features: bge-base
+text_noise: 4.0
+stat_aux_lambda: 0.1
+corpus: configs/corpus/pretrain_v2.yaml
+track_set: HOB
+select_on: [none, week1]
+seed: 17
+batch_drafts: 64
+total_steps: 20000
+emb_dim: 256
+layers: 8
+heads: 8
+dropout: 0.1
+stat_dropout: 0.25
+label_smoothing: 0.05
+skill_filter:
+  min_win_rate: 0.54
+  min_games: 50
+peak_lr: 2.0e-4
+lr_warmup: 1000
+weight_decay: 0.01
+grad_clip: 1.0
+eval_every: 1000
