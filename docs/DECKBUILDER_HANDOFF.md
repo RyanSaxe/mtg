@@ -6,7 +6,7 @@ Production is the **corpus-pretrained trunks**, not the best in-set scorers:
 
 | role | ship | best-on-MSH | why the shipped one |
 |---|---|---|---|
-| draft | **EXP-033** | EXP-013 | day-1 zero-shot on an unseen set + onboard-set fine-tune path |
+| draft | **EXP-056** (was EXP-033 until 2026-09-06) | EXP-013 | day-1 zero-shot on an unseen set + onboard-set fine-tune path; EXP-056 adds the oracle-text block (journal 2026-09-05/06) |
 | deck | **EXP-126** | EXP-121 | same, for building |
 | rebuild | **EXP-116** | — | only builder with `diffusion=True`; conditions on locks natively |
 

@@ -1316,3 +1316,23 @@ at σ 1.0 changes nothing (059 ≈ 055): the head was a second route to the same
 smoothness and noise makes it redundant. Two flat probes toward the plateau
 rule (3 × < 0.3); one more on the noise axis: **EXP-060 = 056 + σ 4.0**,
 launched now (machine idle). Production pick after it: the best of 056/060.
+- **EXP-060 (σ 4.0):** none .5626 (−0.5 vs 056), week1 .6896 (+0.3), full
+  .6942 (+0.1), MSH .6935 (−0.3); day-0 ECE .014 (= EXP-033's). Third probe
+  under 0.3 on the composite → **noise axis at plateau** (P3.T5 rule).
+  **Production trunk = EXP-056** (σ 2.0 + aux): best day-0 of the series,
+  tie elsewhere, MSH held. Swapping HUD / bundle / onboard-set defaults now;
+  EXP-033 stays in the bundle as the no-text fallback.
+
+## 2026-09-06 — PRODUCTION SWAP: EXP-056 is the draft trunk (HUD default, bundle default, onboard-set --base)
+
+`PROD_DRAFT_MODELS` → checkpoints/EXP-056; bundle defaults lead with EXP-056
+and keep EXP-033 as the no-text fallback; `onboard_set --base` default was
+still EXP-030 (!) and is now EXP-056, and the generated fine-tune config
+inherits `text_features` / `text_when` from the base checkpoint (without
+that a fine-tune from a text trunk would build a 771-column table against a
+1,539-column trunk). README, DECKBUILDER_HANDOFF and PLAN P3.T5 updated.
+Deployment note: a text trunk needs `features.text.bge-base.parquet` for the
+set — the bundle ships it; day-0 onboarding builds it only with the [text]
+extra installed, otherwise `TextBlockUnavailable` says what to do (or use
+EXP-033). Deck side untouched (EXP-126/116/135); EXP-139 = the same lever
+for the deck trunk is the next proposal.

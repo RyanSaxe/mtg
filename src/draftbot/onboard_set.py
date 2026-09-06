@@ -1,6 +1,6 @@
 """One-command new-set onboarding (PLAN P4.T3).
 
-`python -m draftbot.onboard_set --set <CODE> [--base checkpoints/EXP-030]
+`python -m draftbot.onboard_set --set <CODE> [--base checkpoints/EXP-056]
  [--finetune-mode lora] [--budget-drafts N] [--skip-finetune]`
 
 Pipeline: probe/download draft+game data → vocab/parquet/features/snapshots
@@ -25,7 +25,8 @@ from draftbot.data.fetch import dest_path, download, probe
 def main(argv=None):
     p = argparse.ArgumentParser(prog="draftbot.onboard_set")
     p.add_argument("--set", dest="set_code", required=True)
-    p.add_argument("--base", default="checkpoints/EXP-030")
+    p.add_argument("--base", default="checkpoints/EXP-056",
+                   help="pretrained trunk (2026-09-06: EXP-056, the text trunk)")
     p.add_argument("--finetune-mode", default="lora",
                    choices=["lora", "head", "full"])
     p.add_argument("--budget-drafts", type=int, default=None,
@@ -76,6 +77,14 @@ def main(argv=None):
         "peak_lr": 7.0e-5, "lr_warmup": 200, "weight_decay": 0.01,
         "grad_clip": 1.0,
     }
+    # A text trunk (EXP-056+) needs the same feature layout at fine-tune time:
+    # inherit the text keys from the base checkpoint's config.
+    import torch
+    base_cfg = torch.load(Path(args.base) / "best.pt", map_location="cpu",
+                          weights_only=False)["cfg"]
+    for key in ("text_features", "text_when"):
+        if base_cfg.get(key):
+            cfg[key] = base_cfg[key]
     if args.budget_drafts:
         cfg["max_drafts"] = args.budget_drafts
     cfg_path = Path("configs") / f"{exp}.yaml"

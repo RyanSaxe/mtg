@@ -31,7 +31,12 @@ PIPS = "WUBRG"
 # production defaults — see the module docstring for why these and not the
 # best MSH scorers. EXP-116 stays the rebuild slot: it is the only builder
 # with diffusion=True, i.e. the only one that conditions on locks natively.
-PROD_DRAFT_MODELS = "checkpoints/EXP-033"
+# 2026-09-06: EXP-056 — the oracle-text trunk (bge-base block + embedding
+# noise σ2, P3.T5c). HOB zero-shot expert top-1 .5675/.6869/.6930 vs
+# EXP-033 .5387/.6801/.6855; passes all 17 fixtures at day 0. Needs
+# features.text.bge-base.parquet for the set (bundle ships it; day-0 builds
+# it with the [text] extra). EXP-033 remains the no-text fallback.
+PROD_DRAFT_MODELS = "checkpoints/EXP-056"
 PROD_DECK_MODELS = "checkpoints/EXP-126,checkpoints/EXP-116"
 # sealed mode (P5.S4): the joint trunk with the sealed format token. No
 # diffusion slot — locks go through the probability-pinning fallback, which

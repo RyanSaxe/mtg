@@ -120,9 +120,9 @@ Goal: prove a large model pretrained on many sets drafts a **never-seen set** we
 - [x] **P3.T3** Warm-start pilot (cheap transfer test, do FIRST): train v2 on one prior set (e.g. EOE), fine-tune on MSH, compare to MSH-from-scratch at equal total compute. **DoD:** journal verdict on transfer strength; if fine-tuned ≤ scratch, investigate feature-pathway bugs before any big pretrain.
 - [x] **P3.T4** **EXP-030** pretrain-small: v2-feature-based, ~15M params, 4–6 sets, overnight. Zero-shot eval on MSH val in all three stat modes (`none`, `week1`, `full`). **DoD:** zero-shot(week1) beats ALSA-greedy; zero-shot(none) beats rarity-first by ≥ 10 points. These are sanity bars, not the real gate.
 - [ ] **P3.T5** **Hill-climb loop on zero-shot MSH** (this is the core experimental phase — iterate): propose one recipe change → run at pilot scale (≤ 2h) → if val zero-shot improves ≥ 0.5 top-1, promote to overnight scale. Candidate levers, in priority order: stat-dropout rate; corpus size/mix/era-weighting; set-summary conditioning variants; model scale (15M → 30M → 50M); oracle-text embeddings appended to static features (frozen sentence-transformer, cached per card — the ceiling-raiser for day-0 since names/stats can't carry mechanics like "Ward 2" interactions); curriculum (pretrain all-era → continue on play-booster-era only). **Rules:** one lever per EXP; every EXP on the leaderboard; val only. **DoD:** documented plateau — 3 consecutive promoted-scale attempts < 0.3 improvement.
-  - [ ] **P3.T5a** training length: EXP-034 (60k steps, HOB tracker) — launched 2026-09-05.
+  - [x] **P3.T5a** training length: EXP-034 (60k steps, HOB tracker) — NEGATIVE (+0.3 with stats, +0.0 day-0; plateau by 16k steps). 2026-09-05.
   - [ ] **P3.T5b** curation strength ladder: EXP-035 (reject bottom of barrel: WR ≥ .46 / ≥ 10 games) → EXP-037 (no filter). Owner ruling 2026-09-05.
-  - [ ] **P3.T5c** oracle-text embeddings + stat-reconstruction aux head: proposal `docs/TEXT_EMBED_PLAN.md`; EXP-050/051/052 (+ EXP-139 decks).
+  - [x] **P3.T5c** oracle-text embeddings: proposal `docs/TEXT_EMBED_PLAN.md`. EXP-050–060 (2026-09-05/06): the block is a card id unless noised; **EXP-056** (bge-base block + embedding noise σ2 + aux head) = new production trunk, HOB zero-shot +2.9/+0.7/+0.8 over EXP-033, noise axis at plateau. Deck side (EXP-139) still open.
 - [ ] **P3.T6** Few-shot curves: fine-tune pretrain-best on 0 / 1k / 5k / 20k / all MSH drafts (train split only); plot top-1 vs data. This is the "early-days trajectory" evidence — how good is the bot on day 3, week 2, week 6 of a new format. **DoD:** curve committed to `docs/scorecards/phase3/`; compare vs MSH-only v2-best at each data budget.
 
 **Phase 3 gate (the sandbag promotion test — run on MSH *test* split, once):**
@@ -243,3 +243,5 @@ training on top of the old trunk (drift + scaler staleness):
    onboard-set to the new trunk directory.
 Executed refresh: EXP-033 = pretrain on pretrain_v2 (MSH in-corpus), tracking
 proxy MSH (its val is no longer quarantined — it is corpus now).
+2026-09-06: EXP-056 (same corpus, + oracle-text block with embedding noise;
+tracker HOB, the sandbag) replaced EXP-033 as `--base` and the HUD default.

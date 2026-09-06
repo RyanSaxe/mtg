@@ -48,8 +48,9 @@ stat-dropout condition the trunk was pretrained under. These artifacts are
 provisional (a `.day0` marker flags them) and are rebuilt with new card ids
 once 17lands publishes; see docs/JOURNAL.md 2026-08-11.
 
-Defaults are the corpus-pretrained production trunks — `EXP-033` drafting
-(`--models`), `EXP-126` building with `EXP-116` for lock-and-rebuild
+Defaults are the corpus-pretrained production trunks — `EXP-056` drafting
+(`--models`; the oracle-text trunk, 2026-09-06 — `EXP-033` is the no-text
+fallback and needs no `features.text.*` file), `EXP-126` building with `EXP-116` for lock-and-rebuild
 (`--deck-models`, or `--no-deck` to skip the builder). They ship over the
 marginally-better-on-MSH single-set models (EXP-013 / EXP-121) because they
 also work day-1 on a set they have never seen; add `--stats none` for that
