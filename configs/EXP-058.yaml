@@ -1,0 +1,31 @@
+# EXP-058: HOB full fine-tune of the EXP-055 text trunk (EXP-036 recipe, which
+# gave .7100 from EXP-033). Bar: ≥ .7100 — the production path must not lose
+# what the text trunk gained. text_features carried so the table matches the
+# trunk's scaler (noise is a pretrain-only knob).
+exp: EXP-058
+model: modern
+set: HOB
+stats: full
+seed: 17
+batch_drafts: 64
+epochs: 15
+patience: 3
+emb_dim: 256
+layers: 8
+heads: 8
+t_max: 45
+dropout: 0.1
+use_set_encoder: true
+pointer_head: true
+feature_only: true
+use_set_token: true
+init_from: checkpoints/EXP-055
+scaler_from: checkpoints/EXP-055
+weighting: importance
+priors: false
+label_smoothing: 0.05
+peak_lr: 1.0e-4
+lr_warmup: 300
+weight_decay: 0.01
+grad_clip: 1.0
+text_features: bge-base

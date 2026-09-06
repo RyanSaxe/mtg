@@ -1,0 +1,26 @@
+# EXP-059: = EXP-055 WITHOUT the aux head (= EXP-050 + text_noise 1.0): is the
+# stat-reconstruction head still needed once noise removes the card id?
+# One lever vs 055.
+exp: EXP-059
+text_features: bge-base
+text_noise: 1.0
+corpus: configs/corpus/pretrain_v2.yaml
+track_set: HOB
+select_on: [none, week1]
+seed: 17
+batch_drafts: 64
+total_steps: 20000
+emb_dim: 256
+layers: 8
+heads: 8
+dropout: 0.1
+stat_dropout: 0.25
+label_smoothing: 0.05
+skill_filter:
+  min_win_rate: 0.54
+  min_games: 50
+peak_lr: 2.0e-4
+lr_warmup: 1000
+weight_decay: 0.01
+grad_clip: 1.0
+eval_every: 1000

@@ -1252,3 +1252,33 @@ EXP-052 (051 + text_dropout .1) at step 13k reads .5498 / .6749 / .6799 —
   .5513/.6686/.6737 · 051 .5509/.6732/.6780 · 052 .5497/.6764/.6799 · 053
   .5384/.6739/.6832. Every always-on-text run pays ~0.5–1.2 with stats on
   the holdout; 054/055 running.
+
+## 2026-09-05 — EXP-055 PROMOTES: text + aux head + embedding noise beats EXP-033 on every HOB mode; the control shows identity was the whole problem
+
+HOB val expert top-1 (EXP-033 in brackets), MSH full = in-corpus guard:
+
+| | none | week1 | full | MSH full |
+|---|---|---|---|---|
+| EXP-054 random-id control (= 050, random unit vectors) | .5043 (−3.4) | .6542 (−2.6) | .6589 (−2.7) | .6945 (−0.1) |
+| EXP-055 = 051 + text_noise 1.0 | **.5650 (+2.6)** | **.6861 (+0.6)** | **.6898 (+0.4)** | .6965 (+0.1) |
+
+The control: with a fixed random unit vector per card the trunk fits the
+corpus exactly as well (MSH unchanged) and loses ~3 pts on every mode of the
+never-seen set — a 768-d block is used as a card id, and an unseen id is
+out-of-distribution noise at inference. Real text (050) is that same id
+damage partly bought back by semantics (+1.3 at day 0, −1.2 with stats).
+Noise removes the id and keeps the semantics: 055 is +1.4 over 051 at day
+0 and turns the stats-mode losses into gains. Bars: none ≥ +0.5 ✓ (+2.6),
+week1/full within 0.2 ✓ (both positive), MSH ≥ .6955 ✓. Watchdogs: ECE
+.049 at day 0 (033 .013, 050 .075 — better, still over-confident), rare-take
+1.54× (≈ 033), colours 2.16/2.32/2.30 vs human 2.31, skill-gap at day 0
+−.002 vs −.0085. The probe's "+2 realistic, +4 optimistic" landed at +2.6.
+P3.T5c lever CONFIRMED; **EXP-055 is the trunk candidate to replace EXP-033**
+pending (a) the fixture easy tier, (b) the HOB fine-tune path (EXP-058), (c)
+the deck side (EXP-139). Overnight chain (owner directive "keep probing"):
+EXP-058 HOB full-FT from 055 (bar: ≥ EXP-036 .7100) → EXP-056 noise 2.0 →
+EXP-059 = 050 + noise 1.0 (no aux: is the head needed once noise is in?) →
+EXP-057 noise 0.5. Text series ledger (none / week1 / full): 033
+.5387/.6801/.6855 · 050 .5513/.6686/.6737 · 051 .5509/.6732/.6780 · 052
+.5497/.6764/.6799 · 053 .5384/.6739/.6832 · 054 .5043/.6542/.6589 · **055
+.5650/.6861/.6898**.
