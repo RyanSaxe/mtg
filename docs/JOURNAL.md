@@ -1288,3 +1288,12 @@ EXP-057 noise 0.5. Text series ledger (none / week1 / full): 033
   medium-fixing-for-splash, medium-second-color-commit); **EXP-055 passes
   17/17** — the failures were card-reading cases. Precondition (a) for the
   production swap met; (b) EXP-058 and the overnight sweep in flight.
+- **EXP-058 done (28 min, early stop epoch 9):** HOB full fine-tune from the
+  EXP-055 text trunk — val top-1 **0.6957 / expert 0.7133** vs EXP-036 (from
+  EXP-033) 0.6905 / 0.7100: +0.5 / +0.33, NLL .796 vs .809, ECE .009.
+  Precondition (b) met: the production path keeps the text trunk's gain.
+  New best drafter on any set. Production swap (HUD / bundle / onboard-set
+  defaults) deferred to the morning: pick the best of 055/056/057/059 once
+  the noise sweep lands, then swap once — and add a clear failure when a
+  text-trained trunk meets a set with no text block and no encoder
+  installed (day-0 on the laptop without the [text] extra).
