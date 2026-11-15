@@ -1,19 +1,74 @@
-# mtg
+# mtg-draft-buddy
 
-State of the art Magic: the Gathering Draft and DeckBuilder AI.
+A Magic: the Gathering draft and deck-building assistant for Arena: a
+multi-set pretrained transformer that ranks every pack as you draft, then
+proposes a 40-card build — including for a set that released today and has no
+play data yet.
 
-> **Fork note (mtg-draft-buddy).** This fork modernises the 2022 TensorFlow
-> code into a PyTorch/MPS multi-set drafter. New code lives in
-> `src/draftbot/`; `mtg/` below is the original, kept for reference. See
-> `CLAUDE.md`, `docs/PLAN.md`, and `docs/HUD_PLAN.md`.
+It started as a fork of [RyanSaxe/mtg](https://github.com/RyanSaxe/mtg), Ryan
+Saxe's 2022 transformer draft AI (the bot he took to Mythic #27). The models,
+data pipeline, training and evaluation code here are a ground-up rewrite in
+PyTorch under `src/draftbot/`; Ryan's TensorFlow implementation is kept
+unmodified in `mtg/` as the reference it was ported from. See
+[Lineage](#lineage) for what carried over and what did not.
 
-## draft HUD
+## What it does
 
-A small always-on-top window that ranks the live pack while you draft in
-Arena, then proposes a 40-card build when the draft ends.
+- **Draft advisor** — a causal transformer over the picks of a draft that
+  scores the cards in the current pack. One trunk is pretrained on ~30 sets of
+  [17lands](https://www.17lands.com/public_datasets) draft logs and reads
+  cards through their *features* (Scryfall characteristics, 17lands
+  statistics, and an embedding of the oracle text) rather than through
+  per-card ids, so it can draft a set it has never seen.
+- **Deck builder** — a set-attention model over the drafted pool that predicts
+  maindeck membership, land count and basic split; a masked-infilling variant
+  rebuilds around cards you lock in or out. Draft and sealed.
+- **HUD** — a small always-on-top window that follows Arena's `Player.log`,
+  ranks the live pack, and switches to the deck builder when the draft ends.
+- **Set onboarding** — one command on release day (no play data), one command
+  when 17lands publishes (fine-tune).
+
+## Results
+
+All numbers come from `python -m draftbot.eval`; the full table is
+[docs/LEADERBOARD.md](docs/LEADERBOARD.md). "Expert" is agreement with the
+picks of high-win-rate drafters, the selection metric throughout.
+
+MSH (Marvel Super Heroes), held-out **test** split, top-1 agreement:
+
+| model | top-1 | expert top-1 |
+|---|---|---|
+| best heuristic (ALSA-greedy) | .467 | .484 |
+| `LegacyDraftBot` — PyTorch port of the 2022 architecture (EXP-001) | .574 | .598 |
+| `ModernDraftBot`, MSH only (EXP-013) | .676 | .699 |
+| pretrained trunk, MSH never seen, week-1 stats (EXP-030) | .649 | .670 |
+| pretrained trunk, MSH never seen, no stats (EXP-030) | .524 | .517 |
+
+HOB (The Hobbit), **val** split, expert top-1 — the set held out from all
+pretraining, by how much is known about the set:
+
+| trunk | day 0 (no stats) | week-1 stats | full stats |
+|---|---|---|---|
+| EXP-033, no card text | .539 | .680 | .686 |
+| **EXP-056, with card text (production)** | **.568** | **.687** | **.693** |
+| EXP-058, EXP-056 fine-tuned on HOB | | | .713 |
+
+Deck builder on HOB val (card-level F1 against the human build): .879
+zero-shot, .906 fine-tuned.
+
+## Quick start
 
 ```bash
-uv sync --extra dev
+uv sync --extra dev          # Python 3.12, PyTorch (MPS on Apple Silicon)
+uv run pytest
+```
+
+Checkpoints and data are not in the repository. Either build them (below) or
+unpack a bundle made with `python -m draftbot.bundle` on the training machine.
+
+### Draft HUD
+
+```bash
 uv run python -m draftbot.hud --ui window
 # replay a captured log instead of a live draft:
 uv run python -m draftbot.hud --ui window \
@@ -23,8 +78,8 @@ uv run python -m draftbot.hud --ui window \
 **Arena must have Detailed Logs on** — *Settings → Account → ✓ Detailed Logs
 (Plugin Support)*, then restart Arena. Without it Arena writes no draft events
 to `~/Library/Logs/Wizards Of The Coast/MTGA/Player.log` and the HUD sits idle.
-The HUD only ever reads that file; it never writes to it or uploads anything,
-and it coexists with the 17lands uploader tailing the same log.
+The HUD only reads that file; it never writes to it or uploads anything, and
+it coexists with the 17lands uploader tailing the same log.
 
 When the draft ends the window switches to the deck builder: the proposed 40
 with per-card membership confidence, the arguable boundary between the last
@@ -32,56 +87,99 @@ cards in and the first cards out, the cut list, and the mana split. Click any
 row to lock it in or out and hit **Rebuild**; **Copy list** yields an
 Arena-importable decklist.
 
-### a set that released today
+Defaults are the corpus-pretrained production models: `EXP-056` drafting
+(`--models`; `EXP-033` is the no-text fallback), `EXP-126` building with
+`EXP-116` for lock-and-rebuild (`--deck-models`, `--no-deck` to skip).
+`--stats none|week1|full` selects how much 17lands data the model is shown.
 
-17lands publishes nothing for weeks and Scryfall has no `arena_id` yet, so
-neither the vocab nor the grpId bridge can come from the usual places. Build
-them from the Arena client's own card database instead:
+### A set that released today
+
+17lands publishes nothing for about three weeks and Scryfall has no
+`arena_id` yet, so the card list comes from the Arena client's own card
+database (launch Arena first so it downloads the set):
 
 ```bash
+uv sync --extra text                              # sentence encoder for card text
 uv run python -m draftbot.data.day0 --set HOB
 uv run python -m draftbot.hud --ui window --stats none
 ```
 
-Stats come out all-NaN → zeroed with missing-masks on, which is the
-stat-dropout condition the trunk was pretrained under. These artifacts are
-provisional (a `.day0` marker flags them) and are rebuilt with new card ids
-once 17lands publishes; see docs/JOURNAL.md 2026-08-11.
+Statistics are all missing, which is a condition the trunk was trained under
+(stat dropout). These artifacts are provisional (a `.day0` marker) and are
+rebuilt with final card ids once 17lands publishes.
 
-Defaults are the corpus-pretrained production trunks — `EXP-056` drafting
-(`--models`; the oracle-text trunk, 2026-09-06 — `EXP-033` is the no-text
-fallback and needs no `features.text.*` file), `EXP-126` building with `EXP-116` for lock-and-rebuild
-(`--deck-models`, or `--no-deck` to skip the builder). They ship over the
-marginally-better-on-MSH single-set models (EXP-013 / EXP-121) because they
-also work day-1 on a set they have never seen; add `--stats none` for that
-case. See docs/DECKBUILDER_HANDOFF.md "Final model selection".
+### When 17lands publishes the set
 
-## achievements
+```bash
+uv run python -m draftbot.onboard_set --set HOB --finetune-mode full
+```
 
-![mythicbot](https://user-images.githubusercontent.com/2286292/149001531-9c983259-4ac6-4ed3-b54a-b0705fb57124.PNG)
+Downloads the draft and game files, builds the card table, features, stat
+snapshots and splits, writes zero-shot scorecards for the pretrained trunk,
+then fine-tunes it on the set (`lora`, `head` or `full`) and scores the result
+under `docs/scorecards/onboard/<SET>/`.
 
-This repository contains an algorithm for automated drafting and building for Magic: the Gathering. I used this algorithm to achieve the highest rank (Mythic) on Magic Arena. I did so in 23 drafts, with a 66% win-rate, which is comparable to how I perform on my normal account in which I do not use any algorithms. The highest rank within Mythic I have hit so far is #27. As far as I know, this is the first time anybody has acheived results of this caliber using an AI in Magic: the Gathering.
+### Training and evaluation
 
-## architecture
+```bash
+uv run python -m draftbot.train.pretrain --config configs/EXP-056.yaml   # multi-set trunk
+uv run python -m draftbot.train --config configs/EXP-058.yaml            # single-set / fine-tune
+uv run python -m draftbot.eval --model checkpoints/EXP-056 --set HOB --split val --stats week1
+```
 
-Below is a general description of the transformer architecture for the Draft AI in order to make it easier to grok than reading through code.
+Every run is a YAML under `configs/` with an experiment id and a seed; runs
+checkpoint and resume (`--resume`).
 
-![transformer](https://user-images.githubusercontent.com/2286292/158926118-86d8301e-8c0e-43c2-a21b-cced4f785b97.jpg)
+## How it works
 
-## installation
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) is the full description. In
+short:
 
-- Step 1: clone this repository, and cd into it.
-- Step 2: create a virtual environment in whatever your favorite way to do that is (e.g. `conda create -n my_env` -> `conda activate my_env`).
-- Step 3: `pip install .` will install this repo such that you can use `from mtg.xxx.yyy import zzz`.
+- **Cards are feature vectors.** Static Scryfall features, z-scored 17lands
+  statistics with explicit missing-masks, and a frozen `bge-base` embedding of
+  the oracle text. A shared MLP turns them into card embeddings, so the same
+  weights serve every set.
+- **Packs are sets.** Two set-attention blocks and attention pooling summarise
+  the pack; a decoder-only causal transformer runs over the draft's picks.
+- **A pointer head** scores each card in the pack by dot product with the
+  decoder state — no fixed output vocabulary.
+- **Pretraining is built for unseen sets.** Statistics are dropped for a
+  quarter of batches, and Gaussian noise on the text block stops the model
+  using an embedding as a card id. One set is always quarantined from the
+  corpus to measure zero-shot drafting honestly (`tests/test_quarantine.py`).
 
-**NOTE:** I am not currently providing a pretrained instance of the Draft AI or DeckBulder AI in this repository. That means you cannot simply install this codebase, launch Magic Arena, and use the bot like I do. If you would like to do that, you need to use this code to train it yourself following [these instructions](mtg/scripts). A non-cleaned version of the UI I use that interacts with Magic Arena can be found [here](https://github.com/RyanSaxe/MTGA_Draft_17Lands), and it will eventually be cleaned and added to this repository under mtg/app/.
+## Repository layout
 
-## documentation
+| path | what |
+|---|---|
+| `src/draftbot/data/` | 17lands download, CSV→Parquet, card tables, features, stat snapshots, splits, day-0 onboarding |
+| `src/draftbot/models/` | `ModernDraftBot`, `DeckBuilder`, LoRA, and `LegacyDraftBot` (port of the 2022 architecture, the baseline) |
+| `src/draftbot/train/`, `eval/` | training loops, pretraining, eval harness, heuristic baseline bots |
+| `src/draftbot/hud/` | log follower, draft state, window/terminal UI, deck panel |
+| `configs/` | one YAML per experiment; `configs/corpus/` are the pretraining manifests |
+| `docs/` | [ARCHITECTURE](docs/ARCHITECTURE.md), [PLAN](docs/PLAN.md), [JOURNAL](docs/JOURNAL.md) (append-only lab notebook), [LEADERBOARD](docs/LEADERBOARD.md), per-set data cards and scorecards |
+| `mtg/` | Ryan Saxe's original TensorFlow code, unmodified, reference only |
 
-Find any documentation on usage of the different sections in the README of their corresponding folders.
+## Lineage
 
-## TODO
+Ryan Saxe's `mtg` showed that a transformer trained on 17lands logs can draft
+at a Mythic level, and this project began as an attempt to reproduce it on
+2026 data. What survives from it:
 
-- Integrate deckbuilder and drafter in one end-to-end pipeline.
-- Add mtg/viz/ as a folder for containing 17lands data visualizations, explorations, and useful insights.
-- Add mtg/app/ as a folder to contain the application UI for running on live arena drafts.
+- the problem framing — next-pick prediction over a draft, trained on 17lands
+  public data, weighted toward stronger drafters;
+- the idea of a card embedding that is half learned id, half feature MLP;
+- `LegacyDraftBot`, a faithful PyTorch port, kept as the baseline every newer
+  model is measured against.
+
+Everything else is new: the architecture (decoder-only, set-attention packs,
+pointer head), feature-only multi-set pretraining and zero-shot drafting,
+oracle-text embeddings, stat snapshots with missing-masks, the quarantine
+protocol and eval suite, the deck builder and sealed support, the HUD, and
+day-0 onboarding. The original's README, results and training scripts are in
+`mtg/` and at the upstream repository; the Mythic result is Ryan's, with his
+model, and is not a claim about this one.
+
+## License
+
+Apache 2.0, as upstream (see `LICENSE`).

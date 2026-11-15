@@ -7,6 +7,8 @@ pretrain_v2. pretrain_v1 is frozen as EXP-030's training manifest and must keep
 its MSH quarantine for provenance. The next Arena release becomes the new
 sandbag: add its code to the LATEST manifest's `quarantine` on announcement day
 (HOB, 2026-09-05) — test_latest_manifest_has_sandbag fails while it is empty.
+2026-11-15: HOB and FRA promoted in pretrain_v3 (owner ruling); TRK is the
+sandbag, quarantined before 17lands published any of its data.
 """
 
 from pathlib import Path
@@ -57,3 +59,11 @@ def test_no_pretrain_config_trains_on_a_quarantined_set():
         manifest = yaml.safe_load(Path(cfg["corpus"]).read_text())
         overlap = set(manifest.get("quarantine", [])) & set(manifest.get("sets", {}))
         assert not overlap, f"{path}: pretrains on quarantined {overlap}"
+
+
+def test_trk_is_the_current_draft_sandbag():
+    """Owner ruling 2026-11-15: TRK is held out of the newest draft corpus."""
+    ms = manifests()
+    latest = sorted(n for n in ms if n.startswith("pretrain_"))[-1]
+    assert "TRK" in ms[latest].get("quarantine", []), f"{latest}: TRK not quarantined"
+    assert "TRK" not in ms[latest].get("sets", {})

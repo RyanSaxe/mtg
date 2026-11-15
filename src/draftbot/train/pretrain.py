@@ -159,7 +159,9 @@ def main(argv=None):
 
     track = cfg.get("track_set", "MSH")
     assert track not in {c for c in yaml.safe_load(Path(cfg["corpus"]).read_text())["sets"]} \
-        or track == "MSH", f"track_set {track} is in the corpus — not a zero-shot signal"
+        or track == "MSH" or cfg.get("track_proxy"), \
+        f"track_set {track} is in the corpus — not a zero-shot signal " \
+        "(set track_proxy: true to use it as an in-corpus proxy while the sandbag has no data)"
     zse = ZeroShotEval(scaler, device, track, text, cfg.get("text_when"))
     writer = SummaryWriter(log_dir=str(Path("runs") / exp))
     rng = np.random.default_rng(cfg.get("seed", 17) + step)

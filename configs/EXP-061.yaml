@@ -1,0 +1,30 @@
+# EXP-061: corpus refresh (PLAN Appendix D) — the EXP-056 recipe unchanged on
+# pretrain_v3 (HOB + FRA promoted, TRK quarantined). One lever vs 056: corpus.
+# TRK has no 17lands data yet, so the tracker is FRA as an IN-CORPUS PROXY
+# (track_proxy: true — the EXP-033/MSH precedent): its val drafts are not
+# trained on, but its cards and stats are, so this is NOT a zero-shot number.
+exp: EXP-061
+text_features: bge-base
+text_noise: 2.0
+stat_aux_lambda: 0.1
+corpus: configs/corpus/pretrain_v3.yaml
+track_set: FRA
+track_proxy: true
+select_on: [none, week1]
+seed: 17
+batch_drafts: 64
+total_steps: 20000
+emb_dim: 256
+layers: 8
+heads: 8
+dropout: 0.1
+stat_dropout: 0.25
+label_smoothing: 0.05
+skill_filter:
+  min_win_rate: 0.54
+  min_games: 50
+peak_lr: 2.0e-4
+lr_warmup: 1000
+weight_decay: 0.01
+grad_clip: 1.0
+eval_every: 1000

@@ -1336,3 +1336,40 @@ set — the bundle ships it; day-0 onboarding builds it only with the [text]
 extra installed, otherwise `TextBlockUnavailable` says what to do (or use
 EXP-033). Deck side untouched (EXP-126/116/135); EXP-139 = the same lever
 for the deck trunk is the next proposal.
+
+## 2026-11-15 — Two sets behind: FRA (Reality Fracture) onboarding, TRK (Star Trek) day 0
+
+Back after ten weeks. Scryfall: FRA released 2026-10-02, TRK 2026-11-13.
+17lands S3: FRA Premier/Trad draft + game files present (dropped
+2026-11-14, Premier draft 124MB gz); TRK nothing yet (403 on every file,
+expected ~3 weeks after release). Intent:
+- **ONB-FRA-full** = `onboard_set --set FRA --base checkpoints/EXP-056
+  --finetune-mode full` (the EXP-058 recipe; HOB precedent .7133 expert).
+  Zero-shot week1/full scorecards from EXP-056 come first — FRA is the second
+  never-seen set for the text trunk (HOB was the selection set, so FRA is the
+  cleaner read). Bar for the fine-tune: beat EXP-056 zero-shot full by ≥ +1.0
+  expert (HOB: +2.0).
+- **TRK**: `draftbot.data.day0 --set TRK` (Arena card DB + Scryfall, stats
+  all-missing, text block built) → EXP-056 on the `--stats none` path. No
+  training possible until 17lands publishes.
+- Sandbag bookkeeping: HOB is still the quarantined set in pretrain_v2. FRA is
+  NOT added to any pretraining corpus by this work (fine-tune only). Whether
+  HOB is promoted and FRA/TRK takes over as sandbag is an owner ruling.
+- Scryfall client User-Agent made generic (it carried a contact address).
+- **Owner ruling (2026-11-15): HOB and FRA promoted; TRK is the new held-out
+  set.** `configs/corpus/pretrain_v3.yaml` = v2 + HOB + FRA at weight 2.0,
+  quarantine [TRK] (declared before any TRK data exists); v2 frozen.
+  **EXP-061** = EXP-056 recipe on v3, one lever (corpus). TRK has no val data,
+  so the tracker is FRA as an in-corpus proxy (`track_proxy: true`, the
+  EXP-033/MSH precedent; pretrain.py's corpus assert now takes that flag) —
+  its numbers are NOT zero-shot. Gate (Appendix D, adapted): (a) MSH val full
+  expert ≥ .6955 (EXP-056 .6965; in-corpus for both, apples to apples);
+  (b) a spot full fine-tune from EXP-061 ≥ the same from EXP-056. The real
+  zero-shot read on EXP-061 waits for TRK's 17lands drop (~early December).
+  Chain: `scripts/chain_061.sh` (in the repo this time) — waits for
+  ONB-FRA-full, scores EXP-056 on FRA `none` (true day-0 zero-shot), builds
+  corpus text features, pretrains, scores FRA/HOB ×3 modes + MSH full.
+  Deck side NOT refreshed: decks_v2 / sealed_v1 still quarantine HOB and
+  contain no FRA; needs FRA deck extraction + sealed download first.
+- README rewritten around the current system; `docs/ARCHITECTURE.md` added
+  (Ryan Saxe's model credited as origin and baseline, not as our architecture).
