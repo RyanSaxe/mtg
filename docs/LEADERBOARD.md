@@ -232,3 +232,11 @@ EXP-033 provenance gap flagged on 2026-07-31 (MSH is IN-corpus for EXP-033).
 | EXP-135 | EXP-135@best | HOB/sealed | val | none | 0.5043 | 0.4667 | 0.4957 | 0.477 | 0.4997 | 0.112 | 13.335 | configs/EXP-135.yaml | 3f7449b | 0 (zero-shot) | 2026-09-05 |
 | EXP-135 | EXP-135@best | HOB/sealed | val | full | 0.6260 | 0.6033 | 0.6809 | 0.455 | 0.6646 | 0.114 | 10.348 | configs/EXP-135.yaml | 3f7449b | 0 (zero-shot) | 2026-09-05 |
 | EXP-138 | EXP-138@best | HOB | val | full | 0.9059 | 0.8792 | 0.9140 | 0.522 | 0.9117 | 0.192 | 1.582 | configs/EXP-138.yaml | e2d25ed | 2min | 2026-09-05 |
+
+## FRA — onboarded 2026-11-15 (never seen by EXP-056; promoted to corpus in pretrain_v3)
+
+| EXP | Model | Set(s) | Split | Stats | Top-1 | Top-3 | Expert Top-1 | Skill-gap | NLL | Config | SHA | Wall-clock | Date |
+|-----|-------|--------|-------|-------|-------|-------|--------------|-----------|-----|--------|-----|------------|------|
+| EXP-056 | EXP-056-zeroshot@best | FRA | val | week1 | 0.6507 | 0.9290 | 0.6717 | +0.0318 | 0.9258 | configs/EXP-056.yaml | c7973cc | 0 (zero-shot) | 2026-11-15 |
+| EXP-056 | EXP-056-zeroshot@best | FRA | val | full | 0.6574 | 0.9321 | 0.6785 | +0.0319 | 0.9053 | configs/EXP-056.yaml | c7973cc | 0 (zero-shot) | 2026-11-15 |
+| ONB-FRA-full | ONB-FRA-full@best | FRA | val | full | 0.6761 | 0.9420 | 0.6991 | +0.0335 | 0.8519 | configs/ONB-FRA-full.yaml | c7973cc | 81min | 2026-11-15 |

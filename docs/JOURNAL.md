@@ -1373,3 +1373,13 @@ expected ~3 weeks after release). Intent:
   contain no FRA; needs FRA deck extraction + sealed download first.
 - README rewritten around the current system; `docs/ARCHITECTURE.md` added
   (Ryan Saxe's model credited as origin and baseline, not as our architecture).
+- **ONB-FRA-full done (81 min train, early stop epoch 13, best epoch 10).**
+  FRA: 81,612 drafts / 3.43M picks, t=42. EXP-056 zero-shot on FRA val —
+  week1 .6507 / expert .6717, full .6574 / .6785, ECE .007, rare-take
+  1.10×, colours 2.40 vs human 2.62. Full fine-tune: **.6761 / expert
+  .6991**, NLL .852 — +2.06 expert over zero-shot full, bar (≥ +1.0) ✓.
+  FRA's expert subset is defined at win rate ≥ .58 (HOB/MSH differ), so
+  cross-set expert numbers are not directly comparable. Almost all of the
+  fine-tune gain lands in epoch 1 (.6949); epochs 2–13 add +0.4. Rows via
+  `scripts/add_rows.py` (now in the repo). EXP-056 FRA `none` is scored by
+  the EXP-061 chain.
