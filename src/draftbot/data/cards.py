@@ -44,7 +44,7 @@ SOURCES_JSON = "sources.json"
 
 SCRYFALL_SEARCH = "https://api.scryfall.com/cards/search"
 SCRYFALL_NAMED = "https://api.scryfall.com/cards/named"
-HEADERS = {"User-Agent": "mtg-draft-buddy/0.1 (research; mpauley@icloud.com)", "Accept": "application/json"}
+HEADERS = {"User-Agent": "draft-research-client/0.1", "Accept": "application/json"}
 
 PROCESSED_DIR = Path("data/processed")
 SCRYFALL_CACHE_DIR = Path("data/raw/scryfall")
