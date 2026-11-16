@@ -1408,3 +1408,26 @@ expected ~3 weeks after release). Intent:
   in-corpus .7042 — per-set fine-tunes remain worth shipping.
   Open: deck/sealed corpora refresh (decks_v2 / sealed_v1 still quarantine HOB,
   no FRA); TRK day 0 needs the Arena client updated; next text lever.
+
+## 2026-11-15 (evening) — TRK day 0 live; deck/sealed corpus refresh queued (owner: "refresh decks first")
+
+- **TRK day 0:** owner updated the Arena client; `draftbot.data.day0 --set
+  TRK` → 341 cards / 356 grpIds, sources TRK+SDS, text block built, stats
+  all-missing. EXP-061 `--stats none` loads and ranks: P1P1 over the whole set
+  puts 35 mythics + 15 rares in the top 50, basics at the bottom, removal
+  instants at the top of the commons — sane, and as rarity-led as day 0
+  always is. Draftable now: `python -m draftbot.hud --ui window --stats none`.
+- **FRA deck data:** Sealed + TradSealed game files downloaded; 101,256 draft
+  builds, 20,445 sealed builds (108 dropped by the 40–43 size rule, 0
+  pool-inconsistent); `data/splits/FRA.sealed.json` persisted (12,251 / 651 /
+  686 entries). Sealed 5-test gate green for FRA.
+- **Manifests:** `decks_v3` = decks_v2 + HOB + FRA, `sealed_v2` = sealed_v1 +
+  HOB + FRA; both quarantine TRK and keep EOE held out (so the new trunks
+  are comparable to the old on a set neither trained on). v2 / v1 frozen.
+- **EXP-140** = EXP-126 recipe on decks_v3 (from scratch per Appendix D;
+  126 took 4.9h). Gate: EOE val trophy-F1 full ≥ .8961, none ≥ .8327.
+  **EXP-141** = EXP-135 recipe on decks_v3 + sealed_v2 from EXP-140 (135 took
+  2.4h). Gate: EOE/sealed val full ≥ .6278, EOE draft val full ≥ .8967.
+  ~7.5h total, inside the overnight budget. Chain `scripts/chain_140.sh`.
+  EXP-116 (lock-and-rebuild) is MSH-only and not corpus-trained — untouched.
+  (EXP-139 stays reserved for the deck-side text lever.)

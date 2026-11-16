@@ -1,0 +1,64 @@
+# SEALED deck-corpus manifest v2 (2026-11-15): sealed_v1 + HOB + FRA, TRK
+# quarantined, EOE still held out. Mirrors decks_v3. v1 frozen (EXP-135).
+source: sealed
+quarantine:  # TRK = the sandbag (owner ruling 2026-11-15)
+  - TRK
+holdout:
+  - EOE
+sets:
+  MKM:
+    weight: 2.0
+  OTJ:
+    weight: 2.0
+  MH3:
+    weight: 2.0
+  BLB:
+    weight: 2.0
+  DSK:
+    weight: 2.0
+  FDN:
+    weight: 2.0
+  PIO:
+    weight: 2.0
+  DFT:
+    weight: 2.0
+  TDM:
+    weight: 2.0
+  FIN:
+    weight: 2.0
+  TLA:
+    weight: 2.0
+  ECL:
+    weight: 2.0
+  MSH:
+    weight: 2.0
+  WOE:
+    weight: 1.0
+  LCI:
+    weight: 1.0
+  DMU:
+    weight: 1.0
+  BRO:
+    weight: 1.0
+  ONE:
+    weight: 1.0
+  MOM:
+    weight: 1.0
+  SIR:
+    weight: 1.0
+  LTR:
+    weight: 1.0
+  KTK:
+    weight: 1.0
+  STX:
+    weight: 1.0
+  NEO:
+    weight: 1.0
+  SNC:
+    weight: 1.0
+  HBG:
+    weight: 1.0
+  HOB:
+    weight: 2.0
+  FRA:
+    weight: 2.0

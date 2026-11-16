@@ -1,0 +1,69 @@
+# Deck-corpus manifest v3 (2026-11-15): decks_v2 + HOB + FRA (promoted by
+# owner ruling), TRK quarantined before any of its data exists. EOE stays
+# held out as the generalization read, so EXP-140 is comparable to EXP-126.
+# v2 is frozen as the manifest EXP-126 / EXP-135 trained under.
+quarantine:  # TRK = the sandbag (owner ruling 2026-11-15)
+  - TRK
+holdout:
+  - EOE
+sets:
+  MKM:
+    weight: 2.0
+  OTJ:
+    weight: 2.0
+  MH3:
+    weight: 2.0
+  BLB:
+    weight: 2.0
+  DSK:
+    weight: 2.0
+  FDN:
+    weight: 2.0
+  PIO:
+    weight: 2.0
+  DFT:
+    weight: 2.0
+  TDM:
+    weight: 2.0
+  FIN:
+    weight: 2.0
+  TLA:
+    weight: 2.0
+  ECL:
+    weight: 2.0
+  WOE:
+    weight: 1.0
+  LCI:
+    weight: 1.0
+  DMU:
+    weight: 1.0
+  BRO:
+    weight: 1.0
+  ONE:
+    weight: 1.0
+  MOM:
+    weight: 1.0
+  SIR:
+    weight: 1.0
+  LTR:
+    weight: 1.0
+  KTK:
+    weight: 1.0
+  STX:
+    weight: 1.0
+  MID:
+    weight: 1.0
+  VOW:
+    weight: 1.0
+  NEO:
+    weight: 1.0
+  SNC:
+    weight: 1.0
+  HBG:
+    weight: 1.0
+  MSH:
+    weight: 2.0
+  HOB:
+    weight: 2.0
+  FRA:
+    weight: 2.0

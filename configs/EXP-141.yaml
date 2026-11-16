@@ -1,0 +1,30 @@
+# EXP-141: joint draft+sealed refresh — the EXP-135 recipe on decks_v3 + sealed_v2,
+# warm-started from EXP-140 (as 135 was from 126). One lever: corpus.
+# Gate: EOE/sealed val trophy-F1 full >= .6278 (EXP-135 .6328, -0.5: 651-build val is
+# noisy) and EOE draft val full >= .8967 (EXP-135 .8987, -0.2).
+exp: EXP-141
+task: deck
+model: builder
+formats: true
+corpora:
+  - manifest: configs/corpus/decks_v3.yaml
+  - manifest: configs/corpus/sealed_v2.yaml
+    boost: 4.0
+seed: 17
+init_from: checkpoints/EXP-140
+scaler_from: checkpoints/EXP-140
+batch_builds: 256
+epochs: 14
+patience: 4
+emb_dim: 128
+heads: 8
+blocks: 3
+dropout: 0.1
+weighting: uniform
+land_lambda: 0.2
+basics_lambda: 0.5
+stat_dropout: 0.25
+peak_lr: 3.0e-4
+lr_warmup: 1000
+weight_decay: 0.01
+grad_clip: 1.0

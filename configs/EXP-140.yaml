@@ -1,0 +1,23 @@
+# EXP-140: deck-trunk corpus refresh — the EXP-126 recipe unchanged on decks_v3
+# (HOB + FRA promoted, TRK quarantined, EOE held out). One lever: corpus.
+# Gate: EOE val trophy-F1 full >= .8961 and none >= .8327 (EXP-126 .8981 / .8347, -0.2).
+exp: EXP-140
+task: deck
+model: builder
+corpus: configs/corpus/decks_v3.yaml
+seed: 17
+batch_builds: 256
+epochs: 24
+patience: 3
+emb_dim: 128
+heads: 8
+blocks: 3
+dropout: 0.1
+weighting: uniform
+land_lambda: 0.2
+basics_lambda: 0.5
+stat_dropout: 0.25
+peak_lr: 3.0e-4
+lr_warmup: 1000
+weight_decay: 0.01
+grad_clip: 1.0
