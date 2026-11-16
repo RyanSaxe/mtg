@@ -1,13 +1,14 @@
 # Architecture
 
-How the system works as of the EXP-056 production trunk. For why each choice
+How the system works as of the EXP-061 production trunk (the EXP-056 recipe retrained on the
+pretrain_v3 corpus). For why each choice
 was made, the experiment that settled it is named in brackets; the narrative
 is in [JOURNAL.md](JOURNAL.md) and the numbers in
 [LEADERBOARD.md](LEADERBOARD.md).
 
 ```
 17lands draft/game CSVs ─┐                       ┌─ zero-shot eval on the held-out set
-Scryfall card objects ───┼─► per-set artifacts ─►│  multi-set pretraining ─► trunk (EXP-056)
+Scryfall card objects ───┼─► per-set artifacts ─►│  multi-set pretraining ─► trunk (EXP-061)
 Arena card DB (day 0) ───┘   cards / features /  └─ per-set fine-tune ─────► set model
                              snapshots / splits                                  │
                                                      Player.log ─► HUD ◄─────────┘

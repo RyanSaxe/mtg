@@ -1,6 +1,6 @@
 """One-command new-set onboarding (PLAN P4.T3).
 
-`python -m draftbot.onboard_set --set <CODE> [--base checkpoints/EXP-056]
+`python -m draftbot.onboard_set --set <CODE> [--base checkpoints/EXP-061]
  [--finetune-mode lora] [--budget-drafts N] [--skip-finetune]`
 
 Pipeline: probe/download draft+game data → vocab/parquet/features/snapshots
@@ -25,8 +25,8 @@ from draftbot.data.fetch import dest_path, download, probe
 def main(argv=None):
     p = argparse.ArgumentParser(prog="draftbot.onboard_set")
     p.add_argument("--set", dest="set_code", required=True)
-    p.add_argument("--base", default="checkpoints/EXP-056",
-                   help="pretrained trunk (2026-09-06: EXP-056, the text trunk)")
+    p.add_argument("--base", default="checkpoints/EXP-061",
+                   help="pretrained trunk (2026-11-15: EXP-061, text trunk on pretrain_v3)")
     p.add_argument("--finetune-mode", default="lora",
                    choices=["lora", "head", "full"])
     p.add_argument("--budget-drafts", type=int, default=None,

@@ -1,6 +1,6 @@
 """Build the laptop deployment bundle (owner workflow, 2026-07-31).
 
-`python -m draftbot.bundle --set MSH [--set EOE ...] [--checkpoints EXP-056 ...]`
+`python -m draftbot.bundle --set MSH [--set EOE ...] [--checkpoints EXP-061 ...]`
 
 Packs everything a machine needs to RUN the models — checkpoints (without
 last.pt resume state), per-set card tables / static features / deck tables /
@@ -23,7 +23,8 @@ from draftbot.data.cards import DAY0_MARKER, SOURCES_JSON
 # the no-text EXP-033 as fallback, deck lock-and-rebuild, deck trunk, deck
 # MSH fine-tune, joint draft+sealed trunk (P5.S joint). Set-specific
 # fine-tunes (e.g. EXP-058 / EXP-138 for HOB) are added with --checkpoints.
-DEFAULT_CHECKPOINTS = ["EXP-056", "EXP-033", "EXP-116", "EXP-126", "EXP-127", "EXP-135"]
+# 2026-11-15: draft trunk EXP-056 → EXP-061 (pretrain_v3 refresh).
+DEFAULT_CHECKPOINTS = ["EXP-061", "EXP-033", "EXP-116", "EXP-126", "EXP-127", "EXP-135"]
 BUNDLE = Path("laptop-bundle.tar.gz")
 
 

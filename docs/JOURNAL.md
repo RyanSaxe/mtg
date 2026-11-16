@@ -1396,3 +1396,15 @@ expected ~3 weeks after release). Intent:
   reading. The honest text number is the .538 on FRA; week-1 stats close
   13 of the 16 points to the fine-tune. Gate (b): **EXP-062** = ONB-FRA-full
   recipe from EXP-061, launched now; bar ≥ .6971 (within 0.2 of .6991).
+- **EXP-062 done (49 min, early stop epoch 8, best epoch 5): gate (b) ✓.**
+  FRA full fine-tune from EXP-061: val .6759 / expert **.6998** vs
+  ONB-FRA-full (from EXP-056) .6761 / .6991 — a tie, bar ≥ .6971. Having FRA
+  in the trunk buys nothing once you fine-tune on FRA (and little: epoch 1 is
+  .6956 vs .6949). **PRODUCTION SWAP: EXP-061 is the draft trunk** — HUD
+  default, bundle default, `onboard_set --base`. EXP-056 stays on disk as the
+  last trunk with a measured zero-shot (HOB, FRA); EXP-061's zero-shot is
+  unmeasured until TRK's 17lands drop. For drafting FRA itself the best model
+  is EXP-062 / ONB-FRA-full (tie); HOB: EXP-058 .7133 still beats EXP-061's
+  in-corpus .7042 — per-set fine-tunes remain worth shipping.
+  Open: deck/sealed corpora refresh (decks_v2 / sealed_v1 still quarantine HOB,
+  no FRA); TRK day 0 needs the Arena client updated; next text lever.

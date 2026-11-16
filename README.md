@@ -50,8 +50,14 @@ pretraining, by how much is known about the set:
 | trunk | day 0 (no stats) | week-1 stats | full stats |
 |---|---|---|---|
 | EXP-033, no card text | .539 | .680 | .686 |
-| **EXP-056, with card text (production)** | **.568** | **.687** | **.693** |
+| **EXP-056, with card text** | **.568** | **.687** | **.693** |
 | EXP-058, EXP-056 fine-tuned on HOB | | | .713 |
+
+The production trunk is now **EXP-061**: the EXP-056 recipe retrained with HOB
+and FRA (Reality Fracture) in the corpus and TRK (Star Trek) held out. It has
+no zero-shot number yet because 17lands has not published TRK. On FRA, which
+EXP-056 never saw, EXP-056 scored .538 / .672 / .679 expert (day 0 / week 1 /
+full) and fine-tuning reached .699.
 
 Deck builder on HOB val (card-level F1 against the human build): .879
 zero-shot, .906 fine-tuned.
@@ -87,10 +93,10 @@ cards in and the first cards out, the cut list, and the mana split. Click any
 row to lock it in or out and hit **Rebuild**; **Copy list** yields an
 Arena-importable decklist.
 
-Defaults are the corpus-pretrained production models: `EXP-056` drafting
+Defaults are the corpus-pretrained production models: `EXP-061` drafting
 (`--models`; `EXP-033` is the no-text fallback), `EXP-126` building with
 `EXP-116` for lock-and-rebuild (`--deck-models`, `--no-deck` to skip).
-`--stats none|week1|full` selects how much 17lands data the model is shown.
+The HUD's `--stats none|week1|full` selects how much 17lands data the model is shown.
 
 ### A set that released today
 
@@ -122,9 +128,9 @@ under `docs/scorecards/onboard/<SET>/`.
 ### Training and evaluation
 
 ```bash
-uv run python -m draftbot.train.pretrain --config configs/EXP-056.yaml   # multi-set trunk
+uv run python -m draftbot.train.pretrain --config configs/EXP-061.yaml   # multi-set trunk
 uv run python -m draftbot.train --config configs/EXP-058.yaml            # single-set / fine-tune
-uv run python -m draftbot.eval --model checkpoints/EXP-056 --set HOB --split val --stats week1
+uv run python -m draftbot.eval --model checkpoints/EXP-061 --set FRA --split val --stats-snapshot week1
 ```
 
 Every run is a YAML under `configs/` with an experiment id and a seed; runs

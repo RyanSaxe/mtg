@@ -253,3 +253,4 @@ EXP-033 provenance gap flagged on 2026-07-31 (MSH is IN-corpus for EXP-033).
 | EXP-061 | EXP-061-zeroshot@best | HOB | val | week1 | 0.6802 | 0.9474 | 0.7004 | +0.0213 | 0.8384 | configs/EXP-061.yaml | aabfb2d | 118min | 2026-11-16 |
 | EXP-061 | EXP-061-zeroshot@best | HOB | val | full | 0.6833 | 0.9483 | 0.7042 | +0.0227 | 0.8316 | configs/EXP-061.yaml | aabfb2d | 118min | 2026-11-16 |
 | EXP-061 | EXP-061-zeroshot@best | MSH | val | full | 0.6694 | 0.9397 | 0.6958 | +0.0420 | 0.8664 | configs/EXP-061.yaml | aabfb2d | 118min | 2026-11-16 |
+| EXP-062 | EXP-062@best | FRA | val | full | 0.6759 | 0.9416 | 0.6998 | +0.0362 | 0.8535 | configs/EXP-062.yaml | 08d33f3 | 49min | 2026-11-16 |

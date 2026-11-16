@@ -36,7 +36,9 @@ PIPS = "WUBRG"
 # EXP-033 .5387/.6801/.6855; passes all 17 fixtures at day 0. Needs
 # features.text.bge-base.parquet for the set (bundle ships it; day-0 builds
 # it with the [text] extra). EXP-033 remains the no-text fallback.
-PROD_DRAFT_MODELS = "checkpoints/EXP-056"
+# 2026-11-15: EXP-061 — the same recipe on pretrain_v3 (HOB + FRA promoted,
+# TRK held out); gate passed (journal 2026-11-15).
+PROD_DRAFT_MODELS = "checkpoints/EXP-061"
 PROD_DECK_MODELS = "checkpoints/EXP-126,checkpoints/EXP-116"
 # sealed mode (P5.S4): the joint trunk with the sealed format token. No
 # diffusion slot — locks go through the probability-pinning fallback, which
