@@ -1,0 +1,30 @@
+# EXP-062: gate (b) for the v3 refresh — ONB-FRA-full recipe unchanged, base EXP-061
+# instead of EXP-056. Bar: val expert >= 0.6991 - 0.2 (ONB-FRA-full).
+exp: EXP-062
+model: modern
+set: FRA
+stats: full
+seed: 17
+batch_drafts: 64
+epochs: 15
+patience: 3
+emb_dim: 256
+layers: 8
+heads: 8
+t_max: 45
+dropout: 0.1
+use_set_encoder: true
+pointer_head: true
+feature_only: true
+use_set_token: true
+init_from: checkpoints/EXP-061
+scaler_from: checkpoints/EXP-061
+finetune_mode: full
+weighting: importance
+priors: false
+label_smoothing: 0.05
+peak_lr: 7.0e-05
+lr_warmup: 200
+weight_decay: 0.01
+grad_clip: 1.0
+text_features: bge-base

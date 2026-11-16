@@ -240,3 +240,16 @@ EXP-033 provenance gap flagged on 2026-07-31 (MSH is IN-corpus for EXP-033).
 | EXP-056 | EXP-056-zeroshot@best | FRA | val | week1 | 0.6507 | 0.9290 | 0.6717 | +0.0318 | 0.9258 | configs/EXP-056.yaml | c7973cc | 0 (zero-shot) | 2026-11-15 |
 | EXP-056 | EXP-056-zeroshot@best | FRA | val | full | 0.6574 | 0.9321 | 0.6785 | +0.0319 | 0.9053 | configs/EXP-056.yaml | c7973cc | 0 (zero-shot) | 2026-11-15 |
 | ONB-FRA-full | ONB-FRA-full@best | FRA | val | full | 0.6761 | 0.9420 | 0.6991 | +0.0335 | 0.8519 | configs/ONB-FRA-full.yaml | c7973cc | 81min | 2026-11-15 |
+| EXP-056 | EXP-056-zeroshot@best | FRA | val | none | 0.5408 | 0.8633 | 0.5383 | +0.0027 | 1.2007 | configs/EXP-056.yaml | aabfb2d | 0 (zero-shot) | 2026-11-15 |
+
+## EXP-061 — corpus v3 refresh (HOB, FRA and MSH are IN-CORPUS here: not zero-shot)
+
+| EXP | Model | Set(s) | Split | Stats | Top-1 | Top-3 | Expert Top-1 | Skill-gap | NLL | Config | SHA | Wall-clock | Date |
+|-----|-------|--------|-------|-------|-------|-------|--------------|-----------|-----|--------|-----|------------|------|
+| EXP-061 | EXP-061-zeroshot@best | FRA | val | none | 0.6055 | 0.9053 | 0.6176 | +0.0194 | 1.0435 | configs/EXP-061.yaml | aabfb2d | 118min | 2026-11-16 |
+| EXP-061 | EXP-061-zeroshot@best | FRA | val | week1 | 0.6581 | 0.9333 | 0.6798 | +0.0324 | 0.9042 | configs/EXP-061.yaml | aabfb2d | 118min | 2026-11-16 |
+| EXP-061 | EXP-061-zeroshot@best | FRA | val | full | 0.6655 | 0.9358 | 0.6899 | +0.0357 | 0.8845 | configs/EXP-061.yaml | aabfb2d | 118min | 2026-11-16 |
+| EXP-061 | EXP-061-zeroshot@best | HOB | val | none | 0.6092 | 0.9156 | 0.6092 | +0.0028 | 1.0122 | configs/EXP-061.yaml | aabfb2d | 118min | 2026-11-16 |
+| EXP-061 | EXP-061-zeroshot@best | HOB | val | week1 | 0.6802 | 0.9474 | 0.7004 | +0.0213 | 0.8384 | configs/EXP-061.yaml | aabfb2d | 118min | 2026-11-16 |
+| EXP-061 | EXP-061-zeroshot@best | HOB | val | full | 0.6833 | 0.9483 | 0.7042 | +0.0227 | 0.8316 | configs/EXP-061.yaml | aabfb2d | 118min | 2026-11-16 |
+| EXP-061 | EXP-061-zeroshot@best | MSH | val | full | 0.6694 | 0.9397 | 0.6958 | +0.0420 | 0.8664 | configs/EXP-061.yaml | aabfb2d | 118min | 2026-11-16 |

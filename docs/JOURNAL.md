@@ -1383,3 +1383,16 @@ expected ~3 weeks after release). Intent:
   fine-tune gain lands in epoch 1 (.6949); epochs 2–13 add +0.4. Rows via
   `scripts/add_rows.py` (now in the repo). EXP-056 FRA `none` is scored by
   the EXP-061 chain.
+- **EXP-061 done (118 min, 20k steps; pretrain_v3).** True zero-shot first —
+  EXP-056 on FRA `none` (day 0): **.5408 / expert .5383**, ECE .025,
+  rare-take 1.22×, colours 2.12 vs human 2.62 (HOB day 0 was .5718 / .5675).
+  EXP-061, all IN-CORPUS (not zero-shot), val expert none / week1 / full:
+  FRA .6176 / .6798 / .6899 (056 zero-shot: .5383 / .6717 / .6785); HOB
+  .6092 / .7004 / .7042 (056 zero-shot: .5675 / .6869 / .6930; EXP-058 FT
+  .7133); MSH full .6958 (056: .6965). **Gate (a) ✓** (MSH ≥ .6955).
+  Reading: seeing a set's drafts is worth +8 expert at `none` and only ~+1
+  with stats — with no stats the trunk still learns a set's cards from
+  their feature vectors, so the in-corpus `none` number is recall, not card
+  reading. The honest text number is the .538 on FRA; week-1 stats close
+  13 of the 16 points to the fine-tune. Gate (b): **EXP-062** = ONB-FRA-full
+  recipe from EXP-061, launched now; bar ≥ .6971 (within 0.2 of .6991).
