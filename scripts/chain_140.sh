@@ -13,7 +13,8 @@ ev() {  # ev <exp> <set> <stats> [sealed]
 run() {  # run <exp>
   if [[ -f "logs/$1.wall" ]]; then stamp "SKIP $1 (already finished)"; return 0; fi
   stamp "START $1"; local t0=$(date +%s)
-  uv run python -m draftbot.train.decks --config "configs/$1.yaml" --resume >> "logs/$1.log" 2>&1
+  local resume=(); [[ -f "checkpoints/$1/last.pt" ]] && resume=(--resume)  # deck trainer needs last.pt
+  uv run python -m draftbot.train.decks --config "configs/$1.yaml" $resume >> "logs/$1.log" 2>&1
   local rc=$?
   [[ $rc -eq 0 ]] && echo $(( ($(date +%s) - t0) / 60 )) > "logs/$1.wall"
   stamp "END $1 rc=$rc wall=$(( ($(date +%s) - t0) / 60 ))min"
