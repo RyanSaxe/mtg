@@ -1,0 +1,40 @@
+{
+ "model": "EXP-141@best",
+ "set": "EOE",
+ "split": "val",
+ "stats": "full",
+ "scheme": "random",
+ "task": "deck",
+ "event": "sealed",
+ "trophy_view": "winningest-build v2 (owner refinement 2026-07-30)",
+ "git_sha": "8f40a6c",
+ "generated_at": "2026-11-16T06:32:40+00:00",
+ "n_builds": 513,
+ "n_trophy": 142,
+ "metrics": {
+  "deck_f1": 0.605167566943368,
+  "nonbasic_f1": 0.5939997699297973,
+  "trophy_f1": 0.6375327090516602,
+  "trophy7_f1": 0.6587320358052067,
+  "trophy_lands_mae": 0.11267605633802817,
+  "win_weighted_f1": 0.6232021044443867,
+  "lands_mae": 0.14619883040935672,
+  "basics_l1": 12.155945419103315,
+  "curve_l1": 7.37037037037037,
+  "legal_rate": 1.0,
+  "winner_pref": 0.5
+ },
+ "slices": {
+  "f1_by_wins": {
+   "0": 0.5261943102522812,
+   "1": 0.6136747726484723,
+   "2": 0.596406757634828,
+   "3": 0.5755404998494431,
+   "4": 0.6245565988523735,
+   "5": 0.6107233301677746,
+   "6": 0.6350244341563785,
+   "7": 0.6587320358052067
+  }
+ },
+ "n_winner_pairs": 27
+}

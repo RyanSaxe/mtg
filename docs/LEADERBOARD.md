@@ -254,3 +254,24 @@ EXP-033 provenance gap flagged on 2026-07-31 (MSH is IN-corpus for EXP-033).
 | EXP-061 | EXP-061-zeroshot@best | HOB | val | full | 0.6833 | 0.9483 | 0.7042 | +0.0227 | 0.8316 | configs/EXP-061.yaml | aabfb2d | 118min | 2026-11-16 |
 | EXP-061 | EXP-061-zeroshot@best | MSH | val | full | 0.6694 | 0.9397 | 0.6958 | +0.0420 | 0.8664 | configs/EXP-061.yaml | aabfb2d | 118min | 2026-11-16 |
 | EXP-062 | EXP-062@best | FRA | val | full | 0.6759 | 0.9416 | 0.6998 | +0.0362 | 0.8535 | configs/EXP-062.yaml | 08d33f3 | 49min | 2026-11-16 |
+
+## Deck/sealed corpus refresh (decks_v3 + sealed_v2; HOB, FRA, MSH IN-CORPUS; EOE still held out)
+
+| EXP | Model | Set | Split | Stats | F1 | NB-F1 | Trophy-F1v2 | Win-pref | Win-wtd F1 | Lands-MAE | Basics-L1 | Config | SHA | Wall-clock | Date |
+|-----|-------|-----|-------|-------|----|-------|-------------|----------|------------|-----------|-----------|--------|-----|------------|------|
+| EXP-140 | EXP-140@best | EOE | val | none | 0.8278 | 0.7604 | 0.8275 | 0.523 | 0.8281 | 0.173 | 2.370 | configs/EXP-140.yaml | 8f40a6c | 3.3h | 2026-11-16 |
+| EXP-140 | EXP-140@best | EOE | val | full | 0.8922 | 0.8612 | 0.8981 | 0.564 | 0.8963 | 0.174 | 2.031 | configs/EXP-140.yaml | 8f40a6c | 3.3h | 2026-11-16 |
+| EXP-140 | EXP-140@best | HOB | val | full | 0.9014 | 0.8754 | 0.9100 | 0.578 | 0.9074 | 0.196 | 1.752 | configs/EXP-140.yaml | 8f40a6c | 3.3h | 2026-11-16 |
+| EXP-140 | EXP-140@best | FRA | val | full | 0.8934 | 0.8735 | 0.8996 | 0.474 | 0.8986 | 0.242 | 2.230 | configs/EXP-140.yaml | 8f40a6c | 3.3h | 2026-11-16 |
+| EXP-140 | EXP-140@best | MSH | val | full | 0.8895 | 0.8671 | 0.8977 | 0.473 | 0.8957 | 0.242 | 2.193 | configs/EXP-140.yaml | 8f40a6c | 3.3h | 2026-11-16 |
+| EXP-141 | EXP-141@best | EOE | val | none | 0.8312 | 0.7688 | 0.8309 | 0.514 | 0.8321 | 0.177 | 2.502 | configs/EXP-141.yaml | 8f40a6c | 2.0h | 2026-11-16 |
+| EXP-141 | EXP-141@best | EOE | val | full | 0.8895 | 0.8613 | 0.8957 | 0.541 | 0.8938 | 0.173 | 2.254 | configs/EXP-141.yaml | 8f40a6c | 2.0h | 2026-11-16 |
+| EXP-141 | EXP-141@best | HOB | val | full | 0.8989 | 0.8759 | 0.9074 | 0.578 | 0.9045 | 0.195 | 1.978 | configs/EXP-141.yaml | 8f40a6c | 2.0h | 2026-11-16 |
+| EXP-141 | EXP-141@best | FRA | val | full | 0.8914 | 0.8725 | 0.8980 | 0.500 | 0.8966 | 0.244 | 2.340 | configs/EXP-141.yaml | 8f40a6c | 2.0h | 2026-11-16 |
+| EXP-141 | EXP-141@best | EOE/sealed | val | none | 0.5209 | 0.4814 | 0.5368 | 0.481 | 0.5315 | 0.146 | 13.493 | configs/EXP-141.yaml | 8f40a6c | 2.0h | 2026-11-16 |
+| EXP-141 | EXP-141@best | EOE/sealed | val | full | 0.6052 | 0.5940 | 0.6375 | 0.500 | 0.6232 | 0.146 | 12.156 | configs/EXP-141.yaml | 8f40a6c | 2.0h | 2026-11-16 |
+| EXP-141 | EXP-141@best | HOB/sealed | val | full | 0.6378 | 0.6318 | 0.6735 | 0.432 | 0.6631 | 0.112 | 10.848 | configs/EXP-141.yaml | 8f40a6c | 2.0h | 2026-11-16 |
+| EXP-141 | EXP-141@best | FRA/sealed | val | full | 0.6340 | 0.6131 | 0.6546 | 0.534 | 0.6527 | 0.144 | 10.244 | configs/EXP-141.yaml | 8f40a6c | 2.0h | 2026-11-16 |
+| EXP-126 | EXP-126@best | FRA | val | full | 0.8826 | 0.8603 | 0.8899 | 0.455 | 0.8876 | 0.244 | 2.435 | configs/EXP-126.yaml | 8f40a6c | 0 (zero-shot) | 2026-11-16 |
+| EXP-135 | EXP-135@best | FRA | val | full | 0.8814 | 0.8593 | 0.8885 | 0.435 | 0.8863 | 0.242 | 2.479 | configs/EXP-135.yaml | 8f40a6c | 0 (zero-shot) | 2026-11-16 |
+| EXP-135 | EXP-135@best | FRA/sealed | val | full | 0.6199 | 0.5954 | 0.6436 | 0.483 | 0.6356 | 0.144 | 10.470 | configs/EXP-135.yaml | 8f40a6c | 0 (zero-shot) | 2026-11-16 |

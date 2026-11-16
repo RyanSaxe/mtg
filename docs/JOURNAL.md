@@ -1431,3 +1431,34 @@ expected ~3 weeks after release). Intent:
   ~7.5h total, inside the overnight budget. Chain `scripts/chain_140.sh`.
   EXP-116 (lock-and-rebuild) is MSH-only and not corpus-trained — untouched.
   (EXP-139 stays reserved for the deck-side text lever.)
+
+### 2026-11-15 night — EXP-140 / EXP-141 verdict: gates NOT met, deck defaults unchanged
+
+Trophy-F1 v2, val. EXP-140 3.3h (early stop ep 11/24, proxy .9045); EXP-141
+2.0h (early stop ep 6/14).
+
+| | EXP-126 | EXP-140 | bar | | EXP-135 | EXP-141 | bar |
+|---|---|---|---|---|---|---|---|
+| EOE draft full (unseen) | .8981 | .8981 | ≥ .8961 ✓ | | .8987 | .8957 | ≥ .8967 ✗ |
+| EOE draft none (unseen) | .8347 | .8275 | ≥ .8327 ✗ | | .8327 | .8309 | — |
+| EOE sealed full (unseen) | | | | | .6328 | .6375 | ≥ .6278 ✓ |
+| EOE sealed none (unseen) | | | | | .5231 | .5368 | — |
+| HOB draft full (now in-corpus) | .8855 | .9100 | | | .8887 | .9074 | |
+| FRA draft full (now in-corpus) | .8899 | .8996 | | | .8885 | .8980 | |
+| HOB sealed full (now in-corpus) | | | | | .6809 | .6735 | |
+| FRA sealed full (now in-corpus) | | | | | .6436 | .6546 | |
+| MSH draft full (in both) | .9004 | .8977 | | | .8989 | — | |
+
+- **Verdict:** each model misses one arm of its pre-registered gate (140: −0.72
+  at `none`; 141: −0.30 on draft full, 0.10 under the bar). Per the rule, no
+  production swap: `PROD_DECK_MODELS` stays EXP-126 (+116), sealed stays EXP-135.
+- **Reading:** on an unseen set the refresh is a wash with stats and slightly
+  worse without — the builder, unlike the draft trunk, gets nothing from two
+  more sets for generalisation (30 vs 28). What it buys is in-corpus fit:
+  HOB +2.5 (close to the per-set fine-tune EXP-138 .9140), FRA +1.0.
+  TRK today is the unseen/no-stats case, where EXP-126 is the better model.
+- Chain bug: `${4:+--event sealed}` is ONE word under zsh, so all four sealed
+  evals died on argparse; fixed in `scripts/chain_140.sh`, evals rerun by hand.
+  `scripts/add_rows.py` now writes deck rows too. EXP-126/135 FRA zero-shot
+  rows added for the comparison.
+- Open (owner): use 140/141 for HOB/FRA only (per-set default), or drop them.

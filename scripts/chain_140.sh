@@ -7,7 +7,7 @@ set -u
 stamp() { echo "[$(date '+%F %T')] $*"; }
 ev() {  # ev <exp> <set> <stats> [sealed]
   uv run python -m draftbot.eval --deck --model "checkpoints/$1" --set "$2" --split val \
-    --stats-snapshot "$3" ${4:+--event sealed} --out docs/scorecards >> "logs/$1.eval.log" 2>&1 \
+    --stats-snapshot "$3" ${4:+--event} ${4:+sealed} --out docs/scorecards >> "logs/$1.eval.log" 2>&1 \
     || stamp "EVAL FAILED $*"
 }
 run() {  # run <exp>
