@@ -1462,3 +1462,66 @@ Trophy-F1 v2, val. EXP-140 3.3h (early stop ep 11/24, proxy .9045); EXP-141
   `scripts/add_rows.py` now writes deck rows too. EXP-126/135 FRA zero-shot
   rows added for the comparison.
 - Open (owner): use 140/141 for HOB/FRA only (per-set default), or drop them.
+
+### 2026-11-16 — TXT-001 pre-registration: does FINE-TUNING the text encoder on card strength beat the frozen read?
+
+Owner's question (2026-11-15): we leave text signal on the table; fine-tune a
+small pretrained model on MTG. TEXT_EMBED_PLAN §5 ruled this out untested
+("Not doing"); §6 measured the frozen ceiling: ridge static+bge-base → GIH
+ρ .399 on HOB, LOSO .446, and an MLP on the frozen vector does not beat ridge.
+In-corpus vs unseen at `none` is still ~8 expert points (EXP-061), so the
+day-0 strength channel is where the headroom is. A probe before any trunk run.
+
+- **Arm B (the lever):** `bge-base` unfrozen end to end, CLS pooled ∥ 58 static
+  columns → MLP → the 5 probe targets (GIH, GP WR, IWD, ALSA, ATA), each
+  z-scored WITHIN set (set-level offsets are not card strength), Huber loss,
+  rows with ≥ 200 GIH games (8,480 cards over 29 sets; AFR has no labels).
+  lr 2e-5 encoder / 1e-3 head, 6 epochs, batch 32, seed 17. No selection on
+  HOB/FRA: fixed recipe, epochs fixed.
+- **Protocol:** corpus = `pretrain_v2` (HOB quarantined, FRA absent, TRK
+  untouched) → HOB and FRA are both genuinely unseen. 6-fold cross-fit BY SET
+  over the corpus gives out-of-fold ρ for every corpus set (and the OOF
+  predictions a trunk would need — in-sample predictions would teach the trunk
+  to over-trust them); HOB/FRA scored with the mean of the 6 fold models.
+- **Arm A (baseline, same folds, same within-set-z targets):** ridge on
+  static + frozen bge-base.
+- **Bars** (headline = Spearman ρ on GIH, per set, mean over sets):
+  proceed to a trunk experiment iff B − A ≥ **+.05** on BOTH the OOF corpus
+  mean and the HOB/FRA mean. B − A < +.02 on either = negative, §5 stands.
+  In between = one follow-up arm (LoRA / top-layers-only), then stop.
+- Side readout, no bar: greedy bot on B's predicted GIH, HOB val (ridge: .29).
+- Cost: ~8.5k short strings × 6 epochs × 6 folds on MPS, est. < 1 h; fold-level
+  resume. Code `draftbot.train.text_strength`, config `configs/TXT-001.yaml`.
+
+### 2026-11-16 — TXT-001 verdict: POSITIVE — fine-tuning the encoder beats the frozen read on every set
+
+87 min (6 folds × 6 epochs, bge-base on MPS). GIH Spearman ρ, per set:
+
+| | ridge, static + frozen bge | fine-tuned bge + static | Δ | sets better |
+|---|---|---|---|---|
+| corpus, out-of-fold (29 sets) | .440 | **.550** | +.110 | 29/29 |
+| HOB (unseen) | .395 | .505 | +.110 | |
+| FRA (unseen) | .378 | .584 | +.206 | |
+
+- Both bars (≥ +.05) cleared at 2–3×; TEXT_EMBED_PLAN §5 ("not doing:
+  fine-tuning the encoder") is overturned. Pick order also improves (ALSA ρ
+  HOB .79 → .83, FRA .70 → .76). Smallest gains: MSH +.02, MOM +.03.
+- Caveats: HOB/FRA use the mean of 6 fold models (an ensemble bonus the OOF
+  column does not have — OOF is the single-model number). The September MLP
+  on the frozen vector did not beat ridge, so the gain is the encoder, not
+  the head. Reprints carry labels across sets for both arms alike.
+- Side readouts (context-free greedy bots, expert top-1 on val): on predicted
+  GIH .201 HOB / .225 FRA — WORSE than the ridge bot's .29 despite the better
+  ρ (rare-take 0.66×: accurate GIH is not what humans pick by; real
+  gih-greedy is only .385). On predicted ATA .371 HOB / .347 FRA with
+  rare-take 2.65× (real ATA-greedy .476 / .487). Neither is a drafter; the
+  trunk is the consumer.
+- Artifacts: `checkpoints/TXT-001/prior.<SET>.parquet` (5 predicted z-stats
+  per card: out-of-fold for the 29 v2 sets, fold-mean for HOB/FRA) and
+  `fold<k>.npz` (predictions + fine-tuned embeddings).
+- **Next (proposed, not started): EXP-063** = EXP-056 recipe on pretrain_v2
+  + the 5 `prior_*` columns as their own always-present feature block (NOT in
+  the stat block — the Sept imputation negative), frozen text kept. One
+  lever; bar HOB val expert `none` ≥ .573 (EXP-056 .568 + 0.5), no loss at
+  week1/full. v2 because HOB is the only sandbag with data; if it passes,
+  re-cross-fit on v3 and fold into the next production trunk.

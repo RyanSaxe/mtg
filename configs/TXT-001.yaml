@@ -1,0 +1,17 @@
+# TXT-001 — probe: fine-tune the text encoder on card strength (journal 2026-11-16).
+exp: TXT-001
+seed: 17
+corpus: configs/corpus/pretrain_v2.yaml   # HOB quarantined, FRA absent, TRK untouched
+holdouts: [HOB, FRA]
+encoder: bge-base
+folds: 6
+epochs: 6
+batch_size: 32
+lr_encoder: 2.0e-5
+lr_head: 1.0e-3
+weight_decay: 0.01
+warmup_frac: 0.1
+head_hidden: 256
+head_dropout: 0.1
+max_tokens: 192
+trainable: all        # all | top2 (last two encoder layers) | none (head only)
