@@ -124,6 +124,30 @@ def build_text_features(set_code: str, encoder: str = DEFAULT_ENCODER,
     return df
 
 
+PRIOR_DIR = Path("checkpoints")
+
+
+def load_strength_prior(set_code: str, exp: str) -> pd.DataFrame:
+    """Text-predicted strength stats from a fine-tuned encoder (TXT-001,
+    `draftbot.train.text_strength`): `prior_<stat>` columns, one row per card.
+    For corpus sets these are OUT-OF-FOLD predictions — the model that scored a
+    set never trained on it — so the trunk sees them exactly as accurate as
+    they will be on a new set. Deliberately not named `text_*`: the trunk's
+    text noise / text dropout must not touch them, and they are not stats
+    (no mask, never dropped) — a prior is available on day 0 by construction.
+    """
+    path = PRIOR_DIR / exp / f"prior.{set_code}.parquet"
+    if not path.exists():
+        raise TextBlockUnavailable(f"{set_code}: no strength prior at {path} "
+                                   f"(run draftbot.train.text_strength for {exp})")
+    df = pd.read_parquet(path)
+    n = len(pd.read_parquet(PROCESSED_DIR / set_code / "cards.parquet", columns=["id"]))
+    assert len(df) == n, f"{path}: {len(df)} rows for {n} cards"
+    assert all(c.startswith("prior_") for c in df.columns)
+    df.index.name = "id"
+    return df.astype(np.float32)
+
+
 class TextBlockUnavailable(RuntimeError):
     """A text-trained checkpoint needs `features.text.<encoder>.parquet` for
     this set; it is missing and the encoder cannot be loaded here."""
@@ -133,6 +157,10 @@ def load_text_features(set_code: str, encoder: str = DEFAULT_ENCODER) -> pd.Data
     """Cached table if present (the bundle ships it — no encoder needed on the
     laptop), else build it — with a clear failure when that is impossible
     (day-0 onboarding on a machine without the optional [text] extra)."""
+    if "+" in encoder:  # composite spec, e.g. "bge-base+prior:TXT-001"
+        return pd.concat([load_text_features(set_code, part) for part in encoder.split("+")], axis=1)
+    if encoder.startswith("prior:"):
+        return load_strength_prior(set_code, encoder.removeprefix("prior:"))
     path = text_path(set_code, encoder)
     if path.exists():
         return pd.read_parquet(path)

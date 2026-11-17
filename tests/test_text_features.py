@@ -116,3 +116,27 @@ def test_missing_block_without_encoder_fails_clearly(two_sets, monkeypatch):
     monkeypatch.setattr(tf, "embed", fake_embed)  # with the encoder it builds fine
     assert tf.load_text_features("AAA", "fake").shape == (3, 8)
     assert tf.load_text_features("AAA", "fake").shape == (3, 8)  # and now loads from disk
+
+
+def test_strength_prior_block_is_composite_and_not_a_text_column(tmp_path, monkeypatch):
+    """`bge+prior:EXP` = frozen text ∥ prior_* columns; the prior must not be
+    named text_* (the trunk's text noise/dropout would destroy it)."""
+    import numpy as np
+    import pandas as pd
+    from draftbot.data import text_features as tf
+
+    proc, ck = tmp_path / "processed", tmp_path / "checkpoints"
+    (proc / "ZZZ").mkdir(parents=True)
+    (ck / "TXT-T").mkdir(parents=True)
+    pd.DataFrame({"id": range(4), "name": list("abcd")}).to_parquet(proc / "ZZZ" / "cards.parquet")
+    pd.DataFrame(np.ones((4, 3), np.float32), columns=["text_x_000", "text_x_001", "text_x_002"]
+                 ).to_parquet(proc / "ZZZ" / "features.text.x.parquet")
+    pd.DataFrame(np.zeros((4, 2)), columns=["prior_a", "prior_b"]).to_parquet(ck / "TXT-T" / "prior.ZZZ.parquet")
+    monkeypatch.setattr(tf, "PROCESSED_DIR", proc)
+    monkeypatch.setattr(tf, "PRIOR_DIR", ck)
+    df = tf.load_text_features("ZZZ", "x+prior:TXT-T")
+    assert list(df.columns) == ["text_x_000", "text_x_001", "text_x_002", "prior_a", "prior_b"]
+    assert not [c for c in df.columns[3:] if c.startswith("text_")]
+    import pytest
+    with pytest.raises(tf.TextBlockUnavailable):
+        tf.load_text_features("ZZZ", "prior:NOPE")

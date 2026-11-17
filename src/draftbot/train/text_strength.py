@@ -174,9 +174,15 @@ def main(argv=None):
     manifest = yaml.safe_load(Path(cfg["corpus"]).read_text())
     for h in cfg["holdouts"]:
         assert h not in manifest["sets"], f"{h} is in the corpus — not unseen"
+    labelled_holdouts = list(cfg["holdouts"])
     assert "TRK" not in cfg["holdouts"] and "TRK" not in manifest["sets"]
     sets = {c: load_set(c, cfg["encoder"]) for c in list(manifest["sets"]) + cfg["holdouts"]}
     corpus = [c for c in manifest["sets"] if sets[c]["ok"].sum() >= 20]
+    # corpus sets with no reliable labels (AFR) cannot train or be scored, but a
+    # trunk still needs their prior: no fold trains on them, so every fold
+    # model is out-of-fold for them — treat as extra prediction-only holdouts.
+    unlabelled = [c for c in manifest["sets"] if c not in corpus]
+    cfg["holdouts"] = labelled_holdouts + unlabelled
     rng = np.random.default_rng(cfg["seed"])
     order = list(rng.permutation(corpus))
     folds = [order[i::cfg["folds"]] for i in range(cfg["folds"])]
@@ -195,7 +201,7 @@ def main(argv=None):
         train = [sets[c] for c in corpus if c not in held]
         test = [sets[c] for c in held] + [sets[h] for h in cfg["holdouts"]]
         cache = ck / f"fold{k}.npz"
-        if cache.exists():
+        if cache.exists() and all(f"p_{s['code']}" in np.load(cache) for s in test):
             z = np.load(cache)
             preds = {c: z[f"p_{c}"] for c in [s["code"] for s in test]}
             embs = {c: z[f"e_{c}"] for c in [s["code"] for s in test]}
@@ -225,8 +231,8 @@ def main(argv=None):
         pd.DataFrame(ft[c], columns=[f"prior_{t}" for t in TARGETS]).to_parquet(ck / f"prior.{c}.parquet")
 
     rows = []
-    for c in corpus + cfg["holdouts"]:
-        rows.append({"set": c, "role": "holdout" if c in cfg["holdouts"] else "corpus-OOF",
+    for c in corpus + labelled_holdouts:
+        rows.append({"set": c, "role": "holdout" if c in labelled_holdouts else "corpus-OOF",
                      "n": int(sets[c]["ok"].sum()),
                      **{f"ridge_{t}": rho(sets[c], rd[c], i) for i, t in enumerate(TARGETS)},
                      **{f"ft_{t}": rho(sets[c], ft[c], i) for i, t in enumerate(TARGETS)}})

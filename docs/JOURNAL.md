@@ -1525,3 +1525,25 @@ day-0 strength channel is where the headroom is. A probe before any trunk run.
   lever; bar HOB val expert `none` ≥ .573 (EXP-056 .568 + 0.5), no loss at
   week1/full. v2 because HOB is the only sandbag with data; if it passes,
   re-cross-fit on v3 and fold into the next production trunk.
+
+### 2026-11-16 — EXP-063 launched (owner: "Run EXP-063")
+
+As proposed above: EXP-056 recipe, pretrain_v2, `text_features:
+bge-base+prior:TXT-001` — the 5 `prior_*` columns ride next to the frozen text
+block, scaled by the corpus scaler, exempt from text noise (not `text_*`) and
+from stat dropout (no mask). Bar unchanged: HOB val expert `none` ≥ .573, no
+loss at week1 (.687) / full (.693). FRA is also unseen by v2, so it is a
+second, free sandbag readout (EXP-056: .538 / .672 / .679); MSH full as the
+in-corpus check (.6965).
+- AFR is in the corpus but has no labels, so TXT-001 never scored it. No fold
+  trains on it; its prior comes from one extra model on folds 1–5's sets
+  (`text_strength` now scores unlabelled corpus sets with every fold model).
+- Known mismatch: corpus priors are single-model out-of-fold, HOB/FRA priors
+  are the 6-model mean (slightly smoother). That is also what deployment on a
+  new set would use.
+- Owner asked why a separate stage rather than training on the raw embedding:
+  ~9k distinct card vectors (not picks) is the bottleneck, the frozen vector
+  lacks the strength signal (MLP = ridge in Sept), and the pick loss teaches
+  popularity not win rate. Follow-up arm if 063 is positive: swap the frozen
+  embedding for the fine-tuned one (no extra columns).
+- Chain `scripts/chain_063.sh`.

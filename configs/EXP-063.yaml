@@ -1,0 +1,27 @@
+# EXP-063: = EXP-056 + the TXT-001 strength prior (5 text-predicted z-stats per card,
+# out-of-fold for corpus sets) as an always-present feature block. One lever vs 056.
+# Bar: HOB val expert none >= .573 (056: .568), no loss at week1 (.687) / full (.693).
+exp: EXP-063
+text_features: bge-base+prior:TXT-001
+text_noise: 2.0
+stat_aux_lambda: 0.1
+corpus: configs/corpus/pretrain_v2.yaml
+track_set: HOB
+select_on: [none, week1]
+seed: 17
+batch_drafts: 64
+total_steps: 20000
+emb_dim: 256
+layers: 8
+heads: 8
+dropout: 0.1
+stat_dropout: 0.25
+label_smoothing: 0.05
+skill_filter:
+  min_win_rate: 0.54
+  min_games: 50
+peak_lr: 2.0e-4
+lr_warmup: 1000
+weight_decay: 0.01
+grad_clip: 1.0
+eval_every: 1000
