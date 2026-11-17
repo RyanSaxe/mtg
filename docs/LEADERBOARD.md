@@ -275,3 +275,15 @@ EXP-033 provenance gap flagged on 2026-07-31 (MSH is IN-corpus for EXP-033).
 | EXP-126 | EXP-126@best | FRA | val | full | 0.8826 | 0.8603 | 0.8899 | 0.455 | 0.8876 | 0.244 | 2.435 | configs/EXP-126.yaml | 8f40a6c | 0 (zero-shot) | 2026-11-16 |
 | EXP-135 | EXP-135@best | FRA | val | full | 0.8814 | 0.8593 | 0.8885 | 0.435 | 0.8863 | 0.242 | 2.479 | configs/EXP-135.yaml | 8f40a6c | 0 (zero-shot) | 2026-11-16 |
 | EXP-135 | EXP-135@best | FRA/sealed | val | full | 0.6199 | 0.5954 | 0.6436 | 0.483 | 0.6356 | 0.144 | 10.470 | configs/EXP-135.yaml | 8f40a6c | 0 (zero-shot) | 2026-11-16 |
+
+## ## EXP-063 — TXT-001 strength prior as a feature block (pretrain_v2: HOB and FRA unseen, MSH in-corpus)
+
+| EXP | Model | Set(s) | Split | Stats | Top-1 | Top-3 | Expert Top-1 | Skill-gap | NLL | Config | SHA | Wall-clock | Date |
+|-----|-------|--------|-------|-------|-------|-------|--------------|-----------|-----|--------|-----|------------|------|
+| EXP-063 | EXP-063-zeroshot@best | HOB | val | none | 0.5841 | 0.9000 | 0.5820 | -0.0007 | 1.0729 | configs/EXP-063.yaml | a327020 | 111min | 2026-11-17 |
+| EXP-063 | EXP-063-zeroshot@best | HOB | val | week1 | 0.6693 | 0.9433 | 0.6876 | +0.0190 | 0.8660 | configs/EXP-063.yaml | a327020 | 111min | 2026-11-17 |
+| EXP-063 | EXP-063-zeroshot@best | HOB | val | full | 0.6706 | 0.9437 | 0.6909 | +0.0217 | 0.8616 | configs/EXP-063.yaml | a327020 | 111min | 2026-11-17 |
+| EXP-063 | EXP-063-zeroshot@best | FRA | val | none | 0.5446 | 0.8681 | 0.5444 | +0.0066 | 1.1901 | configs/EXP-063.yaml | a327020 | 111min | 2026-11-17 |
+| EXP-063 | EXP-063-zeroshot@best | FRA | val | week1 | 0.6507 | 0.9296 | 0.6703 | +0.0293 | 0.9228 | configs/EXP-063.yaml | a327020 | 111min | 2026-11-17 |
+| EXP-063 | EXP-063-zeroshot@best | FRA | val | full | 0.6565 | 0.9318 | 0.6781 | +0.0319 | 0.9059 | configs/EXP-063.yaml | a327020 | 111min | 2026-11-17 |
+| EXP-063 | EXP-063-zeroshot@best | MSH | val | full | 0.6696 | 0.9393 | 0.6959 | +0.0404 | 0.8672 | configs/EXP-063.yaml | a327020 | 111min | 2026-11-17 |

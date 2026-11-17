@@ -1547,3 +1547,35 @@ in-corpus check (.6965).
   popularity not win rate. Follow-up arm if 063 is positive: swap the frozen
   embedding for the fine-tuned one (no extra columns).
 - Chain `scripts/chain_063.sh`.
+
+### 2026-11-16 — EXP-063 verdict: day-0 bar MET, neutral once stats exist
+
+Val expert top-1, EXP-056 → EXP-063 (same recipe + 5 `prior_*` columns), 111 min:
+
+| set | none | week1 | full |
+|---|---|---|---|
+| HOB (unseen) | .5675 → **.5820** (+1.45) | .6869 → .6876 | .6930 → .6909 (−0.21) |
+| FRA (unseen) | .5383 → **.5444** (+0.61) | .6717 → .6703 (−0.14) | .6785 → .6781 |
+| MSH (in corpus) | | | .6965 → .6959 |
+
+- Bar HOB `none` ≥ .573: met, and above the +0.5 promotion rule. FRA agrees in
+  sign at +0.6. NLL improves at `none` on both (HOB 1.102 → 1.073, FRA 1.201 →
+  1.190).
+- "No loss at week1/full": moves of −0.21 / −0.14 / +0.07. HOB has 518 expert
+  drafts (~22k picks), so one standard error is ≈ 0.3 points; these are noise,
+  not a measured loss, but they are also not a gain. Read: the prior is a
+  stand-in for missing stats and is redundant once real stats arrive, as
+  expected.
+- Rare-take ratio vs experts at `none` on FRA 1.22 → 1.09: the prior is doing
+  what it was meant to (less "rare = good").
+- Size of the effect: a GIH rho gain of +.11 to +.21 bought 0.6–1.5 points of
+  expert agreement. The day-0 → week-1 gap is ~10.5 points on HOB, so the
+  text-derived prior closes about an eighth of it.
+- Single seed (17). The HOB/FRA difference (+1.45 vs +0.61) is not explained;
+  TXT-001's rho gain was larger on FRA, so prior quality alone does not
+  predict it.
+- Not production yet: EXP-063 is on pretrain_v2. Promotion needs TXT re-cross-fit
+  on pretrain_v3 (HOB/FRA labelled in, TRK out), TRK priors from the fold
+  ensemble at day 0, a v3 trunk (EXP-064), and the prior parquet built by
+  `day0`/`onboard_set` so the HUD has it. TRK priors need only card text, so
+  quarantine holds (no TRK labels exist anyway).
