@@ -1659,3 +1659,36 @@ or replace them? On pretrain_v2 so HOB and FRA stay unseen. New spec
   models, so `scripts/export_ft_emb.py --afr` retrains the fold-0 recipe to
   embed it (~30 min).
 - Chain `scripts/chain_065.sh`: export, EXP-066, EXP-065. ~4.5 h.
+
+### 2026-11-18 — EXP-065 / EXP-066 verdict: NEGATIVE, both bars missed
+
+Val expert top-1 (110 / 111 min):
+
+| trunk | text block | prior cols | HOB none | HOB wk1 | HOB full | FRA none | FRA wk1 | FRA full |
+|---|---|---|---|---|---|---|---|---|
+| EXP-056 | frozen | no | .5675 | .6869 | .6930 | .5383 | .6717 | .6785 |
+| EXP-065 | fine-tuned | no | .5696 | .6856 | .6886 | .5299 | .6698 | .6782 |
+| EXP-063 | frozen | yes | **.5820** | .6876 | .6909 | **.5444** | .6703 | .6781 |
+| EXP-066 | fine-tuned | yes | .5776 | .6872 | .6931 | .5336 | .6704 | .6785 |
+
+- EXP-065 (replace?): HOB +0.21, FRA −0.84 vs 056. Bar ≥ .573 missed. The
+  fine-tuned embedding alone does not carry the signal into the trunk.
+- EXP-066 (stack?): HOB −0.44, FRA −1.08 vs 063. Bar ≥ .587 missed; swapping
+  the embedding makes the prior trunk worse at day 0.
+- Day-0 rare-take ratio vs experts rises with the fine-tuned block: FRA 1.22
+  (056) / 1.09 (063) → 1.47 (065) / 1.37 (066); HOB 1.28 (063) → 1.46 / 1.36.
+  ECE also up. The trunk over-takes rares on unseen sets with this block.
+- With stats, all four trunks are within noise of each other.
+- Reading, not proven: fine-tuning on strength collapses the embedding toward
+  a few strength/rarity directions (effective rank ≈ 17; half the variance in
+  8 PCs), discarding the general semantics the frozen block gives the pick
+  model (what a card *does*: removal, tribe, colour role). The strength
+  signal that survives is better delivered as 5 explicit columns. The
+  fold-space mismatch pre-registered as a confound is NOT ruled out, so
+  "fine-tuned embeddings can't help" is not established — only that this
+  stitched version doesn't.
+- Decision: prior columns + frozen embedding (EXP-063 recipe, production as
+  EXP-064) stands. `ft:` spec kept in the loader; no default changes.
+- Not pursued without a ruling: single shared encoder / 9k-anchor alignment
+  to remove the confound (~4 h); set-context strength model; LLM-derived
+  features.

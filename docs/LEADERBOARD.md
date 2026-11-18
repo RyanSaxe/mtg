@@ -299,3 +299,22 @@ EXP-033 provenance gap flagged on 2026-07-31 (MSH is IN-corpus for EXP-033).
 | EXP-064 | EXP-064-zeroshot@best | HOB | val | week1 | 0.6797 | 0.9471 | 0.6996 | +0.0233 | 0.8377 | configs/EXP-064.yaml | 2f0da9f | 113min | 2026-11-18 |
 | EXP-064 | EXP-064-zeroshot@best | HOB | val | full | 0.6828 | 0.9483 | 0.7032 | +0.0247 | 0.8316 | configs/EXP-064.yaml | 2f0da9f | 113min | 2026-11-18 |
 | EXP-064 | EXP-064-zeroshot@best | MSH | val | full | 0.6700 | 0.9397 | 0.6966 | +0.0418 | 0.8653 | configs/EXP-064.yaml | 2f0da9f | 113min | 2026-11-18 |
+
+## ## EXP-065/066 — fine-tuned text embedding arms (pretrain_v2: HOB and FRA unseen, MSH in-corpus)
+
+| EXP | Model | Set(s) | Split | Stats | Top-1 | Top-3 | Expert Top-1 | Skill-gap | NLL | Config | SHA | Wall-clock | Date |
+|-----|-------|--------|-------|-------|-------|-------|--------------|-----------|-----|--------|-----|------------|------|
+| EXP-066 | EXP-066-zeroshot@best | HOB | val | none | 0.5789 | 0.8961 | 0.5776 | -0.0002 | 1.0848 | configs/EXP-066.yaml | 55dc0cf | 111min | 2026-11-18 |
+| EXP-066 | EXP-066-zeroshot@best | HOB | val | week1 | 0.6684 | 0.9421 | 0.6872 | +0.0208 | 0.8690 | configs/EXP-066.yaml | 55dc0cf | 111min | 2026-11-18 |
+| EXP-066 | EXP-066-zeroshot@best | HOB | val | full | 0.6720 | 0.9424 | 0.6931 | +0.0250 | 0.8653 | configs/EXP-066.yaml | 55dc0cf | 111min | 2026-11-18 |
+| EXP-066 | EXP-066-zeroshot@best | FRA | val | none | 0.5367 | 0.8626 | 0.5336 | +0.0013 | 1.2034 | configs/EXP-066.yaml | 55dc0cf | 111min | 2026-11-18 |
+| EXP-066 | EXP-066-zeroshot@best | FRA | val | week1 | 0.6521 | 0.9297 | 0.6704 | +0.0272 | 0.9226 | configs/EXP-066.yaml | 55dc0cf | 111min | 2026-11-18 |
+| EXP-066 | EXP-066-zeroshot@best | FRA | val | full | 0.6566 | 0.9320 | 0.6785 | +0.0326 | 0.9076 | configs/EXP-066.yaml | 55dc0cf | 111min | 2026-11-18 |
+| EXP-066 | EXP-066-zeroshot@best | MSH | val | full | 0.6688 | 0.9389 | 0.6960 | +0.0422 | 0.8679 | configs/EXP-066.yaml | 55dc0cf | 111min | 2026-11-18 |
+| EXP-065 | EXP-065-zeroshot@best | HOB | val | none | 0.5733 | 0.8946 | 0.5696 | -0.0030 | 1.0934 | configs/EXP-065.yaml | 55dc0cf | 110min | 2026-11-18 |
+| EXP-065 | EXP-065-zeroshot@best | HOB | val | week1 | 0.6657 | 0.9410 | 0.6856 | +0.0234 | 0.8768 | configs/EXP-065.yaml | 55dc0cf | 110min | 2026-11-18 |
+| EXP-065 | EXP-065-zeroshot@best | HOB | val | full | 0.6689 | 0.9423 | 0.6886 | +0.0233 | 0.8703 | configs/EXP-065.yaml | 55dc0cf | 110min | 2026-11-18 |
+| EXP-065 | EXP-065-zeroshot@best | FRA | val | none | 0.5342 | 0.8632 | 0.5299 | -0.0005 | 1.2041 | configs/EXP-065.yaml | 55dc0cf | 110min | 2026-11-18 |
+| EXP-065 | EXP-065-zeroshot@best | FRA | val | week1 | 0.6513 | 0.9290 | 0.6698 | +0.0283 | 0.9252 | configs/EXP-065.yaml | 55dc0cf | 110min | 2026-11-18 |
+| EXP-065 | EXP-065-zeroshot@best | FRA | val | full | 0.6571 | 0.9322 | 0.6782 | +0.0314 | 0.9071 | configs/EXP-065.yaml | 55dc0cf | 110min | 2026-11-18 |
+| EXP-065 | EXP-065-zeroshot@best | MSH | val | full | 0.6684 | 0.9393 | 0.6959 | +0.0422 | 0.8675 | configs/EXP-065.yaml | 55dc0cf | 110min | 2026-11-18 |
