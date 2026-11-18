@@ -79,8 +79,11 @@ def _device():
     return device_auto()
 
 
-def fit_fold(cfg: dict, train: list[dict], test: list[dict], seed: int):
-    """Train on `train` sets' reliable rows; return ({code: pred[n,5]}, {code: emb[n,d]}) for `test`."""
+def fit_fold(cfg: dict, train: list[dict], test: list[dict], seed: int, save: Path | None = None):
+    """Train on `train` sets' reliable rows; return ({code: pred[n,5]}, {code: emb[n,d]}) for `test`.
+
+    `save`: keep the fold model (fp16 state dict) so a set that does not exist
+    yet — or whose card ids change at onboarding — can be scored later."""
     from transformers import AutoTokenizer, get_linear_schedule_with_warmup
     torch.manual_seed(seed)
     rng = np.random.default_rng(seed)
@@ -123,22 +126,57 @@ def fit_fold(cfg: dict, train: list[dict], test: list[dict], seed: int):
             tot += loss.item() * len(idx)
         print(f"    epoch {ep + 1}/{cfg['epochs']} loss {tot / len(texts):.4f}", flush=True)
 
+    preds, embs = _score(model, tok, cfg, test, dev)
+    if save is not None:
+        torch.save({k: v.half() if v.is_floating_point() else v
+                    for k, v in model.state_dict().items()}, save)
+    del model, opt
+    if dev.type == "mps":
+        torch.mps.empty_cache()
+    return preds, embs
+
+
+def _score(model, tok, cfg: dict, test: list[dict], dev):
     model.eval()
     preds, embs = {}, {}
     with torch.no_grad():
         for s in test:
             p, e = [], []
             for i in range(0, len(s["texts"]), 64):
-                t = batch_tok(s["texts"][i:i + 64])
+                t = {k: v.to(dev) for k, v in tok(s["texts"][i:i + 64], padding=True, truncation=True,
+                                                  max_length=cfg["max_tokens"], return_tensors="pt").items()}
                 st = torch.tensor(s["static"][i:i + 64]).to(dev)
                 emb = model.embed(t)
-                p.append(model.head(torch.cat([emb, model.static_norm(st)], -1)).cpu().numpy())
-                e.append(emb.cpu().numpy())
+                p.append(model.head(torch.cat([emb, model.static_norm(st)], -1)).float().cpu().numpy())
+                e.append(emb.float().cpu().numpy())
             preds[s["code"]], embs[s["code"]] = np.concatenate(p), np.concatenate(e)
-    del model, opt
-    if dev.type == "mps":
-        torch.mps.empty_cache()
     return preds, embs
+
+
+def predict_set(exp: str, code: str) -> Path:
+    """Write checkpoints/<exp>/prior.<SET>.parquet for a set no fold trained on
+    (day 0, or after onboarding re-ids the cards): mean of the saved fold
+    models. Needs only the set's card table, static features and text."""
+    from transformers import AutoTokenizer
+    ck = Path("checkpoints") / exp
+    cfg = yaml.safe_load((ck / "config.yaml").read_text())
+    manifest = yaml.safe_load(Path(cfg["corpus"]).read_text())
+    assert code not in manifest["sets"], f"{code} is in {cfg['corpus']}: its prior must stay out-of-fold"
+    static = pd.read_parquet(PROCESSED_DIR / code / "features.static.parquet").to_numpy(np.float32)
+    s = {"code": code, "static": static, "texts": card_strings(code, "masked")}
+    weights = sorted(ck.glob("fold*.pt"))
+    assert weights, f"{ck}: no saved fold models"
+    dev, hf = _device(), ENCODERS[cfg["encoder"]]
+    tok = AutoTokenizer.from_pretrained(hf)
+    model = StrengthModel(hf, static.shape[1], cfg["head_hidden"], cfg["head_dropout"], "none").to(dev)
+    out = []
+    for w in weights:
+        model.load_state_dict({k: v.float() if v.is_floating_point() else v
+                               for k, v in torch.load(w, map_location="cpu").items()})
+        out.append(_score(model, tok, cfg, [s], dev)[0][code])
+    path = ck / f"prior.{code}.parquet"
+    pd.DataFrame(np.mean(out, 0), columns=[f"prior_{t}" for t in TARGETS]).to_parquet(path)
+    return path
 
 
 def ridge_arm(train: list[dict], test: list[dict], inner: list[list[str]]) -> dict:
@@ -168,26 +206,37 @@ def rho(s: dict, pred: np.ndarray, t: int = GIH) -> float:
 
 def main(argv=None):
     p = argparse.ArgumentParser(prog="draftbot.train.text_strength")
-    p.add_argument("--config", type=Path, required=True)
+    p.add_argument("--config", type=Path)
+    p.add_argument("--predict", nargs=2, metavar=("EXP", "SET"),
+                   help="score one new set with EXP's saved fold models and exit")
     args = p.parse_args(argv)
+    if args.predict:
+        print(predict_set(*args.predict))
+        return 0
     cfg = yaml.safe_load(args.config.read_text())
     manifest = yaml.safe_load(Path(cfg["corpus"]).read_text())
     for h in cfg["holdouts"]:
         assert h not in manifest["sets"], f"{h} is in the corpus — not unseen"
     labelled_holdouts = list(cfg["holdouts"])
+    # the sandbag is never a labelled holdout (nothing is selected on it); it
+    # may be listed under predict_only, which uses its card text and nothing else.
     assert "TRK" not in cfg["holdouts"] and "TRK" not in manifest["sets"]
-    sets = {c: load_set(c, cfg["encoder"]) for c in list(manifest["sets"]) + cfg["holdouts"]}
+    predict_only = list(cfg.get("predict_only", []))
+    for h in predict_only:
+        assert h not in manifest["sets"], f"{h} is in the corpus"
+    sets = {c: load_set(c, cfg["encoder"]) for c in list(manifest["sets"]) + cfg["holdouts"] + predict_only}
     corpus = [c for c in manifest["sets"] if sets[c]["ok"].sum() >= 20]
     # corpus sets with no reliable labels (AFR) cannot train or be scored, but a
     # trunk still needs their prior: no fold trains on them, so every fold
     # model is out-of-fold for them — treat as extra prediction-only holdouts.
     unlabelled = [c for c in manifest["sets"] if c not in corpus]
-    cfg["holdouts"] = labelled_holdouts + unlabelled
+    cfg["holdouts"] = labelled_holdouts + unlabelled + predict_only
     rng = np.random.default_rng(cfg["seed"])
     order = list(rng.permutation(corpus))
     folds = [order[i::cfg["folds"]] for i in range(cfg["folds"])]
     ck = Path("checkpoints") / cfg["exp"]
     ck.mkdir(parents=True, exist_ok=True)
+    (ck / "config.yaml").write_text(yaml.safe_dump({**cfg, "holdouts": labelled_holdouts}))
     (ck / "folds.json").write_text(json.dumps([[str(c) for c in f] for f in folds]))
     print(f"{cfg['exp']}: {len(corpus)} corpus sets, {sum(int(sets[c]['ok'].sum()) for c in corpus)} "
           f"labelled cards, {cfg['folds']} folds, holdouts {cfg['holdouts']}", flush=True)
@@ -201,14 +250,15 @@ def main(argv=None):
         train = [sets[c] for c in corpus if c not in held]
         test = [sets[c] for c in held] + [sets[h] for h in cfg["holdouts"]]
         cache = ck / f"fold{k}.npz"
-        if cache.exists() and all(f"p_{s['code']}" in np.load(cache) for s in test):
+        wpath = ck / f"fold{k}.pt" if cfg.get("save_models") else None
+        if cache.exists() and (wpath is None or wpath.exists()) and all(f"p_{s['code']}" in np.load(cache) for s in test):
             z = np.load(cache)
             preds = {c: z[f"p_{c}"] for c in [s["code"] for s in test]}
             embs = {c: z[f"e_{c}"] for c in [s["code"] for s in test]}
             print(f"fold {k}: cached", flush=True)
         else:
             print(f"fold {k}: held out {[str(c) for c in held]}", flush=True)
-            preds, embs = fit_fold(cfg, train, test, cfg["seed"] + k)
+            preds, embs = fit_fold(cfg, train, test, cfg["seed"] + k, save=wpath)
             np.savez(cache, **{f"p_{c}": v for c, v in preds.items()},
                      **{f"e_{c}": v for c, v in embs.items()})
         inner = [[c for c in f if c not in held] for j, f in enumerate(folds) if j != k]
@@ -240,6 +290,8 @@ def main(argv=None):
     summ = {}
     for role in ("corpus-OOF", "holdout"):
         d = df[df.role == role]
+        if d.empty:
+            continue
         summ[role] = {"ridge_gih": float(d[f"ridge_{HEADLINE}"].mean()),
                       "ft_gih": float(d[f"ft_{HEADLINE}"].mean()),
                       "delta": float((d[f"ft_{HEADLINE}"] - d[f"ridge_{HEADLINE}"]).mean()),

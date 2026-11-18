@@ -1,0 +1,30 @@
+# EXP-064: production candidate — the EXP-061 recipe on pretrain_v3 plus the
+# TXT-002 strength prior (5 out-of-fold text-predicted stat columns). One lever
+# vs 061: the prior. The lever was validated zero-shot by EXP-063 vs EXP-056
+# (HOB none +1.45, FRA +0.61); here every tracked set is in-corpus, so the
+# readout is a regression gate, not a zero-shot number.
+exp: EXP-064
+text_features: bge-base+prior:TXT-002
+text_noise: 2.0
+stat_aux_lambda: 0.1
+corpus: configs/corpus/pretrain_v3.yaml
+track_set: FRA
+track_proxy: true
+select_on: [none, week1]
+seed: 17
+batch_drafts: 64
+total_steps: 20000
+emb_dim: 256
+layers: 8
+heads: 8
+dropout: 0.1
+stat_dropout: 0.25
+label_smoothing: 0.05
+skill_filter:
+  min_win_rate: 0.54
+  min_games: 50
+peak_lr: 2.0e-4
+lr_warmup: 1000
+weight_decay: 0.01
+grad_clip: 1.0
+eval_every: 1000

@@ -1,0 +1,23 @@
+# TXT-002 — production strength prior: the TXT-001 recipe, unchanged, cross-fit on
+# pretrain_v3 (HOB + FRA now labelled corpus sets). TRK is predict-only: its
+# prior is the mean of the six fold models over its card text; no TRK label
+# exists or is used. Fold models are kept so TRK can be re-scored when
+# onboarding re-ids its cards. Journal 2026-11-17.
+exp: TXT-002
+seed: 17
+corpus: configs/corpus/pretrain_v3.yaml
+holdouts: []
+predict_only: [TRK]
+save_models: true
+encoder: bge-base
+folds: 6
+epochs: 6
+batch_size: 32
+lr_encoder: 2.0e-5
+lr_head: 1.0e-3
+weight_decay: 0.01
+warmup_frac: 0.1
+head_hidden: 256
+head_dropout: 0.1
+max_tokens: 192
+trainable: all

@@ -1579,3 +1579,25 @@ Val expert top-1, EXP-056 → EXP-063 (same recipe + 5 `prior_*` columns), 111 m
   ensemble at day 0, a v3 trunk (EXP-064), and the prior parquet built by
   `day0`/`onboard_set` so the HUD has it. TRK priors need only card text, so
   quarantine holds (no TRK labels exist anyway).
+
+### 2026-11-17 — TXT-002 + EXP-064 launched (owner: "Run it")
+
+Production version of the EXP-063 lever.
+- **TXT-002**: TXT-001 recipe unchanged, 6-fold cross-fit by set on pretrain_v3
+  (31 labelled sets, 8,941 cards; HOB and FRA now train). AFR (no labels) and
+  TRK are scored by all six fold models. TRK is `predict_only`: card text and
+  static features in, no labels (none exist), nothing selected on it. Fold
+  models are now saved (fp16) and `text_strength --predict EXP SET` re-scores
+  a set, because onboarding re-ids TRK's cards and the day-0 prior parquet
+  would then be misaligned.
+- **EXP-064**: EXP-061 recipe + `prior:TXT-002`. One lever vs 061.
+- **Gate (pre-registered).** No zero-shot number is possible (TRK has no data),
+  and every tracked set is in-corpus, so this is a regression gate: no val
+  expert readout more than 0.3 below EXP-061 (FRA .6176 / .6798 / .6899, HOB
+  .6092 / .7004 / .7042, MSH full .6958). Pass → EXP-064 becomes the draft
+  default, on the strength of EXP-063's zero-shot result. A gain here is not
+  expected or required: in-corpus `none` already has the cards memorised
+  through text.
+- Also reported, not gated: TXT-002 out-of-fold GIH rho for HOB/FRA (TXT-001
+  gave .505 / .584 as unseen-ensemble; single-fold OOF should be near that).
+- Chain `scripts/chain_064.sh`, ~1.5 h + ~2 h.
