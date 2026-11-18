@@ -1,14 +1,14 @@
 # Architecture
 
-How the system works as of the EXP-061 production trunk (the EXP-056 recipe retrained on the
-pretrain_v3 corpus). For why each choice
+How the system works as of the EXP-064 production trunk (the EXP-056 recipe on the
+pretrain_v3 corpus, plus the TXT-002 strength prior). For why each choice
 was made, the experiment that settled it is named in brackets; the narrative
 is in [JOURNAL.md](JOURNAL.md) and the numbers in
 [LEADERBOARD.md](LEADERBOARD.md).
 
 ```
 17lands draft/game CSVs ─┐                       ┌─ zero-shot eval on the held-out set
-Scryfall card objects ───┼─► per-set artifacts ─►│  multi-set pretraining ─► trunk (EXP-061)
+Scryfall card objects ───┼─► per-set artifacts ─►│  multi-set pretraining ─► trunk (EXP-064)
 Arena card DB (day 0) ───┘   cards / features /  └─ per-set fine-tune ─────► set model
                              snapshots / splits                                  │
                                                      Player.log ─► HUD ◄─────────┘
@@ -37,6 +37,15 @@ committed; `data/raw/` is immutable.
     paired missing-mask column, never a silent "0% win rate".
   - *text* — one canonical string per card (name, cost, type line, oracle
     text) through a frozen `BAAI/bge-base-en-v1.5` sentence encoder, 768-d.
+  - *strength prior* — five statistics (GIH win rate, game win rate,
+    improvement when drawn, ALSA, ATA; z-scored within set) predicted from
+    the card's text and static features by a copy of the encoder fine-tuned
+    end-to-end on the corpus (`train/text_strength.py`, TXT-002). Cross-fit
+    by set: each corpus card's prediction comes from a model that never saw
+    its set, so the trunk learns to trust the columns exactly as much as
+    they deserve on a new set. A new set is scored by the mean of the six
+    fold models. Worth +0.6 to +1.5 points of expert agreement with no
+    stats, nothing once stats exist [TXT-001, EXP-063, EXP-064].
 - **Stat modes.** Every model is evaluated, and the trunk trained, under
   `none` / `week1` / `full` — what you know on release day, a week in, and at
   season's end.

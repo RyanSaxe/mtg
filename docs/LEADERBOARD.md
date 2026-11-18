@@ -287,3 +287,15 @@ EXP-033 provenance gap flagged on 2026-07-31 (MSH is IN-corpus for EXP-033).
 | EXP-063 | EXP-063-zeroshot@best | FRA | val | week1 | 0.6507 | 0.9296 | 0.6703 | +0.0293 | 0.9228 | configs/EXP-063.yaml | a327020 | 111min | 2026-11-17 |
 | EXP-063 | EXP-063-zeroshot@best | FRA | val | full | 0.6565 | 0.9318 | 0.6781 | +0.0319 | 0.9059 | configs/EXP-063.yaml | a327020 | 111min | 2026-11-17 |
 | EXP-063 | EXP-063-zeroshot@best | MSH | val | full | 0.6696 | 0.9393 | 0.6959 | +0.0404 | 0.8672 | configs/EXP-063.yaml | a327020 | 111min | 2026-11-17 |
+
+## ## EXP-064 — EXP-061 recipe + TXT-002 strength prior (HOB, FRA and MSH are IN-CORPUS: regression gate, not zero-shot)
+
+| EXP | Model | Set(s) | Split | Stats | Top-1 | Top-3 | Expert Top-1 | Skill-gap | NLL | Config | SHA | Wall-clock | Date |
+|-----|-------|--------|-------|-------|-------|-------|--------------|-----------|-----|--------|-----|------------|------|
+| EXP-064 | EXP-064-zeroshot@best | FRA | val | none | 0.6081 | 0.9065 | 0.6220 | +0.0225 | 1.0316 | configs/EXP-064.yaml | 2f0da9f | 113min | 2026-11-18 |
+| EXP-064 | EXP-064-zeroshot@best | FRA | val | week1 | 0.6581 | 0.9329 | 0.6805 | +0.0336 | 0.9022 | configs/EXP-064.yaml | 2f0da9f | 113min | 2026-11-18 |
+| EXP-064 | EXP-064-zeroshot@best | FRA | val | full | 0.6653 | 0.9360 | 0.6899 | +0.0368 | 0.8835 | configs/EXP-064.yaml | 2f0da9f | 113min | 2026-11-18 |
+| EXP-064 | EXP-064-zeroshot@best | HOB | val | none | 0.6131 | 0.9173 | 0.6151 | +0.0053 | 0.9973 | configs/EXP-064.yaml | 2f0da9f | 113min | 2026-11-18 |
+| EXP-064 | EXP-064-zeroshot@best | HOB | val | week1 | 0.6797 | 0.9471 | 0.6996 | +0.0233 | 0.8377 | configs/EXP-064.yaml | 2f0da9f | 113min | 2026-11-18 |
+| EXP-064 | EXP-064-zeroshot@best | HOB | val | full | 0.6828 | 0.9483 | 0.7032 | +0.0247 | 0.8316 | configs/EXP-064.yaml | 2f0da9f | 113min | 2026-11-18 |
+| EXP-064 | EXP-064-zeroshot@best | MSH | val | full | 0.6700 | 0.9397 | 0.6966 | +0.0418 | 0.8653 | configs/EXP-064.yaml | 2f0da9f | 113min | 2026-11-18 |

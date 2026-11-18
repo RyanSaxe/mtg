@@ -182,6 +182,10 @@ def onboard_day0(set_code: str, db: Path | None = None,
     try:  # oracle-text block for text-trained trunks (optional extra [text])
         from draftbot.data.text_features import build_text_features
         build_text_features(code)
+        from draftbot.data.text_features import ensure_strength_prior
+        if ensure_strength_prior(code) is None:  # EXP-064+ reads it at day 0
+            print(f"{code}: no strength-prior models here — EXP-064 cannot score "
+                  "this set until prior.<SET>.parquet is bundled", file=sys.stderr)
     except ImportError:
         print(f"{code}: sentence-transformers not installed — no text block "
               "(only text-trained checkpoints need it)", file=sys.stderr)

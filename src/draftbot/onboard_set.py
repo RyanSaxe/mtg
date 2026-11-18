@@ -1,6 +1,6 @@
 """One-command new-set onboarding (PLAN P4.T3).
 
-`python -m draftbot.onboard_set --set <CODE> [--base checkpoints/EXP-061]
+`python -m draftbot.onboard_set --set <CODE> [--base checkpoints/EXP-064]
  [--finetune-mode lora] [--budget-drafts N] [--skip-finetune]`
 
 Pipeline: probe/download draft+game data → vocab/parquet/features/snapshots
@@ -25,8 +25,8 @@ from draftbot.data.fetch import dest_path, download, probe
 def main(argv=None):
     p = argparse.ArgumentParser(prog="draftbot.onboard_set")
     p.add_argument("--set", dest="set_code", required=True)
-    p.add_argument("--base", default="checkpoints/EXP-061",
-                   help="pretrained trunk (2026-11-15: EXP-061, text trunk on pretrain_v3)")
+    p.add_argument("--base", default="checkpoints/EXP-064",
+                   help="pretrained trunk (2026-11-17: EXP-064, text + strength prior on pretrain_v3)")
     p.add_argument("--finetune-mode", default="lora",
                    choices=["lora", "head", "full"])
     p.add_argument("--budget-drafts", type=int, default=None,
@@ -53,6 +53,11 @@ def main(argv=None):
     rel = set_release_date(code)
     week1_end = (datetime.strptime(rel, "%Y-%m-%d") + timedelta(days=7)).date()
     build_snapshot(code, rel, str(week1_end), tag="week1")
+
+    # the card ids are final now: rebuild the text-predicted strength prior
+    # (the day-0 one was discarded with the provisional vocab)
+    from draftbot.data.text_features import ensure_strength_prior
+    ensure_strength_prior(code)
 
     # 3. zero-shot scorecards from the pretrained base ------------------------
     from draftbot.eval.harness import evaluate, render_markdown

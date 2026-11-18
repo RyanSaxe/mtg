@@ -1601,3 +1601,34 @@ Production version of the EXP-063 lever.
 - Also reported, not gated: TXT-002 out-of-fold GIH rho for HOB/FRA (TXT-001
   gave .505 / .584 as unseen-ensemble; single-fold OOF should be near that).
 - Chain `scripts/chain_064.sh`, ~1.5 h + ~2 h.
+
+### 2026-11-17 — TXT-002 / EXP-064 verdict: gate PASSED, EXP-064 is the draft default
+
+- **TXT-002** (94 min): out-of-fold GIH rho .441 (ridge) → .555 (fine-tuned),
+  31/31 sets. HOB .494 and FRA .580 as single-model OOF, vs .505 / .584 as the
+  6-model unseen ensemble in TXT-001 — the same, so TXT-001's holdout numbers
+  were not an ensemble artifact.
+- **EXP-064** (113 min) vs EXP-061, val expert, all in-corpus:
+
+  | set | none | week1 | full |
+  |---|---|---|---|
+  | FRA | .6176 → .6220 | .6798 → .6805 | .6899 → .6899 |
+  | HOB | .6092 → .6151 | .7004 → .6996 | .7042 → .7032 |
+  | MSH | | | .6958 → .6966 |
+
+  Worst readout −0.10; gate (none below −0.3) passed. `none` is up +0.4 / +0.6
+  even in-corpus, same sign as EXP-063.
+- **Promoted**: HUD, `onboard_set --base` and bundle default → EXP-064 (061
+  kept in the bundle as fallback). Promotion rests on EXP-063's zero-shot
+  result; EXP-064 itself has no zero-shot number until TRK is published.
+- **Plumbing**: `ensure_strength_prior` — day0 builds the prior for a new set
+  from the saved fold models; `_discard_day0_artifacts` deletes it when
+  onboarding re-ids the cards; `onboard_set` rebuilds it; bundle ships
+  `checkpoints/TXT-*/prior.<SET>.parquet` (not the 1.3 GB of fold models, so
+  a laptop cannot rebuild a prior itself). `--predict` reproduces the in-run
+  TRK prior to 1e-3 (fp16 weights).
+- TRK prior sanity (top predicted GIH): U.S.S. Enterprise-A, Captain Kirk,
+  Kobayashi Maru Scenario, Decree of Pain, Sheoldred — bombs and known-strong
+  reprints first. Unverifiable until TRK data exists.
+- Open: fine-tuned-embedding arm (does it stack or replace?); set-context
+  strength model; single seed throughout.

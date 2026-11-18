@@ -127,6 +127,23 @@ def build_text_features(set_code: str, encoder: str = DEFAULT_ENCODER,
 PRIOR_DIR = Path("checkpoints")
 
 
+PROD_PRIOR = "TXT-002"  # strength prior the production draft trunk (EXP-064) reads
+
+
+def ensure_strength_prior(set_code: str, exp: str = PROD_PRIOR) -> Path | None:
+    """Make sure `exp`'s prior exists for a set it never trained on (day 0, or
+    after onboarding re-ids the cards and the stale file was discarded).
+    Scores the set with the saved fold models; returns None if they are not on
+    this machine (a bundle ships the prior files, not the models)."""
+    path = PRIOR_DIR / exp / f"prior.{set_code}.parquet"
+    if path.exists():
+        return path
+    if not list((PRIOR_DIR / exp).glob("fold*.pt")):
+        return None
+    from draftbot.train.text_strength import predict_set
+    return predict_set(exp, set_code)
+
+
 def load_strength_prior(set_code: str, exp: str) -> pd.DataFrame:
     """Text-predicted strength stats from a fine-tuned encoder (TXT-001,
     `draftbot.train.text_strength`): `prior_<stat>` columns, one row per card.

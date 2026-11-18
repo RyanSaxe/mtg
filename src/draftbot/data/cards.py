@@ -157,6 +157,9 @@ def _discard_day0_artifacts(set_code: str) -> None:
     proc = PROCESSED_DIR / set_code
     for name in (DAY0_MARKER, "features.static.parquet"):
         (proc / name).unlink(missing_ok=True)
+    # text-predicted strength priors are one row per day-0 card id
+    for stale in Path("checkpoints").glob(f"*/prior.{set_code}.parquet"):
+        stale.unlink()
     reg = SNAPSHOT_DIR / set_code / "registry.json"
     if reg.exists():
         for fname in set(json.loads(reg.read_text()).values()):

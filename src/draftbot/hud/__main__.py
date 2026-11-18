@@ -38,7 +38,12 @@ PIPS = "WUBRG"
 # it with the [text] extra). EXP-033 remains the no-text fallback.
 # 2026-11-15: EXP-061 — the same recipe on pretrain_v3 (HOB + FRA promoted,
 # TRK held out); gate passed (journal 2026-11-15).
-PROD_DRAFT_MODELS = "checkpoints/EXP-061"
+# 2026-11-17: EXP-064 — EXP-061 + the TXT-002 text-predicted strength prior
+# (zero-shot lever validated by EXP-063: HOB day-0 expert +1.45, FRA +0.61;
+# regression gate vs 061 passed). Needs checkpoints/TXT-002/prior.<SET>.parquet
+# (day0 / onboard_set build it; the bundle ships it). EXP-061 is the fallback
+# without it.
+PROD_DRAFT_MODELS = "checkpoints/EXP-064"
 PROD_DECK_MODELS = "checkpoints/EXP-126,checkpoints/EXP-116"
 # sealed mode (P5.S4): the joint trunk with the sealed format token. No
 # diffusion slot — locks go through the probability-pinning fallback, which

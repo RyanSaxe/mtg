@@ -24,7 +24,8 @@ from draftbot.data.cards import DAY0_MARKER, SOURCES_JSON
 # MSH fine-tune, joint draft+sealed trunk (P5.S joint). Set-specific
 # fine-tunes (e.g. EXP-058 / EXP-138 for HOB) are added with --checkpoints.
 # 2026-11-15: draft trunk EXP-056 → EXP-061 (pretrain_v3 refresh).
-DEFAULT_CHECKPOINTS = ["EXP-061", "EXP-033", "EXP-116", "EXP-126", "EXP-127", "EXP-135"]
+# 2026-11-17: + EXP-064 (strength prior) as the draft default; 061 kept as fallback.
+DEFAULT_CHECKPOINTS = ["EXP-064", "EXP-061", "EXP-033", "EXP-116", "EXP-126", "EXP-127", "EXP-135"]
 BUNDLE = Path("laptop-bundle.tar.gz")
 
 
@@ -52,6 +53,8 @@ def bundle_paths(set_codes: list[str], checkpoints: list[str]) -> list[Path]:
         for name in (SOURCES_JSON, DAY0_MARKER):
             if (proc / name).exists():
                 paths.append(proc / name)
+        # text-predicted strength priors (EXP-064+); the fold models stay behind
+        paths += sorted(Path("checkpoints").glob(f"TXT-*/prior.{code}.parquet"))
         splits = Path("data/splits") / f"{code}.json"
         if splits.exists():
             paths.append(splits)
