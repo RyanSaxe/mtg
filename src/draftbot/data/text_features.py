@@ -127,6 +127,21 @@ def build_text_features(set_code: str, encoder: str = DEFAULT_ENCODER,
 PRIOR_DIR = Path("checkpoints")
 
 
+def load_finetuned_embedding(set_code: str, exp: str) -> pd.DataFrame:
+    """Embedding from the strength-fine-tuned encoder (`ft:<exp>`), written by
+    scripts/export_ft_emb.py. Corpus sets: out-of-fold (the fold model that
+    never trained on the set). Columns are `text_ft_*`, so the trunk's text
+    noise applies exactly as it does to the frozen block."""
+    path = PRIOR_DIR / exp / f"emb.{set_code}.parquet"
+    if not path.exists():
+        raise TextBlockUnavailable(f"{set_code}: no fine-tuned embedding at {path}")
+    df = pd.read_parquet(path)
+    n = len(pd.read_parquet(PROCESSED_DIR / set_code / "cards.parquet", columns=["id"]))
+    assert len(df) == n, f"{path}: {len(df)} rows for {n} cards"
+    assert all(c.startswith("text_ft_") for c in df.columns)
+    return df
+
+
 PROD_PRIOR = "TXT-002"  # strength prior the production draft trunk (EXP-064) reads
 
 
@@ -176,6 +191,8 @@ def load_text_features(set_code: str, encoder: str = DEFAULT_ENCODER) -> pd.Data
     (day-0 onboarding on a machine without the optional [text] extra)."""
     if "+" in encoder:  # composite spec, e.g. "bge-base+prior:TXT-001"
         return pd.concat([load_text_features(set_code, part) for part in encoder.split("+")], axis=1)
+    if encoder.startswith("ft:"):
+        return load_finetuned_embedding(set_code, encoder.removeprefix("ft:"))
     if encoder.startswith("prior:"):
         return load_strength_prior(set_code, encoder.removeprefix("prior:"))
     path = text_path(set_code, encoder)

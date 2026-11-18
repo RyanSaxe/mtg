@@ -1,0 +1,26 @@
+# EXP-066: fine-tuned embedding + prior columns. One lever vs EXP-063 (embedding swapped).
+# pretrain_v2, HOB + FRA unseen. Journal 2026-11-18.
+exp: EXP-066
+text_features: ft:TXT-001+prior:TXT-001
+text_noise: 2.0
+stat_aux_lambda: 0.1
+corpus: configs/corpus/pretrain_v2.yaml
+track_set: HOB
+select_on: [none, week1]
+seed: 17
+batch_drafts: 64
+total_steps: 20000
+emb_dim: 256
+layers: 8
+heads: 8
+dropout: 0.1
+stat_dropout: 0.25
+label_smoothing: 0.05
+skill_filter:
+  min_win_rate: 0.54
+  min_games: 50
+peak_lr: 2.0e-4
+lr_warmup: 1000
+weight_decay: 0.01
+grad_clip: 1.0
+eval_every: 1000

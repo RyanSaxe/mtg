@@ -1632,3 +1632,30 @@ Production version of the EXP-063 lever.
   reprints first. Unverifiable until TRK data exists.
 - Open: fine-tuned-embedding arm (does it stack or replace?); set-context
   strength model; single seed throughout.
+
+### 2026-11-18 — EXP-065 / EXP-066 launched: fine-tuned embedding arms (owner: "Run it")
+
+Question: does the strength-fine-tuned embedding stack with the prior columns,
+or replace them? On pretrain_v2 so HOB and FRA stay unseen. New spec
+`ft:TXT-001` (768-d, `text_ft_*`, same σ 2.0 noise as the frozen block).
+- **EXP-066** = EXP-063 with the frozen bge block swapped for the fine-tuned
+  one (prior columns kept). Bar: HOB `none` ≥ .587 (063 .5820 + 0.5) = stacks.
+- **EXP-065** = EXP-056 with the same swap, no prior columns. Bar: HOB `none`
+  ≥ .573 = the embedding carries the signal on its own; ≥ .582 = it can
+  replace the prior columns. FRA as second readout (056 .5383, 063 .5444).
+  No loss beyond −0.3 at week1/full for either.
+- **Confound found before launch, not fixed.** Corpus embeddings are stitched
+  from six fold models whose spaces only partly agree: the same HOB/FRA card
+  in two fold models has cosine ≈ .72 (different cards within a fold: .19;
+  top-8-PC subspace .85–.90; pairwise-similarity structure correlates
+  .85–.91). An orthogonal map fitted on HOB does not align FRA (.72 → .70) and
+  a ridge map barely (.78), so it is not a rotation recoverable from a few
+  hundred anchors. Proceeding because the σ 2.0 noise already perturbs each
+  vector to cosine ≈ .45, more than the fold mismatch. If these arms are
+  negative, the mismatch is the first thing to rule out (one shared encoder,
+  or saved fold models embedding all cards for a 9k-anchor alignment).
+- Holdouts use fold 0's embedding (one model, like every corpus card), not the
+  six-model mean, whose mismatched components cancel. AFR: no saved TXT-001
+  models, so `scripts/export_ft_emb.py --afr` retrains the fold-0 recipe to
+  embed it (~30 min).
+- Chain `scripts/chain_065.sh`: export, EXP-066, EXP-065. ~4.5 h.
