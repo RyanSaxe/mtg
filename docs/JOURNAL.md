@@ -1692,3 +1692,22 @@ Val expert top-1 (110 / 111 min):
 - Not pursued without a ruling: single shared encoder / 9k-anchor alignment
   to remove the confound (~4 h); set-context strength model; LLM-derived
   features.
+
+### 2026-11-21 — Set-context strength model: skipped (owner agreed); text work closed at EXP-064
+
+Diagnostic on TXT-002's out-of-fold GIH residuals (8,941 cards, 31 sets):
+set×colour group means explain 6% of residual variance (adj. R²), set×rarity
+4%, set alone 2%. An oracle leave-one-out set×colour offset lifts mean rho
+.555 → .573; set×rarity does nothing (.549). At the measured conversion that
+is ~0.1–0.2 points of day-0 expert agreement, from an oracle, with 31 sets to
+learn it from. The residual is card-idiosyncratic; the lever aimed at it is a
+better per-card read (LLM-derived assessments), not pursued now.
+
+Laptop bundle rebuilt: sets TRK (day 0), FRA, HOB, MSH; EXP-064 default +
+061 / 033 fallbacks, deck models, EXP-058 / EXP-138 / ONB-FRA-full
+fine-tunes; 533 MB. Verified from a clean unpack: EXP-064 loads for TRK
+`none`, FRA `full`, HOB `week1`. Fold models are not in it, so the laptop
+cannot rebuild TRK's prior after 17lands publishes — onboard on the mini and
+re-bundle.
+
+Next measurement: EXP-064 true zero-shot on TRK when 17lands publishes.
